@@ -1088,37 +1088,30 @@ const App = () => {
             )}
           </Card>
 
-          {/* 绑定推荐人（独立卡片） */}
-          <Card title={t.referrerCardTitle} hint={t.referrerCardHint}>
-            {hasBoundReferrer ? (
-              <>
-                <KVRow label={t.referrerInputLabel} value={machineReferrer} />
-                <p className="chip-label">{t.referrerFromChain}</p>
-              </>
-            ) : (
-              <>
-                <label className="field">
-                  {t.referrerInputLabel}
-                  <input
-                    type="text"
-                    placeholder="0x..."
-                    value={machineReferrer}
-                    onChange={(e) => {
-                      setMachineReferrer(e.target.value);
-                      setReferrerSource("manual");
-                    }}
-                  />
-                </label>
-                {referrerSourceLabel ? <p className="chip-label">{referrerSourceLabel}</p> : null}
-                <p className="hint">{t.referrerInputTip}</p>
-                <div className="actions">
-                  <button className="primary-btn" onClick={onBindReferrer} disabled={loading || !hasValidReferrer}>
-                    {loading ? t.loading : t.bindReferrer}
-                  </button>
-                </div>
-              </>
-            )}
-          </Card>
+          {/* 绑定推荐人（仅未绑定时显示） */}
+          {!hasBoundReferrer ? (
+            <Card title={t.referrerCardTitle} hint={t.referrerCardHint}>
+              <label className="field">
+                {t.referrerInputLabel}
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={machineReferrer}
+                  onChange={(e) => {
+                    setMachineReferrer(e.target.value);
+                    setReferrerSource("manual");
+                  }}
+                />
+              </label>
+              {referrerSourceLabel ? <p className="chip-label">{referrerSourceLabel}</p> : null}
+              <p className="hint">{t.referrerInputTip}</p>
+              <div className="actions">
+                <button className="primary-btn" onClick={onBindReferrer} disabled={loading || !hasValidReferrer}>
+                  {loading ? t.loading : t.bindReferrer}
+                </button>
+              </div>
+            </Card>
+          ) : null}
 
           {/* 矿机购买卡 */}
           <Card title={t.machineTitle} className="machine-card">
