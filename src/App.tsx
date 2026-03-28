@@ -511,11 +511,13 @@ const App = () => {
     if (swapAmountRaw === null || swapAmountRaw === 0n) return t.quoteNeedAmount;
     return swapHasEnoughAllowance ? t.approved : t.notApproved;
   }, [swapAmountRaw, swapHasEnoughAllowance, t.approved, t.notApproved, t.quoteNeedAmount]);
+  const poolToken0Name = useMemo(() => (activePairId === LIGHT_ICO_PAIR_ID ? "LIGHT" : "USDT"), [activePairId]);
+  const poolToken1Name = useMemo(() => "ICO", []);
   const swapRouteLabel = useMemo(() => {
-    const input = swapTokenInSymbol === "-" ? (effectiveSwapDirection === "forward" ? "token0" : "token1") : swapTokenInSymbol;
-    const output = swapTokenOutSymbol === "-" ? (effectiveSwapDirection === "forward" ? "token1" : "token0") : swapTokenOutSymbol;
+    const input = swapTokenInSymbol === "-" ? (effectiveSwapDirection === "forward" ? poolToken0Name : poolToken1Name) : swapTokenInSymbol;
+    const output = swapTokenOutSymbol === "-" ? (effectiveSwapDirection === "forward" ? poolToken1Name : poolToken0Name) : swapTokenOutSymbol;
     return `${input} -> ${output}`;
-  }, [effectiveSwapDirection, swapTokenInSymbol, swapTokenOutSymbol]);
+  }, [effectiveSwapDirection, poolToken0Name, poolToken1Name, swapTokenInSymbol, swapTokenOutSymbol]);
   const swapCanExecute = useMemo(() => {
     if (loading || swapQuoteOut <= 0n || swapAmountRaw === null || swapAmountRaw === 0n) return false;
     return swapHasEnoughBalance;
@@ -1228,8 +1230,8 @@ const App = () => {
                     value={swapDirection}
                     onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}
                   >
-                    <option value="forward">{swapTokenInSymbol === "-" ? "token0" : swapTokenInSymbol} -&gt; {swapTokenOutSymbol === "-" ? "token1" : swapTokenOutSymbol}</option>
-                    <option value="reverse">{swapTokenOutSymbol === "-" ? "token1" : swapTokenOutSymbol} -&gt; {swapTokenInSymbol === "-" ? "token0" : swapTokenInSymbol}</option>
+                    <option value="forward">{swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol} -&gt; {swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol}</option>
+                    <option value="reverse">{swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol} -&gt; {swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol}</option>
                   </select>
                 </label>
                 <button className="ghost-btn" onClick={onReverseSwapDirection} type="button">
