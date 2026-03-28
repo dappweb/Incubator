@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BrowserProvider, isAddress } from "ethers";
+import { parseContractError } from "./lib/errorParser";
 
 import "./App.css";
 import "./types/ethereum";
@@ -305,6 +306,9 @@ const App = () => {
     approvingToken: lang === "zh" ? "正在提交代币授权..." : "Submitting token approval...",
     approveTokenSuccess: lang === "zh" ? "输入币授权已完成。" : "Token approval confirmed.",
     getValidQuoteFirst: lang === "zh" ? "请先获取有效报价。" : "Please get a valid quote first.",
+    insufficientUsdtBalance: lang === "zh" ? "USDT 余额不足，请先充值后再操作" : "Insufficient USDT balance — please top up first",
+    insufficientTokenBalance: lang === "zh" ? "输入代币余额不足，无法完成兑换" : "Insufficient token balance for swap",
+    priceImpactBlocked: lang === "zh" ? "价格影响超出池子限额，流动性不足，请减少兑换数量" : "Price impact exceeds pool limit — reduce the swap amount",
     nav: lang === "zh" ? "导航" : "Navigation",
     statusReady: lang === "zh" ? "系统就绪" : "System Ready",
     loading: lang === "zh" ? "加载中..." : "Loading...",
@@ -897,7 +901,7 @@ const App = () => {
       await action();
       await refreshAll(provider, address);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t.txFailed);
+      setStatus(parseContractError(error, langRef.current));
     } finally {
       setLoading(false);
     }
@@ -931,6 +935,7 @@ const App = () => {
     if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
     if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+    if (usdtBalance < machineTotal) throw new Error(t.insufficientUsdtBalance);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, machineTotal, coreAllowance, "core");
     setStatus(t.buyingMachine);
     await purchaseMachine(provider!, machineQty);
@@ -953,6 +958,7 @@ const App = () => {
   const onBuyNode = async () => guardedAction(async () => {
     if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+    if (usdtBalance < nodePrice) throw new Error(t.insufficientUsdtBalance);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, nodePrice, coreAllowance, "core");
     setStatus(t.buyingNode);
     await buyNode(provider!);
@@ -962,6 +968,7 @@ const App = () => {
   const onBuySuperNode = async () => guardedAction(async () => {
     if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+    if (usdtBalance < superPrice) throw new Error(t.insufficientUsdtBalance);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, superPrice, coreAllowance, "core");
     setStatus(t.buyingSuperNode);
     await buySuperNode(provider!);
@@ -993,8 +1000,11 @@ const App = () => {
 
   const onFillOrder = async (orderId: bigint) => guardedAction(async () => {
     const order = activeOrders.find((item) => item.id === orderId);
-    if (!order) throw new Error("订单不存在");
+    if (!order) throw new Error(lang === "zh" ? "订单不存在，请刷新列表" : "Order not found — refresh the list");
+    if (!order.active) throw new Error(lang === "zh" ? "该订单已失效，请刷新列表" : "Order is no longer active — refresh the list");
+    if (order.seller.toLowerCase() === address.toLowerCase()) throw new Error(lang === "zh" ? "不能购买自己发布的挂单" : "You cannot fill your own listing");
     if (!OTC_CONTRACT_ADDRESS) throw new Error(t.missingOtcConfig);
+    if (usdtBalance < order.priceUSDT) throw new Error(t.insufficientUsdtBalance);
     await ensureUsdtApproval(OTC_CONTRACT_ADDRESS, order.priceUSDT, otcAllowance, "otc");
     setStatus(`${t.fillingOrder} #${orderId}...`);
     await fillOtcOrder(provider!, orderId);
@@ -1037,6 +1047,12 @@ const App = () => {
     if (swapQuoteOut <= 0n) throw new Error(t.getValidQuoteFirst);
     if (!SWAP_POOL_ADDRESS) throw new Error(t.missingSwapConfig);
     const amountInRaw = parseTokenAmount(swapAmountIn, swapTokenInDecimals);
+    // Pre-flight: balance check
+    if (swapTokenInBalance < amountInRaw) throw new Error(t.insufficientTokenBalance);
+    // Pre-flight: price impact guard
+    if (swapPoolImpactLimitBps > 0 && swapQuoteImpactBps >= swapPoolImpactLimitBps) {
+      throw new Error(t.priceImpactBlocked);
+    }
     if (swapTokenInAllowance < amountInRaw) {
       setStatus(`${t.autoApproveThenPay} ${t.approvingToken} ${swapTokenInSymbol}...`);
       await approveToken(provider!, swapTokenInAddress, SWAP_POOL_ADDRESS, parseTokenAmount("1000000000", swapTokenInDecimals));
@@ -1045,6 +1061,10 @@ const App = () => {
     const minOut = (swapQuoteOut * BigInt(10_000 - swapSlippageBps)) / 10_000n;
     setStatus(`${t.swapping} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}...`);
     await swapExactIn(provider!, activePairId, swapTokenInAddress, amountInRaw, minOut, address);
+    // Clear stale quote so user must refresh before swapping again
+    setSwapQuoteOut(0n);
+    setSwapQuoteFee(0n);
+    setSwapQuoteImpactBps(0);
     await refreshSwapPanel(provider!, address);
     setStatus(`${t.swapSuccess} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}`);
   });
