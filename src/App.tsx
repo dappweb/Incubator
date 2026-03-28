@@ -376,6 +376,36 @@ const App = () => {
     }
   }, []);
 
+  useEffect(() => {
+    void (async () => {
+      if (referrerSource !== "none" || machineReferrer) {
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (ref && isAddress(ref)) {
+        return;
+      }
+
+      if (!window.ethereum) {
+        return;
+      }
+
+      try {
+        const readProvider = new BrowserProvider(window.ethereum);
+        const owner = await getContractOwner(readProvider);
+        if (owner && isAddress(owner)) {
+          setContractOwner(owner);
+          setMachineReferrer(owner);
+          setReferrerSource("owner");
+        }
+      } catch {
+        // ignore prefill errors
+      }
+    })();
+  }, [machineReferrer, referrerSource]);
+
   const resetWalletState = () => {
     setAddress("");
     setChainId(0);
