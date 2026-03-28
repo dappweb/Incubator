@@ -32,7 +32,7 @@ import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, ge
 import { getSwapPool, quoteSwapExactIn, swapExactIn } from "./lib/swapContract";
 import { Card, KVRow } from "./components/Common";
 
-type TabKey = "overview" | "team" | "otc" | "swap" | "mine";
+type TabKey = "overview" | "team" | "otc" | "swap" | "swap-light" | "mine";
 type SwapDirection = "forward" | "reverse";
 
 const LIGHT_ICO_PAIR_ID = 1;
@@ -42,6 +42,7 @@ const DESKTOP_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "team", label: "团队" },
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
+  { key: "swap-light", label: "回收" },
   { key: "mine", label: "记录" },
 ];
 
@@ -50,6 +51,7 @@ const MOBILE_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "team", label: "团队" },
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
+  { key: "swap-light", label: "回收" },
   { key: "mine", label: "记录" },
 ];
 
@@ -85,6 +87,7 @@ const App = () => {
     tab_team: lang === "zh" ? "团队" : "Team",
     tab_otc: lang === "zh" ? "市场" : "Market",
     tab_swap: lang === "zh" ? "兑换" : "Swap",
+    "tab_swap-light": lang === "zh" ? "回收" : "Recovery",
     tab_mine: lang === "zh" ? "记录" : "Records",
     address: lang === "zh" ? "钱包地址" : "Wallet",
     network: lang === "zh" ? "当前网络" : "Network",
@@ -128,14 +131,17 @@ const App = () => {
     machineAllowanceLabel: lang === "zh" ? "可用授权" : "Allowance ready",
     machineGapLabel: lang === "zh" ? "仍需授权" : "Allowance gap",
     machineAllowanceReady: lang === "zh" ? "授权已满足当前下单" : "Allowance already covers this order",
-    machineReferrerTip: lang === "zh" ? "如有推荐关系，请填写有效地址；留空则默认无推荐。" : "If you have a referrer, enter a valid address. Leave blank for no referrer.",
+    referrerCardTitle: lang === "zh" ? "绑定推荐人" : "Bind Referrer",
+    referrerCardHint: lang === "zh" ? "购买矿机 / 节点 / 超级节点前，必须先绑定推荐人。绑定后不可更改。" : "You must bind a referrer before purchasing machines, nodes, or super nodes. This cannot be changed once bound.",
+    referrerInputLabel: lang === "zh" ? "推荐人地址" : "Referrer Address",
+    referrerInputTip: lang === "zh" ? "请填写推荐人的钱包地址（0x...），绑定后将写入链上且不可修改。" : "Enter the referrer wallet address (0x...). Once bound, it is stored on-chain and cannot be changed.",
     referrerFromLink: lang === "zh" ? "来源：邀请链接" : "Source: invite link",
     referrerFromChain: lang === "zh" ? "来源：链上已绑定" : "Source: on-chain bound",
     referrerFromOwner: lang === "zh" ? "来源：默认 Owner" : "Source: default owner",
     referrerFromManual: lang === "zh" ? "来源：手动输入" : "Source: manual input",
     machineAutoApproveHint: lang === "zh" ? "支付时将自动完成所需 USDT 授权，无需额外点击授权。" : "Required USDT approval is completed automatically during payment.",
     quantity: lang === "zh" ? "购买数量（1-10）" : "Quantity (1-10)",
-    referrer: lang === "zh" ? "推荐人地址（可选）" : "Referrer Address (Optional)",
+    referrer: lang === "zh" ? "推荐人地址" : "Referrer Address",
     orderTotal: lang === "zh" ? "预计支付" : "Estimated Cost",
     approveCore: lang === "zh" ? "授权 Core" : "Approve Core",
     submitMachine: lang === "zh" ? "确认购买" : "Buy Now",
@@ -160,7 +166,7 @@ const App = () => {
     accountHint: lang === "zh" ? "关键状态一屏可见，减少来回切换。" : "Keep key states visible to reduce context switching.",
     needConnectToBuy: lang === "zh" ? "请先连接钱包" : "Connect wallet first",
     needSepoliaToBuy: lang === "zh" ? "请先切换到 Sepolia" : "Switch to Sepolia first",
-    needReferrerToBuy: lang === "zh" ? "请先确认推荐人地址" : "Confirm referrer address first",
+    needReferrerToBuy: lang === "zh" ? "请先绑定推荐人" : "Bind a referrer first",
     roleMismatchForNode: lang === "zh" ? "当前身份不可重复购买节点" : "Current role cannot buy node again",
     roleMismatchForSuper: lang === "zh" ? "需先购买节点后再升级" : "Buy node first, then upgrade",
     otcTitle: lang === "zh" ? "节点市场" : "Node Market",
@@ -333,6 +339,11 @@ const App = () => {
 
   const [swapPairId, setSwapPairId] = useState(0);
   const [swapDirection, setSwapDirection] = useState<SwapDirection>("forward");
+
+  // Derive pairId and direction from active tab
+  const isSwapTab = activeTab === "swap" || activeTab === "swap-light";
+  const activePairId = activeTab === "swap-light" ? LIGHT_ICO_PAIR_ID : 0;
+  const activeSwapDirection: SwapDirection = activeTab === "swap-light" ? "forward" : swapDirection;
   const [swapAmountIn, setSwapAmountIn] = useState("10");
   const [swapSlippageBps, setSwapSlippageBps] = useState(200);
   const [swapTokenInAddress, setSwapTokenInAddress] = useState("");
@@ -479,10 +490,10 @@ const App = () => {
     if (swapQuoteImpactBps >= 300) return t.mediumImpact;
     return t.lowImpact;
   }, [swapQuoteImpactBps, t.highImpact, t.lowImpact, t.mediumImpact]);
-  const isLightRecoveryPool = useMemo(() => swapPairId === LIGHT_ICO_PAIR_ID, [swapPairId]);
+  const isLightRecoveryPool = useMemo(() => activePairId === LIGHT_ICO_PAIR_ID, [activePairId]);
   const effectiveSwapDirection = useMemo<SwapDirection>(
-    () => (isLightRecoveryPool ? "forward" : swapDirection),
-    [isLightRecoveryPool, swapDirection],
+    () => activeSwapDirection,
+    [activeSwapDirection],
   );
   const swapPoolModeLabel = useMemo(
     () => (isLightRecoveryPool ? t.swapLightMode : t.swapPrimaryMode),
@@ -511,10 +522,10 @@ const App = () => {
   }, [loading, swapAmountRaw, swapHasEnoughBalance, swapQuoteOut]);
 
   useEffect(() => {
-    if (swapPairId === LIGHT_ICO_PAIR_ID && swapDirection !== "forward") {
+    if (activePairId === LIGHT_ICO_PAIR_ID && swapDirection !== "forward") {
       setSwapDirection("forward");
     }
-  }, [swapDirection, swapPairId]);
+  }, [swapDirection, activePairId]);
 
   useEffect(() => {
     void (async () => {
@@ -529,8 +540,8 @@ const App = () => {
   const refreshSwapPanel = async (
     connectedProvider: BrowserProvider,
     wallet: string,
-    pairId = swapPairId,
-    direction = swapDirection,
+    pairId = activePairId,
+    direction = activeSwapDirection,
     amountInput = swapAmountIn,
   ) => {
     if (!SWAP_POOL_ADDRESS) return;
@@ -727,12 +738,12 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "swap" || !provider || !address) {
+    if (!isSwapTab || !provider || !address) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      void refreshSwapPanel(provider, address, swapPairId, swapDirection, swapAmountIn).catch(() => {
+      void refreshSwapPanel(provider, address, activePairId, activeSwapDirection, swapAmountIn).catch(() => {
         // Explicit button actions surface user-visible errors.
       });
     }, 350);
@@ -740,7 +751,7 @@ const App = () => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [activeTab, address, provider, swapPairId, swapDirection, swapAmountIn]);
+  }, [isSwapTab, activeTab, address, provider, activePairId, activeSwapDirection, swapAmountIn]);
 
   const onConnect = async () => {
     try {
@@ -793,7 +804,7 @@ const App = () => {
   };
 
   const onReverseSwapDirection = () => {
-    if (swapPairId === LIGHT_ICO_PAIR_ID) {
+    if (swapPairId === LIGHT_ICO_PAIR_ID || activeTab === "swap-light") {
       return;
     }
     setSwapDirection((current) => (current === "forward" ? "reverse" : "forward"));
@@ -975,7 +986,7 @@ const App = () => {
     }
     const minOut = (swapQuoteOut * BigInt(10_000 - swapSlippageBps)) / 10_000n;
     setStatus(`${t.swapping} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}...`);
-    await swapExactIn(provider!, swapPairId, swapTokenInAddress, amountInRaw, minOut, address);
+    await swapExactIn(provider!, activePairId, swapTokenInAddress, amountInRaw, minOut, address);
     await refreshSwapPanel(provider!, address);
     setStatus(`${t.swapSuccess} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}`);
   });
@@ -1050,6 +1061,38 @@ const App = () => {
             )}
           </Card>
 
+          {/* 绑定推荐人（独立卡片） */}
+          <Card title={t.referrerCardTitle} hint={t.referrerCardHint}>
+            {hasBoundReferrer ? (
+              <>
+                <KVRow label={t.referrerInputLabel} value={machineReferrer} />
+                <p className="chip-label">{t.referrerFromChain}</p>
+              </>
+            ) : (
+              <>
+                <label className="field">
+                  {t.referrerInputLabel}
+                  <input
+                    type="text"
+                    placeholder="0x..."
+                    value={machineReferrer}
+                    onChange={(e) => {
+                      setMachineReferrer(e.target.value);
+                      setReferrerSource("manual");
+                    }}
+                  />
+                </label>
+                {referrerSourceLabel ? <p className="chip-label">{referrerSourceLabel}</p> : null}
+                <p className="hint">{t.referrerInputTip}</p>
+                <div className="actions">
+                  <button className="primary-btn" onClick={onBindReferrer} disabled={loading || !hasValidReferrer}>
+                    {loading ? t.loading : t.bindReferrer}
+                  </button>
+                </div>
+              </>
+            )}
+          </Card>
+
           {/* 矿机购买卡 */}
           <Card title={t.machineTitle} className="machine-card">
             <div className="machine-orb machine-orb--one"></div>
@@ -1066,29 +1109,12 @@ const App = () => {
                 onChange={(e) => setMachineQty(Number(e.target.value || 1))}
               />
             </label>
-            <label className="field">
-              {t.referrer}
-              <input
-                type="text"
-                placeholder="0x..."
-                value={machineReferrer}
-                onChange={(e) => {
-                  setMachineReferrer(e.target.value);
-                  setReferrerSource("manual");
-                }}
-              />
-            </label>
-            {referrerSourceLabel ? <p className="chip-label">{referrerSourceLabel}</p> : null}
-            <p className="hint">{t.machineReferrerTip}</p>
             <div className="machine-cta-sticky">
               <div className="machine-total-row">
                 <span>{t.orderTotal}</span>
                 <strong>{formatUsdt(machineTotal)} USDT</strong>
               </div>
               <div className="actions">
-                <button className="ghost-btn" onClick={onBindReferrer} disabled={loading || !hasValidReferrer || hasBoundReferrer}>
-                  {hasBoundReferrer ? t.bindReferrerDone : t.bindReferrer}
-                </button>
                 <button className="primary-btn" onClick={onBuyMachine} disabled={loading || Boolean(machineDisabledReason)}>
                   {loading ? t.loading : t.submitMachine}
                 </button>
@@ -1171,61 +1197,45 @@ const App = () => {
         <section className="card swap-card">
           <div className="swap-hero">
             <div>
-              <h2>{t.swapTitle}</h2>
-              <p className="hint">{t.swapHint}</p>
+              <h2>{t.swapTitle} — USDT / ICO</h2>
+              <p className="hint">{t.swapPoolPrimaryDesc}</p>
               <p className="hint">{t.swapAutoHint}</p>
             </div>
             <div className="swap-hero-badge-wrap">
-              <span className={`swap-mode-badge ${isLightRecoveryPool ? "swap-mode-badge-warn" : ""}`}>{swapPoolModeLabel}</span>
+              <span className="swap-mode-badge">{t.swapPrimaryMode}</span>
             </div>
           </div>
 
           <div className="swap-pool-overview">
             <div className="swap-pool-card swap-pool-card-active">
               <span>{t.swapPool}</span>
-              <strong>{swapPairId === 0 ? "USDT / ICO" : "LIGHT / ICO"}</strong>
-              <small>{swapPoolDescription}</small>
+              <strong>USDT / ICO</strong>
+              <small>{t.swapPoolPrimaryDesc}</small>
             </div>
             <div className="swap-pool-card">
               <span>{t.swapRoute}</span>
               <strong>{swapRouteLabel}</strong>
-              <small>{isLightRecoveryPool ? t.swapDirectionLocked : t.reverseDirection}</small>
-            </div>
-            <div className="swap-pool-card">
-              <span>{t.swapLightDistributionTitle}</span>
-              <strong>{isLightRecoveryPool ? "LIGHT" : "USDT / ICO"}</strong>
-              <small>{swapDistributionText}</small>
+              <small>{t.reverseDirection}</small>
             </div>
           </div>
 
           <div className="swap-shell">
             <div className="swap-panel">
-              <label className="field">
-                {t.swapPool}
-                <select value={swapPairId} onChange={(event) => setSwapPairId(Number(event.target.value))}>
-                  <option value={0}>USDT / ICO</option>
-                  <option value={1}>LIGHT / ICO</option>
-                </select>
-              </label>
-
               <div className="swap-direction-row">
                 <label className="field swap-field-grow">
                   {t.swapDirection}
                   <select
-                    value={effectiveSwapDirection}
+                    value={swapDirection}
                     onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}
-                    disabled={isLightRecoveryPool}
                   >
-                    <option value="forward">token0 -&gt; token1</option>
-                    <option value="reverse" disabled={isLightRecoveryPool}>token1 -&gt; token0</option>
+                    <option value="forward">{swapTokenInSymbol === "-" ? "token0" : swapTokenInSymbol} -&gt; {swapTokenOutSymbol === "-" ? "token1" : swapTokenOutSymbol}</option>
+                    <option value="reverse">{swapTokenOutSymbol === "-" ? "token1" : swapTokenOutSymbol} -&gt; {swapTokenInSymbol === "-" ? "token0" : swapTokenInSymbol}</option>
                   </select>
                 </label>
-                <button className="ghost-btn" onClick={onReverseSwapDirection} type="button" disabled={isLightRecoveryPool}>
+                <button className="ghost-btn" onClick={onReverseSwapDirection} type="button">
                   {t.reverseDirection}
                 </button>
               </div>
-
-              {isLightRecoveryPool ? <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div> : null}
 
               <div className="swap-route-preview">
                 <div className="swap-route-token">
@@ -1270,8 +1280,117 @@ const App = () => {
                 <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
               </div>
               <div className="swap-stat">
-                <span>{t.swapPoolMode}</span>
-                <strong>{swapPoolModeLabel}</strong>
+                <span>{t.fee}</span>
+                <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.impactLimit}</span>
+                <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.swapApprovalReady}</span>
+                <strong>{swapApprovalStatus}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
+                <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.estimatedImpact}</span>
+                <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
+              </div>
+              <div className={`swap-status swap-status-${swapImpactTone}`}>
+                <strong>{t.quoteStatus}</strong>
+                <span>{swapStatusText}</span>
+                <small>{swapImpactLabel}</small>
+              </div>
+            </div>
+          </div>
+
+          <div className="actions">
+            <button className="primary-btn" onClick={onRefreshSwapQuote} disabled={loading}>{t.refreshQuote}</button>
+            <button className="primary-btn" onClick={onApproveSwapToken} disabled={loading || !swapTokenInAddress}>{t.approveToken}</button>
+            <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "swap-light" ? (
+        <section className="card swap-card">
+          <div className="swap-hero">
+            <div>
+              <h2>{t.swapTitle} — LIGHT / ICO</h2>
+              <p className="hint">{t.swapPoolLightDesc}</p>
+              <p className="hint">{t.swapAutoHint}</p>
+            </div>
+            <div className="swap-hero-badge-wrap">
+              <span className="swap-mode-badge swap-mode-badge-warn">{t.swapLightMode}</span>
+            </div>
+          </div>
+
+          <div className="swap-pool-overview">
+            <div className="swap-pool-card swap-pool-card-active">
+              <span>{t.swapPool}</span>
+              <strong>LIGHT / ICO</strong>
+              <small>{t.swapPoolLightDesc}</small>
+            </div>
+            <div className="swap-pool-card">
+              <span>{t.swapRoute}</span>
+              <strong>{swapRouteLabel}</strong>
+              <small>{t.swapDirectionLocked}</small>
+            </div>
+            <div className="swap-pool-card">
+              <span>{t.swapLightDistributionTitle}</span>
+              <strong>LIGHT</strong>
+              <small>{t.swapLightDistribution}</small>
+            </div>
+          </div>
+
+          <div className="swap-shell">
+            <div className="swap-panel">
+              <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div>
+
+              <div className="swap-route-preview">
+                <div className="swap-route-token">
+                  <span>{t.swapInputAsset}</span>
+                  <strong>{swapTokenInSymbol}</strong>
+                </div>
+                <div className="swap-route-arrow">→</div>
+                <div className="swap-route-token">
+                  <span>{t.swapOutputAsset}</span>
+                  <strong>{swapTokenOutSymbol}</strong>
+                </div>
+              </div>
+
+              <div className="swap-input-card">
+                <div className="swap-input-top">
+                  <span>{t.inputAmount}</span>
+                  <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
+                </div>
+                <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
+                <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
+              </div>
+
+              <label className="field">
+                {t.slippage}
+                <input type="number" min={10} max={2000} value={swapSlippageBps} onChange={(event) => setSwapSlippageBps(Number(event.target.value || 200))} />
+              </label>
+
+              <div className="chip-row">
+                <button className={swapSlippageBps === 50 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(50)} type="button">0.5%</button>
+                <button className={swapSlippageBps === 100 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(100)} type="button">1.0%</button>
+                <button className={swapSlippageBps === 200 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(200)} type="button">2.0%</button>
+              </div>
+            </div>
+
+            <div className="swap-summary">
+              <div className="swap-stat">
+                <span>{t.estimatedOutput}</span>
+                <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.estimatedFee}</span>
+                <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
               </div>
               <div className="swap-stat">
                 <span>{t.fee}</span>
@@ -1320,6 +1439,7 @@ const App = () => {
               {tab.key === "team" && "👥"}
               {tab.key === "otc" && "🤝"}
               {tab.key === "swap" && "🔄"}
+              {tab.key === "swap-light" && "♻️"}
               {tab.key === "mine" && "🧑"}
             </div>
             <span>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</span>
