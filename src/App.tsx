@@ -1076,8 +1076,10 @@ const App = () => {
     <header className="header header-fixed">
       <div className="topbar-logo">
         <div className="brand-mark" aria-hidden="true">
-          <span className="brand-mark__core"></span>
+          <img src="/logo.png" alt="Incubator" className="brand-mark__logo" />
         </div>
+        <span className="brand-name">Incubator</span>
+        {activeTabLabel && <span className="page-title-sep">·</span>}
         <h1 className="page-title">{activeTabLabel}</h1>
       </div>
 

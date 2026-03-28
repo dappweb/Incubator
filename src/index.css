@@ -9,20 +9,22 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --bg-primary: #05070a;
-  --bg-secondary: #0d1117;
-  --card-bg: rgba(22, 27, 34, 0.6);
-  --border-color: rgba(255, 255, 255, 0.08);
-  
-  --text-primary: #f8fafc;
-  --text-secondary: #8b949e;
-  
-  --brand-cyan: #00f2fe;
-  --brand-blue: #4facfe;
-  --brand-purple: #a18cd1;
-  
-  --gradient-neon: linear-gradient(135deg, var(--brand-cyan) 0%, var(--brand-blue) 100%);
-  --gradient-text: linear-gradient(to right, var(--brand-cyan), var(--brand-purple));
+  --bg-primary: #080e2e;
+  --bg-secondary: #0d1445;
+  --card-bg: rgba(15, 22, 60, 0.65);
+  --border-color: rgba(107, 127, 212, 0.18);
+
+  --text-primary: #f0f4ff;
+  --text-secondary: #7e8fc4;
+
+  --brand-green: #86c232;
+  --brand-green-light: #a8e040;
+  --brand-blue: #6b7fd4;
+  --brand-blue-light: #8a99e8;
+
+  --gradient-neon: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-blue) 100%);
+  --gradient-text: linear-gradient(to right, var(--brand-green), var(--brand-blue-light));
+  --gradient-btn: linear-gradient(135deg, var(--brand-green) 0%, #5a9020 100%);
 }
 
 * {
@@ -33,9 +35,10 @@ body {
   margin: 0;
   color: var(--text-primary);
   background-color: var(--bg-primary);
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(161, 140, 209, 0.08) 0%, transparent 40%);
+  background-image:
+    radial-gradient(ellipse at 15% 25%, rgba(107, 127, 212, 0.18) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 75%, rgba(134, 194, 50, 0.10) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 0%, rgba(107, 127, 212, 0.10) 0%, transparent 55%);
   background-attachment: fixed;
   background-repeat: no-repeat;
   min-height: 100vh;
