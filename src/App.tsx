@@ -153,9 +153,10 @@ const App = () => {
     buyNode: lang === "zh" ? "立即购买节点" : "Buy Node",
     buyNodeLocked: lang === "zh" ? "已拥有节点身份" : "Node Already Owned",
     superNodeTitle: lang === "zh" ? "购买超级节点" : "Buy Super Node",
-    superNodeDesc: lang === "zh" ? "需先拥有节点身份，再升级为超级节点。" : "You must own a node first before upgrading to a super node.",
+    superNodeDesc: lang === "zh" ? "无需门槛，可直接购买超级节点资格，成功后立即生效。" : "No entry requirement. Buy super node access directly and it takes effect immediately on-chain.",
     buySuperNode: lang === "zh" ? "立即购买超级节点" : "Buy Super Node",
     buySuperNodeLocked: lang === "zh" ? "需先购买节点" : "Buy Node First",
+    alreadySuperNode: lang === "zh" ? "已拥有超级节点身份" : "Already a Super Node",
     flowTitle: lang === "zh" ? "购买流程" : "Purchase Flow",
     flowHint: lang === "zh" ? "按步骤完成后可减少失败率与重复操作。" : "Follow these steps to reduce failures and repeat actions.",
     stepConnect: lang === "zh" ? "连接钱包" : "Connect Wallet",
@@ -481,9 +482,9 @@ const App = () => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
     if (!hasBoundReferrer) return t.needReferrerToBuy;
-    if (role !== 1) return t.roleMismatchForSuper;
+    if (role === 2) return t.alreadySuperNode;
     return "";
-  }, [hasBoundReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.roleMismatchForSuper]);
+  }, [hasBoundReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.alreadySuperNode]);
   const purchaseFlow = useMemo(
     () => [
       { label: t.stepConnect, done: isConnected },
@@ -1192,7 +1193,7 @@ const App = () => {
             <p className="hint">{t.superNodeDesc}</p>
             <div className="actions">
               <button className="primary-btn" onClick={onBuySuperNode} disabled={loading || Boolean(superDisabledReason)}>
-                {loading ? t.loading : role === 1 ? t.buySuperNode : t.buySuperNodeLocked}
+                {loading ? t.loading : t.buySuperNode}
               </button>
             </div>
             {superDisabledReason ? <p className="action-hint">{superDisabledReason}</p> : null}

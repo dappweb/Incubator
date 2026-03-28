@@ -224,14 +224,29 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
     function buySuperNode() external whenNotPaused {
         require(referralOf[msg.sender] != address(0), "bind referrer first");
-        Role role = _getRole(msg.sender);
-        require(role == Role.Node, "node required");
+        Role currentRole = _getRole(msg.sender);
+        require(currentRole != Role.SuperNode, "already a super node");
 
         usdt.safeTransferFrom(msg.sender, address(this), superNodePrice);
 
-        uint256 identityId = ownedIdentityId[msg.sender];
-        identities[identityId].role = Role.SuperNode;
-        identities[identityId].updatedAt = block.timestamp;
+        uint256 identityId;
+        if (currentRole == Role.None) {
+            // No existing node identity — create one directly as SuperNode
+            identityId = nextIdentityId;
+            nextIdentityId = identityId + 1;
+            identities[identityId] = IdentityAccount({
+                id: identityId,
+                owner: msg.sender,
+                role: Role.SuperNode,
+                updatedAt: block.timestamp
+            });
+            ownedIdentityId[msg.sender] = identityId;
+        } else {
+            // Existing Node identity — upgrade to SuperNode
+            identityId = ownedIdentityId[msg.sender];
+            identities[identityId].role = Role.SuperNode;
+            identities[identityId].updatedAt = block.timestamp;
+        }
         _registerParticipant(msg.sender);
         emit SuperNodePurchased(msg.sender, superNodePrice, identityId);
     }
