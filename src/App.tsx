@@ -579,6 +579,7 @@ const App = () => {
     setSwapTokenInAllowance(tokenInAllowance);
     setSwapPoolFeeBps(pool.feeBps);
     setSwapPoolImpactLimitBps(pool.maxPriceImpactBps);
+    setSwapSlippageBps(pool.feeBps);
 
     if (!amountInput.trim() || Number(amountInput) <= 0) {
       setSwapQuoteOut(0n);
@@ -1267,17 +1268,6 @@ const App = () => {
                 <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
                 <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
               </div>
-
-              <label className="field">
-                {t.slippage}
-                <input type="number" min={10} max={2000} value={swapSlippageBps} onChange={(event) => setSwapSlippageBps(Number(event.target.value || 200))} />
-              </label>
-
-              <div className="chip-row">
-                <button className={swapSlippageBps === 50 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(50)} type="button">0.5%</button>
-                <button className={swapSlippageBps === 100 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(100)} type="button">1.0%</button>
-                <button className={swapSlippageBps === 200 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(200)} type="button">2.0%</button>
-              </div>
             </div>
 
             <div className="swap-summary">
@@ -1377,17 +1367,6 @@ const App = () => {
                 </div>
                 <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
                 <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
-              </div>
-
-              <label className="field">
-                {t.slippage}
-                <input type="number" min={10} max={2000} value={swapSlippageBps} onChange={(event) => setSwapSlippageBps(Number(event.target.value || 200))} />
-              </label>
-
-              <div className="chip-row">
-                <button className={swapSlippageBps === 50 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(50)} type="button">0.5%</button>
-                <button className={swapSlippageBps === 100 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(100)} type="button">1.0%</button>
-                <button className={swapSlippageBps === 200 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(200)} type="button">2.0%</button>
               </div>
             </div>
 
