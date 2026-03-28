@@ -995,32 +995,32 @@ const App = () => {
     setStatus(`${t.swapSuccess} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}`);
   });
 
+  const activeTabLabel = t[("tab_" + activeTab) as keyof typeof t] || activeTab;
+
   return (
+    <>
+    <header className="header header-fixed">
+      <div className="topbar-logo">
+        <div className="brand-mark" aria-hidden="true">
+          <span className="brand-mark__core"></span>
+        </div>
+        <h1 className="page-title">{activeTabLabel}</h1>
+      </div>
+
+      <div className="topbar-actions">
+        <button className="icon-btn" onClick={toggleTheme} title="Toggle Theme" type="button">
+          {theme === "dark" ? "🌙" : "☀️"}
+        </button>
+        <button className="icon-btn" onClick={toggleLang} title="Toggle Language" type="button">
+          {lang === "zh" ? "中" : "EN"}
+        </button>
+        <button onClick={isConnected ? onDisconnect : onConnect} className="primary-btn" disabled={loading} type="button">
+          {loading ? t.loading : (isConnected ? t.disconnect : t.connect)}
+        </button>
+      </div>
+    </header>
+
     <main className="container">
-      <header className="header">
-        <div className="topbar-logo">
-          <div className="brand-mark" aria-hidden="true">
-            <span className="brand-mark__core"></span>
-          </div>
-          <div className="status-bar">
-            <span className={`status-dot ${isConnected ? 'status-online' : 'status-offline'}`}></span>
-            <span className="status-text">{status || (isConnected ? t.statusReady : t.notConnected)}</span>
-          </div>
-        </div>
-
-        <div className="topbar-actions">
-          <button className="icon-btn" onClick={toggleTheme} title="Toggle Theme" type="button">
-            {theme === "dark" ? "🌙" : "☀️"}
-          </button>
-          <button className="icon-btn" onClick={toggleLang} title="Toggle Language" type="button">
-            {lang === "zh" ? "中" : "EN"}
-          </button>
-          <button onClick={isConnected ? onDisconnect : onConnect} className="primary-btn" disabled={loading} type="button">
-            {loading ? t.loading : (isConnected ? t.disconnect : t.connect)}
-          </button>
-        </div>
-      </header>
-
       <section className="tabs desktop-tabs">
         {DESKTOP_TABS.map((tab) => <button key={tab.key} className={tab.key === activeTab ? "tab-btn tab-active" : "tab-btn"} onClick={() => setActiveTab(tab.key)}>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</button>)}
       </section>
@@ -1155,7 +1155,7 @@ const App = () => {
       ) : null}
 
       {activeTab === "team" ? (
-        <section className="grid">
+        <section className="grid-full">
           <Card title={t.teamTitle} hint={t.teamHint}>
             <div className="stats-grid">
               <div className="stat-pill">
@@ -1195,229 +1195,286 @@ const App = () => {
         </section>
       ) : null}
 
-      {activeTab === "otc" ? <section className="card"><h2>{t.otcTitle}</h2><p className="hint">{t.otcHint}</p><div className="kv-row"><span>{t.myIdentity}</span><strong>{identityId ? String(identityId) : t.none}</strong></div><div className="kv-row"><span>{t.identityApproval}</span><strong>{identityApproved ? t.approved : t.notApproved}</strong></div><label className="field">{t.otcPrice}<input type="number" min={1} value={newOtcPrice} onChange={(event) => setNewOtcPrice(event.target.value)} /></label><div className="actions"><button className="primary-btn" onClick={onCreateOtcOrder} disabled={loading || !identityId}>{t.createListing}</button></div><p className="hint">{t.otcAutoApproveHint}</p><h3>{t.activeListings}</h3>{activeOrders.length === 0 ? <p className="hint">{t.noListings}</p> : <div className="table-wrap"><table><thead><tr><th>{t.orderId}</th><th>{t.identityId}</th><th>{t.seller}</th><th>{t.priceUsdt}</th><th>{t.action}</th></tr></thead><tbody>{activeOrders.map((order) => <tr key={String(order.id)}><td>{String(order.id)}</td><td>{String(order.identityId)}</td><td>{`${order.seller.slice(0, 6)}...${order.seller.slice(-4)}`}</td><td>{formatUsdt(order.priceUSDT)}</td><td>{address && order.seller.toLowerCase() === address.toLowerCase() ? <button className="link-btn" onClick={() => onCancelOrder(order.id)} disabled={loading}>{t.cancel}</button> : <button className="link-btn" onClick={() => onFillOrder(order.id)} disabled={loading}>{t.fill}</button>}</td></tr>)}</tbody></table></div>}</section> : null}
-
-      {activeTab === "swap" ? (
-        <section className="card swap-card">
-          <div className="swap-sub-tabs">
-            <button className={swapSubTab === "primary" ? "tab-btn tab-active" : "tab-btn"} onClick={() => setSwapSubTab("primary")}>{t.swapSubPrimary}</button>
-            <button className={swapSubTab === "light" ? "tab-btn tab-active" : "tab-btn"} onClick={() => setSwapSubTab("light")}>{t.swapSubLight}</button>
-          </div>
-
-          {swapSubTab === "primary" ? (
-          <>
-          <div className="swap-hero">
-            <div>
-              <h2>{t.swapTitle} — USDT / ICO</h2>
-              <p className="hint">{t.swapPoolPrimaryDesc}</p>
-              <p className="hint">{t.swapAutoHint}</p>
+      {activeTab === "otc" ? (
+        <section className="grid-full">
+          <Card title={t.otcTitle} hint={t.otcHint}>
+            <div className="kv-row">
+              <span>{t.myIdentity}</span>
+              <strong>{identityId ? String(identityId) : t.none}</strong>
             </div>
-            <div className="swap-hero-badge-wrap">
-              <span className="swap-mode-badge">{t.swapPrimaryMode}</span>
+            <div className="kv-row">
+              <span>{t.identityApproval}</span>
+              <strong>{identityApproved ? t.approved : t.notApproved}</strong>
             </div>
-          </div>
-
-          <div className="swap-pool-overview">
-            <div className="swap-pool-card swap-pool-card-active">
-              <span>{t.swapPool}</span>
-              <strong>USDT / ICO</strong>
-              <small>{t.swapPoolPrimaryDesc}</small>
+            <label className="field">
+              {t.otcPrice}
+              <input type="number" min={1} value={newOtcPrice} onChange={(event) => setNewOtcPrice(event.target.value)} />
+            </label>
+            <div className="actions">
+              <button className="primary-btn" onClick={onCreateOtcOrder} disabled={loading || !identityId}>
+                {loading ? t.loading : t.createListing}
+              </button>
             </div>
-            <div className="swap-pool-card">
-              <span>{t.swapRoute}</span>
-              <strong>{swapRouteLabel}</strong>
-              <small>{t.reverseDirection}</small>
-            </div>
-          </div>
+            <p className="hint">{t.otcAutoApproveHint}</p>
+          </Card>
 
-          <div className="swap-shell">
-            <div className="swap-panel">
-              <div className="swap-direction-row">
-                <label className="field swap-field-grow">
-                  {t.swapDirection}
-                  <select
-                    value={swapDirection}
-                    onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}
-                  >
-                    <option value="forward">{swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol} -&gt; {swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol}</option>
-                    <option value="reverse">{swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol} -&gt; {swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol}</option>
-                  </select>
-                </label>
-                <button className="ghost-btn" onClick={onReverseSwapDirection} type="button">
-                  {t.reverseDirection}
-                </button>
+          <Card title={t.activeListings}>
+            {activeOrders.length === 0 ? (
+              <p className="hint">{t.noListings}</p>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t.orderId}</th>
+                      <th>{t.identityId}</th>
+                      <th>{t.seller}</th>
+                      <th>{t.priceUsdt}</th>
+                      <th>{t.action}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeOrders.map((order) => (
+                      <tr key={String(order.id)}>
+                        <td>{String(order.id)}</td>
+                        <td>{String(order.identityId)}</td>
+                        <td>{`${order.seller.slice(0, 6)}...${order.seller.slice(-4)}`}</td>
+                        <td>{formatUsdt(order.priceUSDT)}</td>
+                        <td>
+                          {address && order.seller.toLowerCase() === address.toLowerCase() ? (
+                            <button className="link-btn" onClick={() => onCancelOrder(order.id)} disabled={loading}>
+                              {t.cancel}
+                            </button>
+                          ) : (
+                            <button className="link-btn" onClick={() => onFillOrder(order.id)} disabled={loading}>
+                              {t.fill}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-
-              <div className="swap-route-preview">
-                <div className="swap-route-token">
-                  <span>{t.swapInputAsset}</span>
-                  <strong>{swapTokenInSymbol}</strong>
-                </div>
-                <div className="swap-route-arrow">→</div>
-                <div className="swap-route-token">
-                  <span>{t.swapOutputAsset}</span>
-                  <strong>{swapTokenOutSymbol}</strong>
-                </div>
-              </div>
-
-              <div className="swap-input-card">
-                <div className="swap-input-top">
-                  <span>{t.inputAmount}</span>
-                  <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
-                </div>
-                <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
-                <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
-              </div>
-            </div>
-
-            <div className="swap-summary">
-              <div className="swap-stat">
-                <span>{t.estimatedOutput}</span>
-                <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.estimatedFee}</span>
-                <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.fee}</span>
-                <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.impactLimit}</span>
-                <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.swapApprovalReady}</span>
-                <strong>{swapApprovalStatus}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
-                <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.estimatedImpact}</span>
-                <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div className={`swap-status swap-status-${swapImpactTone}`}>
-                <strong>{t.quoteStatus}</strong>
-                <span>{swapStatusText}</span>
-                <small>{swapImpactLabel}</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="actions">
-            <button className="primary-btn" onClick={onRefreshSwapQuote} disabled={loading}>{t.refreshQuote}</button>
-            <button className="primary-btn" onClick={onApproveSwapToken} disabled={loading || !swapTokenInAddress}>{t.approveToken}</button>
-            <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
-          </div>
-          </>
-          ) : (
-          <>
-          <div className="swap-hero">
-            <div>
-              <h2>{t.swapTitle} — LIGHT / ICO</h2>
-              <p className="hint">{t.swapPoolLightDesc}</p>
-              <p className="hint">{t.swapAutoHint}</p>
-            </div>
-            <div className="swap-hero-badge-wrap">
-              <span className="swap-mode-badge swap-mode-badge-warn">{t.swapLightMode}</span>
-            </div>
-          </div>
-
-          <div className="swap-pool-overview">
-            <div className="swap-pool-card swap-pool-card-active">
-              <span>{t.swapPool}</span>
-              <strong>LIGHT / ICO</strong>
-              <small>{t.swapPoolLightDesc}</small>
-            </div>
-            <div className="swap-pool-card">
-              <span>{t.swapRoute}</span>
-              <strong>{swapRouteLabel}</strong>
-              <small>{t.swapDirectionLocked}</small>
-            </div>
-            <div className="swap-pool-card">
-              <span>{t.swapLightDistributionTitle}</span>
-              <strong>LIGHT</strong>
-              <small>{t.swapLightDistribution}</small>
-            </div>
-          </div>
-
-          <div className="swap-shell">
-            <div className="swap-panel">
-              <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div>
-
-              <div className="swap-route-preview">
-                <div className="swap-route-token">
-                  <span>{t.swapInputAsset}</span>
-                  <strong>{swapTokenInSymbol}</strong>
-                </div>
-                <div className="swap-route-arrow">→</div>
-                <div className="swap-route-token">
-                  <span>{t.swapOutputAsset}</span>
-                  <strong>{swapTokenOutSymbol}</strong>
-                </div>
-              </div>
-
-              <div className="swap-input-card">
-                <div className="swap-input-top">
-                  <span>{t.inputAmount}</span>
-                  <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
-                </div>
-                <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
-                <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
-              </div>
-            </div>
-
-            <div className="swap-summary">
-              <div className="swap-stat">
-                <span>{t.estimatedOutput}</span>
-                <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.estimatedFee}</span>
-                <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.fee}</span>
-                <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.impactLimit}</span>
-                <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.swapApprovalReady}</span>
-                <strong>{swapApprovalStatus}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
-                <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
-              </div>
-              <div className="swap-stat">
-                <span>{t.estimatedImpact}</span>
-                <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div className={`swap-status swap-status-${swapImpactTone}`}>
-                <strong>{t.quoteStatus}</strong>
-                <span>{swapStatusText}</span>
-                <small>{swapImpactLabel}</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="actions">
-            <button className="primary-btn" onClick={onRefreshSwapQuote} disabled={loading}>{t.refreshQuote}</button>
-            <button className="primary-btn" onClick={onApproveSwapToken} disabled={loading || !swapTokenInAddress}>{t.approveToken}</button>
-            <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
-          </div>
-          </>
-          )}
+            )}
+          </Card>
         </section>
       ) : null}
 
-      {activeTab === "mine" ? <section className="grid"><article className="card"><h2>{t.ordersTitle}</h2><p className="hint">{t.ordersHint}</p>{orders.length === 0 ? <p className="hint">{t.noOrders}</p> : <ul className="list">{orders.map((order) => <li key={String(order.id)} className="list-item"><div className="list-head"><strong>{`${t.orderId} #${String(order.id)}`}</strong><span>{`${String(order.quantity)} ${t.quantityUnit}`}</span></div><p>{t.amount}：{formatUsdt(order.amountUSDT)} USDT</p><p>{t.timestamp}：{new Date(Number(order.createdAt)).toLocaleString(lang === "zh" ? 'zh-CN' : 'en-US')}</p></li>)}</ul>}</article><article className="card"><h2>{t.rewardsTitle}</h2><p className="hint">{t.rewardsHint}</p>{rewardRecords.length === 0 ? <p className="hint">{t.noRewards}</p> : <ul className="list">{rewardRecords.map((reward) => <li key={`${reward.txHash}-${String(reward.orderId)}-${reward.poolType}`} className="list-item"><div className="list-head"><strong>{`${t.rewardOrder} #${String(reward.orderId)}`}</strong><span>{`${t.rewardPool} #${reward.poolType}`}</span></div><p>{t.rewardAmount}：{formatUsdt(reward.amountUSDT)} USDT</p><p>{t.blockNumber}：{reward.blockNumber}</p></li>)}</ul>}</article></section> : null}
+      {activeTab === "swap" ? (
+        <section className="grid-full">
+          <Card className="swap-card">
+            <div className="swap-sub-tabs">
+              <button 
+                className={swapSubTab === "primary" ? "tab-btn tab-active" : "tab-btn"} 
+                onClick={() => setSwapSubTab("primary")}
+              >
+                {t.swapSubPrimary}
+              </button>
+              <button 
+                className={swapSubTab === "light" ? "tab-btn tab-active" : "tab-btn"} 
+                onClick={() => setSwapSubTab("light")}
+              >
+                {t.swapSubLight}
+              </button>
+            </div>
+
+            {swapSubTab === "primary" ? (
+              <>
+                <div className="swap-hero">
+                  <div>
+                    <h2>{t.swapTitle} — USDT / ICO</h2>
+                    <p className="hint">{t.swapPoolPrimaryDesc}</p>
+                    <p className="hint">{t.swapAutoHint}</p>
+                  </div>
+                  <div className="swap-hero-badge-wrap">
+                    <span className="swap-mode-badge">{t.swapPrimaryMode}</span>
+                  </div>
+                </div>
+
+                <div className="swap-shell">
+                  <div className="swap-panel">
+                    <div className="swap-direction-row">
+                      <label className="field swap-field-grow">
+                        {t.swapDirection}
+                        <select
+                          value={swapDirection}
+                          onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}
+                        >
+                          <option value="forward">{swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol} -&gt; {swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol}</option>
+                          <option value="reverse">{swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol} -&gt; {swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol}</option>
+                        </select>
+                      </label>
+                      <button className="ghost-btn" onClick={onReverseSwapDirection} type="button">
+                        {t.reverseDirection}
+                      </button>
+                    </div>
+
+                    <div className="swap-input-card">
+                      <div className="swap-input-top">
+                        <span>{t.inputAmount}</span>
+                        <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
+                      </div>
+                      <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
+                      <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
+                    </div>
+                  </div>
+
+                  <div className="swap-summary">
+                    <div className="swap-stat">
+                      <span>{t.estimatedOutput}</span>
+                      <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.estimatedFee}</span>
+                      <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.fee}</span>
+                      <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.impactLimit}</span>
+                      <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.swapApprovalReady}</span>
+                      <strong>{swapApprovalStatus}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
+                      <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.estimatedImpact}</span>
+                      <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
+                    </div>
+                    <div className={`swap-status swap-status-${swapImpactTone}`}>
+                      <strong>{t.quoteStatus}</strong>
+                      <span>{swapStatusText}</span>
+                      <small>{swapImpactLabel}</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="actions">
+                  <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="swap-hero">
+                  <div>
+                    <h2>{t.swapTitle} — LIGHT / ICO</h2>
+                    <p className="hint">{t.swapPoolLightDesc}</p>
+                    <p className="hint">{t.swapAutoHint}</p>
+                  </div>
+                  <div className="swap-hero-badge-wrap">
+                    <span className="swap-mode-badge swap-mode-badge-warn">{t.swapLightMode}</span>
+                  </div>
+                </div>
+
+                <div className="swap-shell">
+                  <div className="swap-panel">
+                    <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div>
+
+                    <div className="swap-input-card">
+                      <div className="swap-input-top">
+                        <span>{t.inputAmount}</span>
+                        <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
+                      </div>
+                      <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
+                      <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
+                    </div>
+                  </div>
+
+                  <div className="swap-summary">
+                    <div className="swap-stat">
+                      <span>{t.estimatedOutput}</span>
+                      <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.estimatedFee}</span>
+                      <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.fee}</span>
+                      <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.impactLimit}</span>
+                      <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.swapApprovalReady}</span>
+                      <strong>{swapApprovalStatus}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
+                      <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
+                    </div>
+                    <div className="swap-stat">
+                      <span>{t.estimatedImpact}</span>
+                      <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
+                    </div>
+                    <div className={`swap-status swap-status-${swapImpactTone}`}>
+                      <strong>{t.quoteStatus}</strong>
+                      <span>{swapStatusText}</span>
+                      <small>{swapImpactLabel}</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="actions">
+                  <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
+                </div>
+              </>
+            )}
+          </Card>
+        </section>
+      ) : null}
+
+      {activeTab === "mine" ? (
+        <section className="grid-full">
+          <Card title={t.ordersTitle} hint={t.ordersHint}>
+            {orders.length === 0 ? (
+              <p className="hint">{t.noOrders}</p>
+            ) : (
+              <ul className="list">
+                {orders.map((order) => (
+                  <li key={String(order.id)} className="list-item">
+                    <div className="list-head">
+                      <strong>{`${t.orderId} #${String(order.id)}`}</strong>
+                      <span>{`${String(order.quantity)} ${t.quantityUnit}`}</span>
+                    </div>
+                    <p>{t.amount}：{formatUsdt(order.amountUSDT)} USDT</p>
+                    <p>{t.timestamp}：{new Date(Number(order.createdAt)).toLocaleString(lang === "zh" ? 'zh-CN' : 'en-US')}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card title={t.rewardsTitle} hint={t.rewardsHint}>
+            {rewardRecords.length === 0 ? (
+              <p className="hint">{t.noRewards}</p>
+            ) : (
+              <ul className="list">
+                {rewardRecords.map((reward) => (
+                  <li key={`${reward.txHash}-${String(reward.orderId)}-${reward.poolType}`} className="list-item">
+                    <div className="list-head">
+                      <strong>{`${t.rewardOrder} #${String(reward.orderId)}`}</strong>
+                      <span>{`${t.rewardPool} #${reward.poolType}`}</span>
+                    </div>
+                    <p>{t.rewardAmount}：{formatUsdt(reward.amountUSDT)} USDT</p>
+                    <p>{t.blockNumber}：{reward.blockNumber}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </section>
+      ) : null}
     
       {/* 底部导航栏 */}
       <nav className="bottom-nav">
@@ -1435,6 +1492,7 @@ const App = () => {
         ))}
       </nav>
     </main>
+    </>
   );
 }
 
