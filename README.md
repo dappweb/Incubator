@@ -26,6 +26,19 @@ npm run compile
 npm run deploy:sepolia
 ```
 
+### 5) 合约升级（UUPS）
+
+- 在 `.env` 中配置代理地址：
+	- `INCUBATOR_CORE_PROXY`
+	- `NODE_OTC_MARKET_PROXY`
+	- `SWAP_POOL_MANAGER_PROXY`
+	- `IDENTITY_NFT_PROXY`
+
+```bash
+npm run precheck:upgrade:sepolia
+npm run upgrade:sepolia
+```
+
 > 注意：业务功能全部链上实现，Appwrite 仅用于公告模块。
 
 ## 部署到 Vercel

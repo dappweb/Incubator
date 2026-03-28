@@ -3,11 +3,29 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract SwapPoolManager is Ownable, Pausable, ReentrancyGuard {
+contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address usdtAddress, address icoAddress, address lightAddress, address initialOwner) public initializer {
+        require(usdtAddress != address(0), "invalid usdt");
+        require(icoAddress != address(0), "invalid ico");
+        require(lightAddress != address(0), "invalid light");
+        __Ownable_init(initialOwner);
+        __Pausable_init();
+
+        usdt = IERC20(usdtAddress);
+        ico = IERC20(icoAddress);
+        light = IERC20(lightAddress);
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
     using SafeERC20 for IERC20;
 
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -27,9 +45,9 @@ contract SwapPoolManager is Ownable, Pausable, ReentrancyGuard {
         bool exists;
     }
 
-    IERC20 public immutable usdt;
-    IERC20 public immutable ico;
-    IERC20 public immutable light;
+    IERC20 public usdt;
+    IERC20 public ico;
+    IERC20 public light;
 
     mapping(uint8 => Pool) private pools;
     mapping(uint8 => mapping(address => uint256)) public feeVault;
@@ -55,16 +73,6 @@ contract SwapPoolManager is Ownable, Pausable, ReentrancyGuard {
     );
     event FeeDistributed(uint8 indexed pairId, address indexed token, address indexed to, uint256 amount);
     event PoolConfigUpdated(uint8 indexed pairId, uint16 feeBps, uint16 maxPriceImpactBps);
-
-    constructor(address usdtAddress, address icoAddress, address lightAddress, address initialOwner) Ownable(initialOwner) {
-        require(usdtAddress != address(0), "invalid usdt");
-        require(icoAddress != address(0), "invalid ico");
-        require(lightAddress != address(0), "invalid light");
-
-        usdt = IERC20(usdtAddress);
-        ico = IERC20(icoAddress);
-        light = IERC20(lightAddress);
-    }
 
     function createDefaultPools(uint16 feeBpsUsdtIco, uint16 feeBpsLightIco, uint16 maxPriceImpactBps) external onlyOwner {
         _createPool(uint8(PairId.UsdtIco), address(usdt), address(ico), feeBpsUsdtIco, maxPriceImpactBps);

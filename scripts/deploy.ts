@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -10,18 +10,27 @@ async function main() {
   const lightAddress = await resolveNamedTokenAddress(ethers, "LIGHT", "Incubator LIGHT", "LIGHT", deployer.address);
 
   const CoreFactory = await ethers.getContractFactory("IncubatorCore");
-  const core = await CoreFactory.deploy(usdtAddress, deployer.address, poolRecipients);
+  const core = await upgrades.deployProxy(CoreFactory, [usdtAddress, deployer.address, poolRecipients], {
+    kind: "uups",
+    initializer: "initialize",
+  });
   await core.waitForDeployment();
 
   const OtcFactory = await ethers.getContractFactory("NodeOTCMarket");
-  const otc = await OtcFactory.deploy(usdtAddress, await core.getAddress(), deployer.address, deployer.address);
+  const otc = await upgrades.deployProxy(OtcFactory, [usdtAddress, await core.getAddress(), deployer.address, deployer.address], {
+    kind: "uups",
+    initializer: "initialize",
+  });
   await otc.waitForDeployment();
 
   const setMarketTx = await core.setIdentityMarket(await otc.getAddress());
   await setMarketTx.wait();
 
   const SwapFactory = await ethers.getContractFactory("SwapPoolManager");
-  const swap = await SwapFactory.deploy(usdtAddress, icoAddress, lightAddress, deployer.address);
+  const swap = await upgrades.deployProxy(SwapFactory, [usdtAddress, icoAddress, lightAddress, deployer.address], {
+    kind: "uups",
+    initializer: "initialize",
+  });
   await swap.waitForDeployment();
 
   await (await swap.createDefaultPools(50, 200, 3000)).wait();

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract IncubatorCore is Ownable, Pausable {
+contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     enum Role {
@@ -53,7 +54,7 @@ contract IncubatorCore is Ownable, Pausable {
         uint8 lastCount;
     }
 
-    IERC20 public immutable usdt;
+    IERC20 public usdt;
 
     uint256 public constant USDT_DECIMALS = 1e6;
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -131,12 +132,18 @@ contract IncubatorCore is Ownable, Pausable {
     event RewardWeightUpdated(address indexed account, uint256 weight);
     event LeaderboardUpdated(uint256 indexed dayId, address indexed user, uint256 totalVolume);
 
-    constructor(
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
         address usdtAddress,
         address initialOwner,
         address[6] memory initialRecipients
-    ) Ownable(initialOwner) {
+    ) public initializer {
         require(usdtAddress != address(0), "invalid usdt");
+        __Ownable_init(initialOwner);
+        __Pausable_init();
 
         usdt = IERC20(usdtAddress);
 
@@ -147,6 +154,10 @@ contract IncubatorCore is Ownable, Pausable {
         _setPoolConfig(PoolType.Platform, initialRecipients[4], 2000);
         _setPoolConfig(PoolType.Leaderboard, initialRecipients[5], 200);
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    // ============ Main Functions ============
 
     function purchaseMachine(uint256 quantity) external whenNotPaused {
         require(quantity > 0 && quantity <= MAX_MACHINE_PER_ORDER, "invalid qty");

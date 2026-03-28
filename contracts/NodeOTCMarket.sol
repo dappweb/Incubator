@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IIncubatorCoreIdentity {
@@ -17,7 +18,7 @@ interface IIncubatorCoreIdentity {
         returns (uint256 id, address owner, uint8 role, uint256 updatedAt);
 }
 
-contract NodeOTCMarket is Ownable {
+contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
     struct Order {
         uint256 id;
         uint256 identityId;
@@ -27,8 +28,8 @@ contract NodeOTCMarket is Ownable {
         bool active;
     }
 
-    IERC20 public immutable usdt;
-    IIncubatorCoreIdentity public immutable coreIdentity;
+    IERC20 public usdt;
+    IIncubatorCoreIdentity public coreIdentity;
     address public feeRecipient;
     uint256 public feeBps = 1000;
 
@@ -59,14 +60,21 @@ contract NodeOTCMarket is Ownable {
     event OtcOrderAutoCancelled(uint256 indexed orderId, address indexed seller, uint8 indexed role, uint256 referencePriceUSDT);
     event FeeConfigUpdated(uint256 feeBps, address feeRecipient);
 
-    constructor(address usdtAddress, address coreIdentityAddress, address initialOwner, address feeRecipient_) Ownable(initialOwner) {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address usdtAddress, address coreIdentityAddress, address initialOwner, address feeRecipient_) public initializer {
         require(usdtAddress != address(0), "invalid usdt");
         require(coreIdentityAddress != address(0), "invalid core");
         require(feeRecipient_ != address(0), "invalid fee recipient");
+        __Ownable_init(initialOwner);
         usdt = IERC20(usdtAddress);
         coreIdentity = IIncubatorCoreIdentity(coreIdentityAddress);
         feeRecipient = feeRecipient_;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function createOrder(uint256 identityId, uint256 priceUSDT) external {
         require(identityId > 0, "invalid identity");

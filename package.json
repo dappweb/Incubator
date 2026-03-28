@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@reown/appkit": "^1.8.19",
     "@reown/appkit-adapter-ethers": "^1.8.19",
     "appwrite": "^24.0.0",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
@@ -41,6 +43,8 @@
     "build:web": "vite build",
     "compile": "hardhat compile",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "precheck:upgrade:sepolia": "hardhat run scripts/precheck-upgrade.ts --network sepolia",
+    "upgrade:sepolia": "hardhat run scripts/upgrade-contracts.ts --network sepolia",
     "test:contracts": "hardhat run scripts/validate-contracts.ts"
   }
 }

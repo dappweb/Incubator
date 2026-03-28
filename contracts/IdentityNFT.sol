@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract IdentityNFT is ERC721, Ownable {
+contract IdentityNFT is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
     enum IdentityKind {
         None,
@@ -21,11 +22,19 @@ contract IdentityNFT is ERC721, Ownable {
     event IdentityUpgraded(address indexed owner, uint256 indexed burnedTokenId, uint256 indexed newTokenId);
     event MinterUpdated(address indexed account, bool allowed);
 
-    constructor(address initialOwner) ERC721("Incubator Identity", "INCI") Ownable(initialOwner) {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address initialOwner) public initializer {
+        __ERC721_init("Incubator Identity", "INCI");
+        __Ownable_init(initialOwner);
         require(initialOwner != address(0), "invalid owner");
         minters[initialOwner] = true;
         emit MinterUpdated(initialOwner, true);
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     modifier onlyMinter() {
         require(minters[msg.sender], "not minter");
