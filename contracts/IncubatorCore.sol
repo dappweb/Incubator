@@ -148,23 +148,18 @@ contract IncubatorCore is Ownable, Pausable {
         _setPoolConfig(PoolType.Leaderboard, initialRecipients[5], 200);
     }
 
-    function purchaseMachine(uint256 quantity, address referrer) external whenNotPaused {
+    function purchaseMachine(uint256 quantity) external whenNotPaused {
         require(quantity > 0 && quantity <= MAX_MACHINE_PER_ORDER, "invalid qty");
-
-        if (referralOf[msg.sender] == address(0) && _isValidReferrer(msg.sender, referrer)) {
-            _bindReferrer(msg.sender, referrer);
-        }
+        require(referralOf[msg.sender] != address(0), "bind referrer first");
 
         uint256 amountUSDT = machineUnitPrice * quantity;
         usdt.safeTransferFrom(msg.sender, address(this), amountUSDT);
 
         uint256 orderId = nextMachineOrderId;
         address currentReferrer = referralOf[msg.sender];
-        
-        if (currentReferrer != address(0)) {
-            directReferralVolume[currentReferrer] += amountUSDT;
-            _updateTeamVolume(currentReferrer, amountUSDT);
-        }
+
+        directReferralVolume[currentReferrer] += amountUSDT;
+        _updateTeamVolume(currentReferrer, amountUSDT);
 
         machineOrders[orderId] = MachineOrder({
             id: orderId,
@@ -195,6 +190,7 @@ contract IncubatorCore is Ownable, Pausable {
     }
 
     function buyNode() external whenNotPaused {
+        require(referralOf[msg.sender] != address(0), "bind referrer first");
         Role role = _getRole(msg.sender);
         require(role == Role.None, "already has role");
 
@@ -216,6 +212,7 @@ contract IncubatorCore is Ownable, Pausable {
     }
 
     function buySuperNode() external whenNotPaused {
+        require(referralOf[msg.sender] != address(0), "bind referrer first");
         Role role = _getRole(msg.sender);
         require(role == Role.Node, "node required");
 

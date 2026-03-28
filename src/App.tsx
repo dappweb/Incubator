@@ -427,15 +427,17 @@ const App = () => {
   const nodeDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (!hasBoundReferrer) return t.needReferrerToBuy;
     if (role !== 0) return t.roleMismatchForNode;
     return "";
-  }, [isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needSepoliaToBuy, t.roleMismatchForNode]);
+  }, [hasBoundReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.roleMismatchForNode]);
   const superDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (!hasBoundReferrer) return t.needReferrerToBuy;
     if (role !== 1) return t.roleMismatchForSuper;
     return "";
-  }, [isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needSepoliaToBuy, t.roleMismatchForSuper]);
+  }, [hasBoundReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.roleMismatchForSuper]);
   const purchaseFlow = useMemo(
     () => [
       { label: t.stepConnect, done: isConnected },
@@ -858,16 +860,11 @@ const App = () => {
 
   const onBuyMachine = async () => guardedAction(async () => {
     if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
-    const referrer = machineReferrer.trim();
-    if (referrer && !isAddress(referrer)) throw new Error(t.invalidReferrer);
+    if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, machineTotal, coreAllowance, "core");
     setStatus(t.buyingMachine);
-    
-    // 如果没有输入推荐人且合约中也未绑定，则使用所有者地址（已经在 refreshAll 中处理过 state，这里做最终兜底）
-    const effectiveReferrer = referrer || machineReferrer || "0x0000000000000000000000000000000000000000";
-    
-    await purchaseMachine(provider!, machineQty, effectiveReferrer);
+    await purchaseMachine(provider!, machineQty);
     setStatus(t.buyMachineSuccess);
   });
 
@@ -885,6 +882,7 @@ const App = () => {
   });
 
   const onBuyNode = async () => guardedAction(async () => {
+    if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, nodePrice, coreAllowance, "core");
     setStatus(t.buyingNode);
@@ -893,6 +891,7 @@ const App = () => {
   });
 
   const onBuySuperNode = async () => guardedAction(async () => {
+    if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, superPrice, coreAllowance, "core");
     setStatus(t.buyingSuperNode);

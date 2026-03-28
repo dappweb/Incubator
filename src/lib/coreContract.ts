@@ -2,7 +2,7 @@ import { BrowserProvider, Contract } from "ethers";
 import { CORE_CONTRACT_ADDRESS } from "../config";
 
 const coreAbi = [
-  "function purchaseMachine(uint256 quantity, address referrer) external",
+  "function purchaseMachine(uint256 quantity) external",
   "function bindReferrer(address referrer) external",
   "function buyNode() external",
   "function buySuperNode() external",
@@ -139,11 +139,10 @@ export async function getRewardRecordsByBeneficiary(
 export async function purchaseMachine(
   provider: BrowserProvider,
   quantity: number,
-  referrer: string,
 ) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.purchaseMachine(quantity, referrer);
+  const tx = await contract.purchaseMachine(quantity);
   return tx.wait();
 }
 
