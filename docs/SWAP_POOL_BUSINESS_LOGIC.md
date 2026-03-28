@@ -55,14 +55,14 @@ $$amountOut = \frac{reserveOut \cdot amountInAfterFee}{reserveIn + amountInAfter
 ### 4.2 ICO -> USDT
 流程同上，方向相反。
 
-### 4.3 LIGHT -> ICO
+### 4.3 LIGHT -> ICO（单向）
 1. 用户输入 `amountInLIGHT`
 2. 使用 `LIGHT/ICO` 池计算 `amountOutICO`
 3. 滑点校验与结算
-4. 手续费进入 LIGHT 兑换手续费池并分账
+4. 用户收到 `ICO`
+5. 收到的 `LIGHT` 进入手续费池 / 销毁池 / 回流池分账
 
-### 4.4 ICO -> LIGHT
-流程同上，方向相反。
+> `LIGHT/ICO` 池为**单向回收池**，只允许 `LIGHT -> ICO`，不支持 `ICO -> LIGHT`。
 
 ---
 
@@ -80,7 +80,7 @@ $$amountOut = \frac{reserveOut \cdot amountInAfterFee}{reserveIn + amountInAfter
 - `swapFeeBpsUsdtIco`：默认 30~100 bps（0.3%~1%）
 - `feeSplitUsdtIco`：`lpBps / platformBps / nodeBps / superNodeBps`，总和 10000
 
-## 5.2 LIGHT/ICO 池手续费
+### 5.2 LIGHT/ICO 池手续费
 文档有“LIGHT 兑换手续费池（3% / 7%）”描述，建议采用以下可配置映射：
 - `lightSwapNodeBps = 7000`
 - `lightSwapSuperNodeBps = 3000`
@@ -88,6 +88,18 @@ $$amountOut = \frac{reserveOut \cdot amountInAfterFee}{reserveIn + amountInAfter
 
 交易费率建议单独参数：
 - `swapFeeBpsLightIco`（例如 100~300 bps）
+
+建议将 `LIGHT` 实际到账后的总分流也做成可配置：
+- `burnBps`
+- `bootstrapPoolBps`
+- `nodeRewardBps`
+- `superNodeRewardBps`
+
+默认可按业务图口径：
+- `60%` 销毁
+- `30%` 回流启动池 / 算力池
+- `7%` 节点池
+- `3%` 超级节点池
 
 ---
 
@@ -151,11 +163,12 @@ $$amountOut = \frac{reserveOut \cdot amountInAfterFee}{reserveIn + amountInAfter
 
 ## 11. 测试网验收标准（最小集）
 1. 两个池都可初始化并注入流动性
-2. 四个方向交易都能成交（USDT↔ICO、LIGHT↔ICO）
+2. `USDT/ICO` 双向可成交，`LIGHT/ICO` 仅 `LIGHT -> ICO` 可成交
 3. `minOut` 生效，滑点超限回滚
 4. 手续费分账到账正确（节点/超级节点/平台）
 5. 暂停后交易失败，恢复后可继续
-6. 大额交易价格冲击限制生效
+6. `ICO -> LIGHT` 调用被正确拒绝
+7. 大额交易价格冲击限制生效
 
 ---
 

@@ -17,13 +17,13 @@ export const Card = ({ title, hint, children, className = "" }: CardProps) => (
 
 interface KVRowProps {
   label: string;
-  value: string | number | React.ReactNode;
+  value: string | number | bigint | React.ReactNode;
   isUsdt?: boolean;
 }
 
 export const KVRow = ({ label, value, isUsdt }: KVRowProps) => (
   <div className="kv-row">
     <span>{label}</span>
-    <strong>{isUsdt && typeof value === "bigint" ? formatUsdt(value) + " USDT" : value}</strong>
+    <strong>{isUsdt && typeof value === "bigint" ? formatUsdt(value) + " USDT" : typeof value === "bigint" ? String(value) : value}</strong>
   </div>
 );

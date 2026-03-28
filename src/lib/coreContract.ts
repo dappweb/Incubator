@@ -3,6 +3,7 @@ import { CORE_CONTRACT_ADDRESS } from "../config";
 
 const coreAbi = [
   "function purchaseMachine(uint256 quantity, address referrer) external",
+  "function bindReferrer(address referrer) external",
   "function buyNode() external",
   "function buySuperNode() external",
   "function approveIdentityOperator(uint256 identityId, address operator, bool approved) external",
@@ -146,6 +147,13 @@ export async function purchaseMachine(
   return tx.wait();
 }
 
+export async function bindReferrer(provider: BrowserProvider, referrer: string) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.bindReferrer(referrer);
+  return tx.wait();
+}
+
 export async function buyNode(provider: BrowserProvider) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
@@ -210,17 +218,18 @@ export type TeamStats = {
 };
 
 export async function getTeamStats(provider: BrowserProvider, user: string): Promise<TeamStats> {
-  const contract = getCoreContract(provider) as any;
-  const [directCount, teamCount, directVolume, teamVolume] = await Promise.all([
-    contract.directReferralCount(user),
-    contract.teamTotalMemberCount(user),
-    contract.directReferralVolume(user),
-    contract.teamTotalVolume(user),
-  ]);
-  return {
-    directCount,
-    teamCount,
-    directVolume,
-    teamVolume,
-  };
+  try {
+    // Prefer single-call getUserStats for efficiency (1 RPC call instead of 4)
+    return await getUserStats(provider, user);
+  } catch {
+    // Fallback to individual calls if getUserStats is not available on-chain
+    const contract = getCoreContract(provider) as any;
+    const [directCount, teamCount, directVolume, teamVolume] = await Promise.all([
+      contract.directReferralCount(user),
+      contract.teamTotalMemberCount(user),
+      contract.directReferralVolume(user),
+      contract.teamTotalVolume(user),
+    ]);
+    return { directCount, teamCount, directVolume, teamVolume };
+  }
 }

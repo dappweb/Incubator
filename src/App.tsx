@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BrowserProvider, isAddress } from "ethers";
 
 import "./App.css";
@@ -6,6 +6,7 @@ import "./types/ethereum";
 import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
 import {
   buyNode,
+  bindReferrer,
   buySuperNode,
   getMachineOrder,
   getMachineUnitPrice,
@@ -34,6 +35,8 @@ import { Card, KVRow } from "./components/Common";
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine";
 type SwapDirection = "forward" | "reverse";
 
+const LIGHT_ICO_PAIR_ID = 1;
+
 const DESKTOP_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "首页" },
   { key: "team", label: "团队" },
@@ -55,6 +58,8 @@ const App = () => {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [lang, setLang] = useState<"zh" | "en">("zh");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const langRef = React.useRef(lang);
+  langRef.current = lang;
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -147,6 +152,8 @@ const App = () => {
     flowHint: lang === "zh" ? "按步骤完成后可减少失败率与重复操作。" : "Follow these steps to reduce failures and repeat actions.",
     stepConnect: lang === "zh" ? "连接钱包" : "Connect Wallet",
     stepReferrer: lang === "zh" ? "确认推荐人" : "Confirm Referrer",
+    bindReferrer: lang === "zh" ? "绑定推荐人" : "Bind Referrer",
+    bindReferrerDone: lang === "zh" ? "已绑定推荐人" : "Referrer Bound",
     stepApprove: lang === "zh" ? "USDT 授权就绪" : "USDT Allowance Ready",
     stepPurchase: lang === "zh" ? "提交购买" : "Submit Purchase",
     accountSnapshot: lang === "zh" ? "账户快照" : "Account Snapshot",
@@ -191,16 +198,24 @@ const App = () => {
     swapTitle: lang === "zh" ? "Swap 即时兑换" : "Swap",
     swapHint: lang === "zh" ? "先查看报价与滑点，再确认兑换，避免实际到账与预期偏差过大。" : "Check quote and slippage first to avoid large gaps between expected and actual output.",
     swapAutoHint: lang === "zh" ? "输入数量、切换方向或交易池后，系统会自动刷新报价。" : "Quotes refresh automatically when you change pool, direction, or amount.",
+    swapPoolPrimaryDesc: lang === "zh" ? "主流动性池，支持 USDT 与 ICO 双向兑换。" : "Primary liquidity pool for two-way USDT and ICO swaps.",
+    swapPoolLightDesc: lang === "zh" ? "单向回收池，只允许 LIGHT 兑换为 ICO。" : "One-way recovery pool that only allows LIGHT to be swapped into ICO.",
     swapPool: lang === "zh" ? "选择交易池" : "Pool",
+    swapPoolMode: lang === "zh" ? "池模式" : "Pool Mode",
+    swapRoute: lang === "zh" ? "当前路线" : "Current Route",
     swapDirection: lang === "zh" ? "兑换方向" : "Direction",
     reverseDirection: lang === "zh" ? "反转方向" : "Reverse",
+    swapDirectionLocked: lang === "zh" ? "该池为单向兑换，方向已锁定为 LIGHT -> ICO。" : "This pool is one-way only. Route is locked to LIGHT -> ICO.",
     inputAmount: lang === "zh" ? "输入数量" : "Amount In",
+    swapInputAsset: lang === "zh" ? "输入资产" : "Input Asset",
+    swapOutputAsset: lang === "zh" ? "输出资产" : "Output Asset",
     max: lang === "zh" ? "全部" : "Max",
     slippage: lang === "zh" ? "滑点容忍（bps）" : "Slippage (bps)",
     fee: lang === "zh" ? "池手续费" : "Pool Fee",
     impactLimit: lang === "zh" ? "价格冲击上限" : "Impact Limit",
     tokenBalance: lang === "zh" ? "输入币种余额" : "Input Token Balance",
     tokenAllowance: lang === "zh" ? "输入币种授权" : "Input Token Allowance",
+    swapApprovalReady: lang === "zh" ? "授权状态" : "Approval State",
     estimatedOutput: lang === "zh" ? "预计到账" : "Estimated Output",
     estimatedFee: lang === "zh" ? "预计手续费" : "Estimated Fee",
     estimatedImpact: lang === "zh" ? "预计价格冲击" : "Estimated Price Impact",
@@ -212,9 +227,15 @@ const App = () => {
     lowImpact: lang === "zh" ? "价格冲击较低" : "Low price impact",
     mediumImpact: lang === "zh" ? "价格冲击中等" : "Medium price impact",
     highImpact: lang === "zh" ? "价格冲击偏高，请谨慎确认。" : "High price impact. Review carefully before swapping.",
+    swapPrimaryMode: lang === "zh" ? "双向主池" : "Two-way main pool",
+    swapLightMode: lang === "zh" ? "单向回收池" : "One-way recovery pool",
+    swapLightDistributionTitle: lang === "zh" ? "LIGHT 业务分流" : "LIGHT distribution",
+    swapLightDistribution: lang === "zh" ? "60% 销毁 · 30% 回流启动池 · 7% 节点池 · 3% 超级节点池" : "60% burn · 30% bootstrap pool · 7% node pool · 3% super node pool",
     refreshQuote: lang === "zh" ? "刷新报价" : "Refresh Quote",
     approveToken: lang === "zh" ? "授权输入币" : "Approve Token",
     executeSwap: lang === "zh" ? "确认兑换" : "Swap Now",
+    swapping: lang === "zh" ? "正在执行兑换" : "Executing swap",
+    swapSuccess: lang === "zh" ? "兑换成功" : "Swap completed",
     ordersTitle: lang === "zh" ? "出入金记录" : "In/Out Records",
     ordersHint: lang === "zh" ? "这里汇总你的链上出入金相关记录（当前优先展示矿机订单流水）。" : "This section summarizes your on-chain in/out records (currently focused on machine order flows).",
     noOrders: lang === "zh" ? "暂无出入金记录。" : "No in/out records yet.",
@@ -249,6 +270,9 @@ const App = () => {
     approvedOtcSuccess: lang === "zh" ? "市场 USDT 授权已完成。" : "Market USDT approval confirmed.",
     invalidMachineQty: lang === "zh" ? "矿机购买数量需在 1 到 10 之间。" : "Machine quantity must be between 1 and 10.",
     invalidReferrer: lang === "zh" ? "推荐人地址格式不正确。" : "Invalid referrer address.",
+    referrerAlreadyBound: lang === "zh" ? "推荐人已绑定，无需重复操作。" : "Referrer already bound.",
+    bindingReferrer: lang === "zh" ? "正在绑定推荐人..." : "Binding referrer...",
+    bindReferrerSuccess: lang === "zh" ? "推荐人绑定成功。" : "Referrer bound successfully.",
     buyingMachine: lang === "zh" ? "正在提交矿机购买交易..." : "Submitting machine purchase...",
     buyMachineSuccess: lang === "zh" ? "矿机购买成功。" : "Machine purchase completed.",
     buyingNode: lang === "zh" ? "正在提交节点购买交易..." : "Submitting node purchase...",
@@ -383,6 +407,10 @@ const App = () => {
   const machineApprovalGap = useMemo(() => (machineTotal > coreAllowance ? machineTotal - coreAllowance : 0n), [coreAllowance, machineTotal]);
   const roleLabel = useMemo(() => (role === 2 ? t.roleSuperNode : role === 1 ? t.roleNode : t.roleUser), [role, t.roleNode, t.roleSuperNode, t.roleUser]);
   const hasValidReferrer = useMemo(() => Boolean(machineReferrer && isAddress(machineReferrer)), [machineReferrer]);
+  const hasBoundReferrer = useMemo(
+    () => referrerSource === "onchain" && Boolean(machineReferrer && isAddress(machineReferrer)),
+    [machineReferrer, referrerSource],
+  );
   const referrerSourceLabel = useMemo(() => {
     if (referrerSource === "link") return t.referrerFromLink;
     if (referrerSource === "onchain") return t.referrerFromChain;
@@ -393,9 +421,9 @@ const App = () => {
   const machineDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
-    if (!hasValidReferrer) return t.needReferrerToBuy;
+    if (!hasBoundReferrer) return t.needReferrerToBuy;
     return "";
-  }, [hasValidReferrer, isConnected, isWrongNetwork, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy]);
+  }, [hasBoundReferrer, isConnected, isWrongNetwork, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy]);
   const nodeDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
@@ -411,11 +439,11 @@ const App = () => {
   const purchaseFlow = useMemo(
     () => [
       { label: t.stepConnect, done: isConnected },
-      { label: t.stepReferrer, done: hasValidReferrer },
+      { label: t.stepReferrer, done: hasBoundReferrer },
       { label: t.stepApprove, done: coreAllowance >= machineTotal && machineTotal > 0n },
       { label: t.stepPurchase, done: false },
     ],
-    [coreAllowance, hasValidReferrer, isConnected, machineTotal, t.stepApprove, t.stepConnect, t.stepPurchase, t.stepReferrer],
+    [coreAllowance, hasBoundReferrer, isConnected, machineTotal, t.stepApprove, t.stepConnect, t.stepPurchase, t.stepReferrer],
   );
   const swapAmountRaw = useMemo(() => {
     try {
@@ -449,6 +477,42 @@ const App = () => {
     if (swapQuoteImpactBps >= 300) return t.mediumImpact;
     return t.lowImpact;
   }, [swapQuoteImpactBps, t.highImpact, t.lowImpact, t.mediumImpact]);
+  const isLightRecoveryPool = useMemo(() => swapPairId === LIGHT_ICO_PAIR_ID, [swapPairId]);
+  const effectiveSwapDirection = useMemo<SwapDirection>(
+    () => (isLightRecoveryPool ? "forward" : swapDirection),
+    [isLightRecoveryPool, swapDirection],
+  );
+  const swapPoolModeLabel = useMemo(
+    () => (isLightRecoveryPool ? t.swapLightMode : t.swapPrimaryMode),
+    [isLightRecoveryPool, t.swapLightMode, t.swapPrimaryMode],
+  );
+  const swapPoolDescription = useMemo(
+    () => (isLightRecoveryPool ? t.swapPoolLightDesc : t.swapPoolPrimaryDesc),
+    [isLightRecoveryPool, t.swapPoolLightDesc, t.swapPoolPrimaryDesc],
+  );
+  const swapDistributionText = useMemo(
+    () => (isLightRecoveryPool ? t.swapLightDistribution : "-"),
+    [isLightRecoveryPool, t.swapLightDistribution],
+  );
+  const swapApprovalStatus = useMemo(() => {
+    if (swapAmountRaw === null || swapAmountRaw === 0n) return t.quoteNeedAmount;
+    return swapHasEnoughAllowance ? t.approved : t.notApproved;
+  }, [swapAmountRaw, swapHasEnoughAllowance, t.approved, t.notApproved, t.quoteNeedAmount]);
+  const swapRouteLabel = useMemo(() => {
+    const input = swapTokenInSymbol === "-" ? (effectiveSwapDirection === "forward" ? "token0" : "token1") : swapTokenInSymbol;
+    const output = swapTokenOutSymbol === "-" ? (effectiveSwapDirection === "forward" ? "token1" : "token0") : swapTokenOutSymbol;
+    return `${input} -> ${output}`;
+  }, [effectiveSwapDirection, swapTokenInSymbol, swapTokenOutSymbol]);
+  const swapCanExecute = useMemo(() => {
+    if (loading || swapQuoteOut <= 0n || swapAmountRaw === null || swapAmountRaw === 0n) return false;
+    return swapHasEnoughBalance;
+  }, [loading, swapAmountRaw, swapHasEnoughBalance, swapQuoteOut]);
+
+  useEffect(() => {
+    if (swapPairId === LIGHT_ICO_PAIR_ID && swapDirection !== "forward") {
+      setSwapDirection("forward");
+    }
+  }, [swapDirection, swapPairId]);
 
   useEffect(() => {
     void (async () => {
@@ -469,6 +533,8 @@ const App = () => {
   ) => {
     if (!SWAP_POOL_ADDRESS) return;
 
+    const activeDirection = pairId === LIGHT_ICO_PAIR_ID ? "forward" : direction;
+
     const pool = await getSwapPool(connectedProvider, pairId);
     if (!pool.exists) {
       setSwapQuoteOut(0n);
@@ -477,8 +543,8 @@ const App = () => {
       return;
     }
 
-    const tokenInAddress = direction === "forward" ? pool.token0 : pool.token1;
-    const tokenOutAddress = direction === "forward" ? pool.token1 : pool.token0;
+    const tokenInAddress = activeDirection === "forward" ? pool.token0 : pool.token1;
+    const tokenOutAddress = activeDirection === "forward" ? pool.token1 : pool.token0;
 
     const [tokenInMeta, tokenOutMeta, tokenInBalance, tokenInAllowance] = await Promise.all([
       getTokenMeta(connectedProvider, tokenInAddress),
@@ -611,11 +677,11 @@ const App = () => {
 
         if (!disposed) {
           await syncWalletState(existing.provider, existing.address, existing.chainId);
-          setStatus(t.walletConnected);
+          setStatus(langRef.current === "zh" ? "钱包连接成功，数据已同步。" : "Wallet connected and data synced.");
         }
       } catch (error) {
         if (!disposed) {
-          setStatus(error instanceof Error ? error.message : t.walletConnectFailed);
+          setStatus(error instanceof Error ? error.message : (langRef.current === "zh" ? "连接钱包失败" : "Failed to connect wallet"));
         }
       }
     };
@@ -635,7 +701,7 @@ const App = () => {
         }
       } catch (error) {
         if (!disposed) {
-          setStatus(error instanceof Error ? error.message : t.walletConnectFailed);
+          setStatus(error instanceof Error ? error.message : (langRef.current === "zh" ? "连接钱包失败" : "Failed to connect wallet"));
         }
       }
     };
@@ -655,7 +721,8 @@ const App = () => {
       disposed = true;
       cleanup();
     };
-  }, [t.walletConnected, t.walletConnectFailed]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (activeTab !== "swap" || !provider || !address) {
@@ -724,6 +791,9 @@ const App = () => {
   };
 
   const onReverseSwapDirection = () => {
+    if (swapPairId === LIGHT_ICO_PAIR_ID) {
+      return;
+    }
     setSwapDirection((current) => (current === "forward" ? "reverse" : "forward"));
   };
 
@@ -767,8 +837,7 @@ const App = () => {
       return;
     }
 
-    setStatus(t.autoApproveThenPay);
-    setStatus(mode === "core" ? t.approvingUsdtCore : t.approvingUsdtOtc);
+    setStatus(`${t.autoApproveThenPay} ${mode === "core" ? t.approvingUsdtCore : t.approvingUsdtOtc}`);
     await approveUsdt(provider!, spender, parseUsdt("1000000000"));
     setStatus(mode === "core" ? t.approvedCoreSuccess : t.approvedOtcSuccess);
   };
@@ -800,6 +869,19 @@ const App = () => {
     
     await purchaseMachine(provider!, machineQty, effectiveReferrer);
     setStatus(t.buyMachineSuccess);
+  });
+
+  const onBindReferrer = async () => guardedAction(async () => {
+    const referrer = machineReferrer.trim();
+    if (!isAddress(referrer)) throw new Error(t.invalidReferrer);
+    if (hasBoundReferrer) {
+      setStatus(t.referrerAlreadyBound);
+      return;
+    }
+    setStatus(t.bindingReferrer);
+    await bindReferrer(provider!, referrer);
+    setReferrerSource("onchain");
+    setStatus(t.bindReferrerSuccess);
   });
 
   const onBuyNode = async () => guardedAction(async () => {
@@ -888,8 +970,7 @@ const App = () => {
     if (!SWAP_POOL_ADDRESS) throw new Error(t.missingSwapConfig);
     const amountInRaw = parseTokenAmount(swapAmountIn, swapTokenInDecimals);
     if (swapTokenInAllowance < amountInRaw) {
-      setStatus(t.autoApproveThenPay);
-      setStatus(`${t.approvingToken} ${swapTokenInSymbol}...`);
+      setStatus(`${t.autoApproveThenPay} ${t.approvingToken} ${swapTokenInSymbol}...`);
       await approveToken(provider!, swapTokenInAddress, SWAP_POOL_ADDRESS, parseTokenAmount("1000000000", swapTokenInDecimals));
       setStatus(`${swapTokenInSymbol} ${t.approveTokenSuccess}`);
     }
@@ -921,7 +1002,7 @@ const App = () => {
             {lang === "zh" ? "中" : "EN"}
           </button>
           <button onClick={isConnected ? onDisconnect : onConnect} className="primary-btn" disabled={loading} type="button">
-            {isRefreshing ? (lang === "zh" ? "加载中..." : "Loading...") : (isConnected ? t.disconnect : t.connect)}
+            {loading ? t.loading : (isConnected ? t.disconnect : t.connect)}
           </button>
         </div>
       </header>
@@ -1006,6 +1087,9 @@ const App = () => {
                 <strong>{formatUsdt(machineTotal)} USDT</strong>
               </div>
               <div className="actions">
+                <button className="ghost-btn" onClick={onBindReferrer} disabled={loading || !hasValidReferrer || hasBoundReferrer}>
+                  {hasBoundReferrer ? t.bindReferrerDone : t.bindReferrer}
+                </button>
                 <button className="primary-btn" onClick={onBuyMachine} disabled={loading || Boolean(machineDisabledReason)}>
                   {loading ? t.loading : t.submitMachine}
                 </button>
@@ -1084,7 +1168,147 @@ const App = () => {
 
       {activeTab === "otc" ? <section className="card"><h2>{t.otcTitle}</h2><p className="hint">{t.otcHint}</p><div className="kv-row"><span>{t.myIdentity}</span><strong>{identityId ? String(identityId) : t.none}</strong></div><div className="kv-row"><span>{t.identityApproval}</span><strong>{identityApproved ? t.approved : t.notApproved}</strong></div><label className="field">{t.otcPrice}<input type="number" min={1} value={newOtcPrice} onChange={(event) => setNewOtcPrice(event.target.value)} /></label><div className="actions"><button className="primary-btn" onClick={onCreateOtcOrder} disabled={loading || !identityId}>{t.createListing}</button></div><p className="hint">{t.otcAutoApproveHint}</p><h3>{t.activeListings}</h3>{activeOrders.length === 0 ? <p className="hint">{t.noListings}</p> : <div className="table-wrap"><table><thead><tr><th>{t.orderId}</th><th>{t.identityId}</th><th>{t.seller}</th><th>{t.priceUsdt}</th><th>{t.action}</th></tr></thead><tbody>{activeOrders.map((order) => <tr key={String(order.id)}><td>{String(order.id)}</td><td>{String(order.identityId)}</td><td>{`${order.seller.slice(0, 6)}...${order.seller.slice(-4)}`}</td><td>{formatUsdt(order.priceUSDT)}</td><td>{address && order.seller.toLowerCase() === address.toLowerCase() ? <button className="link-btn" onClick={() => onCancelOrder(order.id)} disabled={loading}>{t.cancel}</button> : <button className="link-btn" onClick={() => onFillOrder(order.id)} disabled={loading}>{t.fill}</button>}</td></tr>)}</tbody></table></div>}</section> : null}
 
-      {activeTab === "swap" ? <section className="card"><h2>{t.swapTitle}</h2><p className="hint">{t.swapHint}</p><p className="hint">{t.swapAutoHint}</p><div className="swap-shell"><div className="swap-panel"><label className="field">{t.swapPool}<select value={swapPairId} onChange={(event) => setSwapPairId(Number(event.target.value))}><option value={0}>USDT / ICO</option><option value={1}>LIGHT / ICO</option></select></label><div className="swap-direction-row"><label className="field swap-field-grow">{t.swapDirection}<select value={swapDirection} onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}><option value="forward">token0 -&gt; token1</option><option value="reverse">token1 -&gt; token0</option></select></label><button className="ghost-btn" onClick={onReverseSwapDirection} type="button">{t.reverseDirection}</button></div><div className="swap-input-card"><div className="swap-input-top"><span>{t.inputAmount}</span><button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button></div><input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} /><p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p></div><label className="field">{t.slippage}<input type="number" min={10} max={2000} value={swapSlippageBps} onChange={(event) => setSwapSlippageBps(Number(event.target.value || 200))} /></label><div className="chip-row"><button className={swapSlippageBps === 50 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(50)} type="button">0.5%</button><button className={swapSlippageBps === 100 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(100)} type="button">1.0%</button><button className={swapSlippageBps === 200 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(200)} type="button">2.0%</button></div></div><div className="swap-summary"><div className="swap-stat"><span>{t.estimatedOutput}</span><strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong></div><div className="swap-stat"><span>{t.estimatedFee}</span><strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong></div><div className="swap-stat"><span>{t.fee}</span><strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong></div><div className="swap-stat"><span>{t.impactLimit}</span><strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong></div><div className="swap-stat"><span>{t.tokenAllowance}（{swapTokenInSymbol}）</span><strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong></div><div className="swap-stat"><span>{t.estimatedImpact}</span><strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong></div><div className={`swap-status swap-status-${swapImpactTone}`}><strong>{t.quoteStatus}</strong><span>{swapStatusText}</span><small>{swapImpactLabel}</small></div></div></div><div className="actions"><button className="primary-btn" onClick={onRefreshSwapQuote} disabled={loading}>{t.refreshQuote}</button><button className="primary-btn" onClick={onSwapExecute} disabled={loading || swapQuoteOut <= 0n || swapAmountRaw === 0n || swapAmountRaw === null || !swapHasEnoughBalance}>{t.executeSwap}</button></div></section> : null}
+      {activeTab === "swap" ? (
+        <section className="card swap-card">
+          <div className="swap-hero">
+            <div>
+              <h2>{t.swapTitle}</h2>
+              <p className="hint">{t.swapHint}</p>
+              <p className="hint">{t.swapAutoHint}</p>
+            </div>
+            <div className="swap-hero-badge-wrap">
+              <span className={`swap-mode-badge ${isLightRecoveryPool ? "swap-mode-badge-warn" : ""}`}>{swapPoolModeLabel}</span>
+            </div>
+          </div>
+
+          <div className="swap-pool-overview">
+            <div className="swap-pool-card swap-pool-card-active">
+              <span>{t.swapPool}</span>
+              <strong>{swapPairId === 0 ? "USDT / ICO" : "LIGHT / ICO"}</strong>
+              <small>{swapPoolDescription}</small>
+            </div>
+            <div className="swap-pool-card">
+              <span>{t.swapRoute}</span>
+              <strong>{swapRouteLabel}</strong>
+              <small>{isLightRecoveryPool ? t.swapDirectionLocked : t.reverseDirection}</small>
+            </div>
+            <div className="swap-pool-card">
+              <span>{t.swapLightDistributionTitle}</span>
+              <strong>{isLightRecoveryPool ? "LIGHT" : "USDT / ICO"}</strong>
+              <small>{swapDistributionText}</small>
+            </div>
+          </div>
+
+          <div className="swap-shell">
+            <div className="swap-panel">
+              <label className="field">
+                {t.swapPool}
+                <select value={swapPairId} onChange={(event) => setSwapPairId(Number(event.target.value))}>
+                  <option value={0}>USDT / ICO</option>
+                  <option value={1}>LIGHT / ICO</option>
+                </select>
+              </label>
+
+              <div className="swap-direction-row">
+                <label className="field swap-field-grow">
+                  {t.swapDirection}
+                  <select
+                    value={effectiveSwapDirection}
+                    onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}
+                    disabled={isLightRecoveryPool}
+                  >
+                    <option value="forward">token0 -&gt; token1</option>
+                    <option value="reverse" disabled={isLightRecoveryPool}>token1 -&gt; token0</option>
+                  </select>
+                </label>
+                <button className="ghost-btn" onClick={onReverseSwapDirection} type="button" disabled={isLightRecoveryPool}>
+                  {t.reverseDirection}
+                </button>
+              </div>
+
+              {isLightRecoveryPool ? <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div> : null}
+
+              <div className="swap-route-preview">
+                <div className="swap-route-token">
+                  <span>{t.swapInputAsset}</span>
+                  <strong>{swapTokenInSymbol}</strong>
+                </div>
+                <div className="swap-route-arrow">→</div>
+                <div className="swap-route-token">
+                  <span>{t.swapOutputAsset}</span>
+                  <strong>{swapTokenOutSymbol}</strong>
+                </div>
+              </div>
+
+              <div className="swap-input-card">
+                <div className="swap-input-top">
+                  <span>{t.inputAmount}</span>
+                  <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
+                </div>
+                <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
+                <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
+              </div>
+
+              <label className="field">
+                {t.slippage}
+                <input type="number" min={10} max={2000} value={swapSlippageBps} onChange={(event) => setSwapSlippageBps(Number(event.target.value || 200))} />
+              </label>
+
+              <div className="chip-row">
+                <button className={swapSlippageBps === 50 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(50)} type="button">0.5%</button>
+                <button className={swapSlippageBps === 100 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(100)} type="button">1.0%</button>
+                <button className={swapSlippageBps === 200 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(200)} type="button">2.0%</button>
+              </div>
+            </div>
+
+            <div className="swap-summary">
+              <div className="swap-stat">
+                <span>{t.estimatedOutput}</span>
+                <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.estimatedFee}</span>
+                <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.swapPoolMode}</span>
+                <strong>{swapPoolModeLabel}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.fee}</span>
+                <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.impactLimit}</span>
+                <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.swapApprovalReady}</span>
+                <strong>{swapApprovalStatus}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
+                <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
+              </div>
+              <div className="swap-stat">
+                <span>{t.estimatedImpact}</span>
+                <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
+              </div>
+              <div className={`swap-status swap-status-${swapImpactTone}`}>
+                <strong>{t.quoteStatus}</strong>
+                <span>{swapStatusText}</span>
+                <small>{swapImpactLabel}</small>
+              </div>
+            </div>
+          </div>
+
+          <div className="actions">
+            <button className="primary-btn" onClick={onRefreshSwapQuote} disabled={loading}>{t.refreshQuote}</button>
+            <button className="primary-btn" onClick={onApproveSwapToken} disabled={loading || !swapTokenInAddress}>{t.approveToken}</button>
+            <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
+          </div>
+        </section>
+      ) : null}
 
       {activeTab === "mine" ? <section className="grid"><article className="card"><h2>{t.ordersTitle}</h2><p className="hint">{t.ordersHint}</p>{orders.length === 0 ? <p className="hint">{t.noOrders}</p> : <ul className="list">{orders.map((order) => <li key={String(order.id)} className="list-item"><div className="list-head"><strong>{`${t.orderId} #${String(order.id)}`}</strong><span>{`${String(order.quantity)} ${t.quantityUnit}`}</span></div><p>{t.amount}：{formatUsdt(order.amountUSDT)} USDT</p><p>{t.timestamp}：{new Date(Number(order.createdAt)).toLocaleString(lang === "zh" ? 'zh-CN' : 'en-US')}</p></li>)}</ul>}</article><article className="card"><h2>{t.rewardsTitle}</h2><p className="hint">{t.rewardsHint}</p>{rewardRecords.length === 0 ? <p className="hint">{t.noRewards}</p> : <ul className="list">{rewardRecords.map((reward) => <li key={`${reward.txHash}-${String(reward.orderId)}-${reward.poolType}`} className="list-item"><div className="list-head"><strong>{`${t.rewardOrder} #${String(reward.orderId)}`}</strong><span>{`${t.rewardPool} #${reward.poolType}`}</span></div><p>{t.rewardAmount}：{formatUsdt(reward.amountUSDT)} USDT</p><p>{t.blockNumber}：{reward.blockNumber}</p></li>)}</ul>}</article></section> : null}
     

@@ -152,10 +152,7 @@ contract IncubatorCore is Ownable, Pausable {
         require(quantity > 0 && quantity <= MAX_MACHINE_PER_ORDER, "invalid qty");
 
         if (referralOf[msg.sender] == address(0) && _isValidReferrer(msg.sender, referrer)) {
-            referralOf[msg.sender] = referrer;
-            directReferralCount[referrer] += 1;
-            _updateTeamCount(referrer, 1);
-            emit ReferralBound(msg.sender, referrer);
+            _bindReferrer(msg.sender, referrer);
         }
 
         uint256 amountUSDT = machineUnitPrice * quantity;
@@ -188,6 +185,13 @@ contract IncubatorCore is Ownable, Pausable {
         _allocateMachineOrder(orderId, amountUSDT, currentReferrer);
 
         emit MachinePurchased(msg.sender, orderId, quantity, amountUSDT, currentReferrer);
+    }
+
+    function bindReferrer(address referrer) external whenNotPaused {
+        require(referralOf[msg.sender] == address(0), "already bound");
+        require(_isValidReferrer(msg.sender, referrer), "invalid referrer");
+
+        _bindReferrer(msg.sender, referrer);
     }
 
     function buyNode() external whenNotPaused {
@@ -615,6 +619,13 @@ contract IncubatorCore is Ownable, Pausable {
 
     function _isValidReferrer(address user, address referrer) private pure returns (bool) {
         return referrer != address(0) && referrer != user;
+    }
+
+    function _bindReferrer(address user, address referrer) private {
+        referralOf[user] = referrer;
+        directReferralCount[referrer] += 1;
+        _updateTeamCount(referrer, 1);
+        emit ReferralBound(user, referrer);
     }
 
     function _effectiveWeight(address account) private view returns (uint256) {

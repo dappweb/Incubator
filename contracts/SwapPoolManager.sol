@@ -116,6 +116,7 @@ contract SwapPoolManager is Ownable, Pausable, ReentrancyGuard {
         require(amountIn > 0, "invalid in");
 
         Pool storage pool = _getPoolStorage(pairId);
+        _validateSwapDirection(pairId, tokenIn);
         (bool zeroForOne, uint256 reserveIn, uint256 reserveOut) = _resolveDirection(pool, tokenIn);
         zeroForOne;
 
@@ -142,6 +143,7 @@ contract SwapPoolManager is Ownable, Pausable, ReentrancyGuard {
         require(to != address(0), "invalid to");
 
         Pool storage pool = _getPoolStorage(pairId);
+        _validateSwapDirection(pairId, tokenIn);
         (bool zeroForOne, uint256 reserveIn, uint256 reserveOut) = _resolveDirection(pool, tokenIn);
 
         (uint256 quotedOut, uint256 fee, uint256 impact) = quoteExactIn(pairId, tokenIn, amountIn);
@@ -276,6 +278,12 @@ contract SwapPoolManager is Ownable, Pausable, ReentrancyGuard {
             return (false, pool.reserve1, pool.reserve0);
         }
         revert("token not in pair");
+    }
+
+    function _validateSwapDirection(uint8 pairId, address tokenIn) private view {
+        if (pairId == uint8(PairId.LightIco)) {
+            require(tokenIn == address(light), "LIGHT->ICO only");
+        }
     }
 
     function _getPoolStorage(uint8 pairId) private view returns (Pool storage pool) {

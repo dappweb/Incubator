@@ -42,12 +42,12 @@ export function listenToWalletEvents(
 ) {
   if (!window.ethereum) return () => {};
 
-  window.ethereum.on("accountsChanged", onAccountsChanged);
-  window.ethereum.on("chainChanged", onChainChanged);
+  window.ethereum.on?.("accountsChanged", onAccountsChanged);
+  window.ethereum.on?.("chainChanged", onChainChanged);
 
   return () => {
-    window.ethereum?.removeListener("accountsChanged", onAccountsChanged);
-    window.ethereum?.removeListener("chainChanged", onChainChanged);
+    window.ethereum?.removeListener?.("accountsChanged", onAccountsChanged);
+    window.ethereum?.removeListener?.("chainChanged", onChainChanged);
   };
 }
 
