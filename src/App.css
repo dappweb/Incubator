@@ -1114,43 +1114,6 @@ tr:hover td {
   transform: scale(1.1);
 }
 
-@media (max-width: 720px) {
-  .tabs.desktop-tabs { display: none !important; }
-  body { padding-bottom: 80px; }
-  .bottom-nav { display: flex !important; }
-  .price-cta-list { grid-template-columns: 1fr; }
-  .swap-hero { flex-direction: column; }
-  .swap-pool-overview { grid-template-columns: 1fr; }
-  .swap-shell { grid-template-columns: 1fr; }
-  .swap-direction-row { flex-direction: column; align-items: stretch; }
-  .swap-route-preview { grid-template-columns: 1fr; }
-  .swap-route-arrow {
-    text-align: center;
-    transform: rotate(90deg);
-  }
-  .machine-card__hero {
-    flex-direction: column;
-  }
-  .machine-price-pill {
-    width: 100%;
-    min-width: 0;
-  }
-  .machine-metrics {
-    grid-template-columns: 1fr;
-  }
-  .flow-grid {
-    grid-template-columns: 1fr;
-  }
-  .machine-cta-sticky {
-    position: sticky;
-    bottom: 84px;
-    z-index: 2;
-    padding-top: 8px;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, var(--card-bg) 28%);
-  }
-}
-
-
 .icon-btn {
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--border-color);
@@ -1171,25 +1134,319 @@ tr:hover td {
   transform: scale(1.05);
 }
 
+/* ─── Mobile ≤ 720px ─── */
 @media (max-width: 720px) {
+
+  /* Navigation toggle */
+  .tabs.desktop-tabs { display: none !important; }
+  body { padding-bottom: 80px; }
+  .bottom-nav { display: flex !important; }
+
+  /* Container */
+  .container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  /* Header */
   .header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
-    padding-bottom: 20px;
+    gap: 12px;
+    padding-bottom: 14px;
   }
   .topbar-logo {
     width: 100%;
     justify-content: space-between;
   }
+  .topbar-logo h1 {
+    font-size: 20px;
+  }
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
   .status-bar {
     margin-left: 0;
-    flex: 1;
+    width: 100%;
     justify-content: center;
   }
   .topbar-actions {
     width: 100%;
     justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Grid */
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  /* Card */
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  .card h2 {
+    font-size: 17px;
+    margin-bottom: 14px;
+  }
+  .card h3 {
+    font-size: 15px;
+  }
+
+  /* KV rows */
+  .kv-row {
+    margin: 8px 0;
+    padding-bottom: 8px;
+  }
+  .kv-row span {
+    font-size: 13px;
+  }
+  .kv-row strong {
+    font-size: 13px;
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  /* Price CTA */
+  .price-cta-list { grid-template-columns: 1fr; }
+  .price-cta-panel {
+    padding: 12px;
+  }
+
+  /* Flow grid (overview registration steps) */
+  .flow-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .flow-step {
+    padding: 10px;
+  }
+
+  /* Stats grid (team tab) */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-pill {
+    padding: 10px;
+  }
+  .stat-pill strong {
+    font-size: 14px;
+  }
+
+  /* Invite link box */
+  .invite-link-box {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .invite-link-box input {
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  /* Machine card */
+  .machine-card__hero {
+    flex-direction: column;
     gap: 12px;
+  }
+  .machine-price-pill {
+    width: 100%;
+    min-width: 0;
+  }
+  .machine-price-pill strong {
+    font-size: 20px;
+  }
+  .machine-metrics {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .machine-metric {
+    padding: 10px;
+  }
+  .machine-feature-list span {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  .machine-total-row {
+    padding: 10px 12px;
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+  }
+  .machine-total-row strong {
+    font-size: 18px;
+  }
+  .machine-cta-sticky {
+    position: sticky;
+    bottom: 84px;
+    z-index: 2;
+    padding-top: 8px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, var(--card-bg) 28%);
+  }
+
+  /* Swap card */
+  .swap-hero { flex-direction: column; }
+  .swap-pool-overview { grid-template-columns: 1fr; gap: 8px; }
+  .swap-shell { grid-template-columns: 1fr; }
+  .swap-direction-row { flex-direction: column; align-items: stretch; }
+  .swap-route-preview { grid-template-columns: 1fr; gap: 8px; }
+  .swap-route-arrow {
+    text-align: center;
+    transform: rotate(90deg);
+  }
+  .swap-panel,
+  .swap-summary {
+    padding: 12px;
+  }
+  .swap-pool-card {
+    padding: 10px 12px;
+  }
+  .swap-pool-card strong,
+  .swap-route-token strong,
+  .swap-route-arrow {
+    font-size: 15px;
+  }
+  .swap-input-card input {
+    font-size: 22px;
+  }
+  .swap-sub-tabs {
+    gap: 6px;
+  }
+  .swap-sub-tabs .tab-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .swap-stat span,
+  .swap-stat strong {
+    font-size: 13px;
+  }
+  .swap-note {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+
+  /* Buttons */
+  .primary-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-width: 0;
+  }
+  .actions {
+    gap: 8px;
+    margin-top: 14px;
+    flex-direction: column;
+  }
+  .actions .primary-btn {
+    width: 100%;
+  }
+
+  /* Tables (OTC) */
+  .table-wrap {
+    margin-top: 12px;
+  }
+  table {
+    min-width: 500px;
+  }
+  th, td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  /* Fields / inputs */
+  .field {
+    font-size: 13px;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  .field input,
+  .field select {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  /* List items (mine tab) */
+  .list-item {
+    padding: 12px;
+  }
+  .list-head strong {
+    font-size: 14px;
+  }
+  .list-head span {
+    font-size: 11px;
+  }
+  .list-item p {
+    font-size: 13px;
+  }
+
+  /* Ghost/chip buttons */
+  .ghost-btn {
+    padding: 8px 12px;
+  }
+  .chip-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Hints & status */
+  .hint {
+    font-size: 13px;
+  }
+  .status {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  /* Chip label */
+  .chip-label {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+
+  /* Action hint */
+  .action-hint {
+    font-size: 12px;
+  }
+}
+
+/* ─── Extra-small screens ≤ 380px ─── */
+@media (max-width: 380px) {
+  .container {
+    padding: 12px 8px;
+  }
+  .topbar-logo h1 {
+    font-size: 17px;
+  }
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .machine-metrics {
+    gap: 6px;
+  }
+  .swap-input-card input {
+    font-size: 18px;
+  }
+  .primary-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .price-cta-btn {
+    font-size: 12px;
+  }
+  .nav-item {
+    font-size: 10px;
+  }
+  .nav-icon {
+    font-size: 18px;
   }
 }
