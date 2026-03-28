@@ -31,8 +31,9 @@ import { CORE_CONTRACT_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS } from "
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { getSwapPool, quoteSwapExactIn, swapExactIn } from "./lib/swapContract";
 import { Card, KVRow } from "./components/Common";
+import Admin from "./components/Admin";
 
-type TabKey = "overview" | "team" | "otc" | "swap" | "mine";
+type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
 type SwapSubTab = "primary" | "light";
 type SwapDirection = "forward" | "reverse";
 
@@ -89,6 +90,7 @@ const App = () => {
     swapSubPrimary: lang === "zh" ? "兑换 (USDT/ICO)" : "Swap (USDT/ICO)",
     swapSubLight: lang === "zh" ? "回收 (LIGHT/ICO)" : "Recovery (LIGHT/ICO)",
     tab_mine: lang === "zh" ? "记录" : "Records",
+    tab_admin: lang === "zh" ? "管理" : "Admin",
     address: lang === "zh" ? "钱包地址" : "Wallet",
     network: lang === "zh" ? "当前网络" : "Network",
     walletStatus: lang === "zh" ? "钱包状态" : "Wallet Status",
@@ -312,6 +314,7 @@ const App = () => {
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [status, setStatus] = useState("");
+  const [contractOwner, setContractOwner] = useState("");
 
   const [machineQty, setMachineQty] = useState(1);
   const [machineReferrer, setMachineReferrer] = useState("");
@@ -396,6 +399,7 @@ const App = () => {
     setSwapQuoteFee(0n);
     setSwapQuoteImpactBps(0);
     setReferrerSource("none");
+    setContractOwner("");
   };
 
   const networkLabel = useMemo(() => {
@@ -491,6 +495,24 @@ const App = () => {
     if (swapQuoteImpactBps >= 300) return t.mediumImpact;
     return t.lowImpact;
   }, [swapQuoteImpactBps, t.highImpact, t.lowImpact, t.mediumImpact]);
+  const isOwner = useMemo(
+    () => address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase(),
+    [address, contractOwner],
+  );
+  const visibleDesktopTabs = useMemo(() => {
+    const tabs = [...DESKTOP_TABS];
+    if (isOwner) {
+      tabs.push({ key: "admin" as TabKey, label: "管理" });
+    }
+    return tabs;
+  }, [isOwner]);
+  const visibleMobileTabs = useMemo(() => {
+    const tabs = [...MOBILE_TABS];
+    if (isOwner) {
+      tabs.push({ key: "admin" as TabKey, label: "管理" });
+    }
+    return tabs;
+  }, [isOwner]);
   const isLightRecoveryPool = useMemo(() => activePairId === LIGHT_ICO_PAIR_ID, [activePairId]);
   const effectiveSwapDirection = useMemo<SwapDirection>(
     () => activeSwapDirection,
@@ -633,8 +655,9 @@ const App = () => {
         setMachineReferrer(urlRef);
         setReferrerSource("link");
       } else {
-        const contractOwner = await getContractOwner(connectedProvider);
-        setMachineReferrer(contractOwner);
+        const owner = await getContractOwner(connectedProvider);
+        setContractOwner(owner);
+        setMachineReferrer(owner);
         setReferrerSource("owner");
       }
     } else {
@@ -1022,7 +1045,7 @@ const App = () => {
 
     <main className="container">
       <section className="tabs desktop-tabs">
-        {DESKTOP_TABS.map((tab) => <button key={tab.key} className={tab.key === activeTab ? "tab-btn tab-active" : "tab-btn"} onClick={() => setActiveTab(tab.key)}>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</button>)}
+        {visibleDesktopTabs.map((tab) => <button key={tab.key} className={tab.key === activeTab ? "tab-btn tab-active" : "tab-btn"} onClick={() => setActiveTab(tab.key)}>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</button>)}
       </section>
 
       {activeTab === "overview" ? (
@@ -1475,10 +1498,14 @@ const App = () => {
           </Card>
         </section>
       ) : null}
+
+      {activeTab === "admin" && isOwner ? (
+        <Admin lang={lang} address={address} contractOwner={contractOwner} />
+      ) : null}
     
       {/* 底部导航栏 */}
       <nav className="bottom-nav">
-        {MOBILE_TABS.map((tab) => (
+        {visibleMobileTabs.map((tab) => (
           <button key={"bot-" + tab.key} className={`nav-item ${tab.key === activeTab ? "active" : ""}`} onClick={() => setActiveTab(tab.key)}>
             <div className="nav-icon">
               {tab.key === "overview" && "🏠"}
@@ -1486,6 +1513,7 @@ const App = () => {
               {tab.key === "otc" && "🤝"}
               {tab.key === "swap" && "🔄"}
               {tab.key === "mine" && "🧑"}
+              {tab.key === "admin" && "⚙️"}
             </div>
             <span>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</span>
           </button>
