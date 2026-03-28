@@ -598,6 +598,19 @@
   overflow: hidden;
 }
 
+.swap-sub-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.swap-sub-tabs .tab-btn {
+  flex: 1;
+  text-align: center;
+}
+
 .swap-card::after {
   content: "";
   position: absolute;

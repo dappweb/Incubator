@@ -32,7 +32,8 @@ import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, ge
 import { getSwapPool, quoteSwapExactIn, swapExactIn } from "./lib/swapContract";
 import { Card, KVRow } from "./components/Common";
 
-type TabKey = "overview" | "team" | "otc" | "swap" | "swap-light" | "mine";
+type TabKey = "overview" | "team" | "otc" | "swap" | "mine";
+type SwapSubTab = "primary" | "light";
 type SwapDirection = "forward" | "reverse";
 
 const LIGHT_ICO_PAIR_ID = 1;
@@ -42,7 +43,6 @@ const DESKTOP_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "team", label: "团队" },
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
-  { key: "swap-light", label: "回收" },
   { key: "mine", label: "记录" },
 ];
 
@@ -51,7 +51,6 @@ const MOBILE_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "team", label: "团队" },
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
-  { key: "swap-light", label: "回收" },
   { key: "mine", label: "记录" },
 ];
 
@@ -87,7 +86,8 @@ const App = () => {
     tab_team: lang === "zh" ? "团队" : "Team",
     tab_otc: lang === "zh" ? "市场" : "Market",
     tab_swap: lang === "zh" ? "兑换" : "Swap",
-    "tab_swap-light": lang === "zh" ? "回收" : "Recovery",
+    swapSubPrimary: lang === "zh" ? "兑换 (USDT/ICO)" : "Swap (USDT/ICO)",
+    swapSubLight: lang === "zh" ? "回收 (LIGHT/ICO)" : "Recovery (LIGHT/ICO)",
     tab_mine: lang === "zh" ? "记录" : "Records",
     address: lang === "zh" ? "钱包地址" : "Wallet",
     network: lang === "zh" ? "当前网络" : "Network",
@@ -339,11 +339,12 @@ const App = () => {
 
   const [swapPairId, setSwapPairId] = useState(0);
   const [swapDirection, setSwapDirection] = useState<SwapDirection>("forward");
+  const [swapSubTab, setSwapSubTab] = useState<SwapSubTab>("primary");
 
-  // Derive pairId and direction from active tab
-  const isSwapTab = activeTab === "swap" || activeTab === "swap-light";
-  const activePairId = activeTab === "swap-light" ? LIGHT_ICO_PAIR_ID : 0;
-  const activeSwapDirection: SwapDirection = activeTab === "swap-light" ? "forward" : swapDirection;
+  // Derive pairId and direction from swap sub-tab
+  const isSwapTab = activeTab === "swap";
+  const activePairId = swapSubTab === "light" ? LIGHT_ICO_PAIR_ID : 0;
+  const activeSwapDirection: SwapDirection = swapSubTab === "light" ? "forward" : swapDirection;
   const [swapAmountIn, setSwapAmountIn] = useState("10");
   const [swapSlippageBps, setSwapSlippageBps] = useState(200);
   const [swapTokenInAddress, setSwapTokenInAddress] = useState("");
@@ -753,7 +754,7 @@ const App = () => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [isSwapTab, activeTab, address, provider, activePairId, activeSwapDirection, swapAmountIn]);
+  }, [isSwapTab, swapSubTab, address, provider, activePairId, activeSwapDirection, swapAmountIn]);
 
   const onConnect = async () => {
     try {
@@ -806,7 +807,7 @@ const App = () => {
   };
 
   const onReverseSwapDirection = () => {
-    if (swapPairId === LIGHT_ICO_PAIR_ID || activeTab === "swap-light") {
+    if (swapPairId === LIGHT_ICO_PAIR_ID || swapSubTab === "light") {
       return;
     }
     setSwapDirection((current) => (current === "forward" ? "reverse" : "forward"));
@@ -1197,6 +1198,13 @@ const App = () => {
 
       {activeTab === "swap" ? (
         <section className="card swap-card">
+          <div className="swap-sub-tabs">
+            <button className={swapSubTab === "primary" ? "tab-btn tab-active" : "tab-btn"} onClick={() => setSwapSubTab("primary")}>{t.swapSubPrimary}</button>
+            <button className={swapSubTab === "light" ? "tab-btn tab-active" : "tab-btn"} onClick={() => setSwapSubTab("light")}>{t.swapSubLight}</button>
+          </div>
+
+          {swapSubTab === "primary" ? (
+          <>
           <div className="swap-hero">
             <div>
               <h2>{t.swapTitle} — USDT / ICO</h2>
@@ -1314,11 +1322,9 @@ const App = () => {
             <button className="primary-btn" onClick={onApproveSwapToken} disabled={loading || !swapTokenInAddress}>{t.approveToken}</button>
             <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
           </div>
-        </section>
-      ) : null}
-
-      {activeTab === "swap-light" ? (
-        <section className="card swap-card">
+          </>
+          ) : (
+          <>
           <div className="swap-hero">
             <div>
               <h2>{t.swapTitle} — LIGHT / ICO</h2>
@@ -1427,6 +1433,8 @@ const App = () => {
             <button className="primary-btn" onClick={onApproveSwapToken} disabled={loading || !swapTokenInAddress}>{t.approveToken}</button>
             <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
           </div>
+          </>
+          )}
         </section>
       ) : null}
 
@@ -1441,7 +1449,6 @@ const App = () => {
               {tab.key === "team" && "👥"}
               {tab.key === "otc" && "🤝"}
               {tab.key === "swap" && "🔄"}
-              {tab.key === "swap-light" && "♻️"}
               {tab.key === "mine" && "🧑"}
             </div>
             <span>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</span>
