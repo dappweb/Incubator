@@ -19,6 +19,38 @@ export async function connectWallet() {
   };
 }
 
+export async function checkConnection() {
+  if (!window.ethereum) return null;
+  const provider = new BrowserProvider(window.ethereum);
+  const accounts = await provider.send("eth_accounts", []);
+  if (accounts.length > 0) {
+    const signer = await provider.getSigner();
+    const network = await provider.getNetwork();
+    return {
+      provider,
+      signer,
+      address: await signer.getAddress(),
+      chainId: Number(network.chainId),
+    };
+  }
+  return null;
+}
+
+export function listenToWalletEvents(
+  onAccountsChanged: (accounts: string[]) => void,
+  onChainChanged: (chainId: string) => void
+) {
+  if (!window.ethereum) return () => {};
+
+  window.ethereum.on("accountsChanged", onAccountsChanged);
+  window.ethereum.on("chainChanged", onChainChanged);
+
+  return () => {
+    window.ethereum?.removeListener("accountsChanged", onAccountsChanged);
+    window.ethereum?.removeListener("chainChanged", onChainChanged);
+  };
+}
+
 export async function ensureSepoliaNetwork() {
   if (!window.ethereum) {
     throw new Error("未检测到钱包插件");

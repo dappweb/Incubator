@@ -113,6 +113,7 @@ async function trySeedSwapLiquidity(
   const icoLiquidity = process.env.SWAP_USDT_ICO_ICO_LIQ || "100000000000000000000000";
   const lightLiquidity = process.env.SWAP_LIGHT_ICO_LIGHT_LIQ || "200000000000000000000000";
   const lightPairIcoLiquidity = process.env.SWAP_LIGHT_ICO_ICO_LIQ || "100000000000000000000000";
+  const totalIcoApproval = (BigInt(icoLiquidity) + BigInt(lightPairIcoLiquidity)).toString();
 
   const usdtBalance = await usdt.balanceOf(deployerAddress);
   if (usdtBalance < BigInt(usdtLiquidity)) {
@@ -124,9 +125,8 @@ async function trySeedSwapLiquidity(
   }
 
   await (await usdt.approve(swapAddress, usdtLiquidity)).wait();
-  await (await ico.approve(swapAddress, icoLiquidity)).wait();
+  await (await ico.approve(swapAddress, totalIcoApproval)).wait();
   await (await light.approve(swapAddress, lightLiquidity)).wait();
-  await (await ico.approve(swapAddress, lightPairIcoLiquidity)).wait();
 
   await (await swap.addLiquidity(0, usdtLiquidity, icoLiquidity)).wait();
   await (await swap.addLiquidity(1, lightLiquidity, lightPairIcoLiquidity)).wait();

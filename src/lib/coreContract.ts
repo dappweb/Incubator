@@ -16,6 +16,13 @@ const coreAbi = [
   "function getMachineOrder(uint256 orderId) view returns ((uint256 id,address user,uint256 quantity,uint256 amountUSDT,address referrer,uint256 createdAt))",
   "function getUserMachineOrders(address user) view returns (uint256[])",
   "function getUserRole(address user) view returns (uint8)",
+  "function directReferralCount(address user) view returns (uint256)",
+  "function teamTotalMemberCount(address user) view returns (uint256)",
+  "function directReferralVolume(address user) view returns (uint256)",
+  "function teamTotalVolume(address user) view returns (uint256)",
+  "function referralOf(address user) view returns (address)",
+  "function owner() view returns (address)",
+  "function getUserStats(address user) view returns (uint256 directCount, uint256 teamCount, uint256 directVolume, uint256 teamVolume)",
 ];
 
 export function getCoreContract(provider: BrowserProvider) {
@@ -136,4 +143,48 @@ export async function isIdentityOperatorApproved(
 ): Promise<boolean> {
   const contract = getCoreContract(provider) as any;
   return contract.isIdentityOperatorApproved(identityId, operator);
+}
+
+export async function getReferrer(provider: BrowserProvider, user: string): Promise<string> {
+  const contract = getCoreContract(provider) as any;
+  return contract.referralOf(user);
+}
+
+export async function getContractOwner(provider: BrowserProvider): Promise<string> {
+  const contract = getCoreContract(provider) as any;
+  return contract.owner();
+}
+
+export async function getUserStats(provider: BrowserProvider, user: string) {
+  const contract = getCoreContract(provider) as any;
+  const stats = await contract.getUserStats(user);
+  return {
+    directCount: stats.directCount as bigint,
+    teamCount: stats.teamCount as bigint,
+    directVolume: stats.directVolume as bigint,
+    teamVolume: stats.teamVolume as bigint,
+  };
+}
+
+export type TeamStats = {
+  directCount: bigint;
+  teamCount: bigint;
+  directVolume: bigint;
+  teamVolume: bigint;
+};
+
+export async function getTeamStats(provider: BrowserProvider, user: string): Promise<TeamStats> {
+  const contract = getCoreContract(provider) as any;
+  const [directCount, teamCount, directVolume, teamVolume] = await Promise.all([
+    contract.directReferralCount(user),
+    contract.teamTotalMemberCount(user),
+    contract.directReferralVolume(user),
+    contract.teamTotalVolume(user),
+  ]);
+  return {
+    directCount,
+    teamCount,
+    directVolume,
+    teamVolume,
+  };
 }

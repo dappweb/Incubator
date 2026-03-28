@@ -81,6 +81,12 @@ contract IncubatorCore is Ownable, Pausable {
     mapping(address => uint256) public personalPower;
     mapping(address => uint256) public rewardWeight;
 
+    // Team Stats
+    mapping(address => uint256) public directReferralCount;
+    mapping(address => uint256) public teamTotalMemberCount;
+    mapping(address => uint256) public directReferralVolume;
+    mapping(address => uint256) public teamTotalVolume;
+
     address[] private rewardParticipants;
     mapping(address => bool) public isRewardParticipant;
 
@@ -147,6 +153,8 @@ contract IncubatorCore is Ownable, Pausable {
 
         if (referralOf[msg.sender] == address(0) && _isValidReferrer(msg.sender, referrer)) {
             referralOf[msg.sender] = referrer;
+            directReferralCount[referrer] += 1;
+            _updateTeamCount(referrer, 1);
             emit ReferralBound(msg.sender, referrer);
         }
 
@@ -155,6 +163,12 @@ contract IncubatorCore is Ownable, Pausable {
 
         uint256 orderId = nextMachineOrderId;
         address currentReferrer = referralOf[msg.sender];
+        
+        if (currentReferrer != address(0)) {
+            directReferralVolume[currentReferrer] += amountUSDT;
+            _updateTeamVolume(currentReferrer, amountUSDT);
+        }
+
         machineOrders[orderId] = MachineOrder({
             id: orderId,
             user: msg.sender,
@@ -646,5 +660,23 @@ contract IncubatorCore is Ownable, Pausable {
         }
 
         return identities[identityId].role;
+    }
+
+    function _updateTeamCount(address user, uint256 count) private {
+        address current = referralOf[user];
+        for (uint256 i = 0; i < 20; i++) {
+            if (current == address(0)) break;
+            teamTotalMemberCount[current] += count;
+            current = referralOf[current];
+        }
+    }
+
+    function _updateTeamVolume(address user, uint256 amount) private {
+        address current = referralOf[user];
+        for (uint256 i = 0; i < 20; i++) {
+            if (current == address(0)) break;
+            teamTotalVolume[current] += amount;
+            current = referralOf[current];
+        }
     }
 }
