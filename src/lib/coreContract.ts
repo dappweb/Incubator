@@ -23,6 +23,7 @@ const coreAbi = [
   "function referralOf(address user) view returns (address)",
   "function owner() view returns (address)",
   "function getUserStats(address user) view returns (uint256 directCount, uint256 teamCount, uint256 directVolume, uint256 teamVolume)",
+  "event RewardSettled(uint256 indexed orderId, uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT)",
 ];
 
 export function getCoreContract(provider: BrowserProvider) {
@@ -94,9 +95,44 @@ export type MachineOrder = {
   createdAt: bigint;
 };
 
+export type RewardRecord = {
+  orderId: bigint;
+  poolType: number;
+  beneficiary: string;
+  amountUSDT: bigint;
+  blockNumber: number;
+  txHash: string;
+};
+
 export async function getMachineOrder(provider: BrowserProvider, orderId: bigint): Promise<MachineOrder> {
   const contract = getCoreContract(provider) as any;
   return contract.getMachineOrder(orderId);
+}
+
+export async function getRewardRecordsByBeneficiary(
+  provider: BrowserProvider,
+  beneficiary: string,
+  maxRecords = 20,
+  lookbackBlocks = 300_000,
+): Promise<RewardRecord[]> {
+  const contract = getCoreContract(provider) as any;
+  const latestBlock = await provider.getBlockNumber();
+  const fromBlock = Math.max(0, latestBlock - lookbackBlocks);
+  const eventFilter = contract.filters.RewardSettled(null, null, beneficiary);
+  const logs = await contract.queryFilter(eventFilter, fromBlock, latestBlock);
+
+  const normalized = logs
+    .map((entry: any) => ({
+      orderId: entry.args.orderId as bigint,
+      poolType: Number(entry.args.poolType),
+      beneficiary: entry.args.beneficiary as string,
+      amountUSDT: entry.args.amountUSDT as bigint,
+      blockNumber: Number(entry.blockNumber),
+      txHash: entry.transactionHash as string,
+    }))
+    .reverse();
+
+  return normalized.slice(0, maxRecords);
 }
 
 export async function purchaseMachine(

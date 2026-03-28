@@ -38,6 +38,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && hardhat compile",
+    "build:web": "vite build",
     "compile": "hardhat compile",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
     "test:contracts": "hardhat run scripts/validate-contracts.ts"

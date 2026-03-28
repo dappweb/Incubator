@@ -7,14 +7,11 @@ Incubator
 
 ```bash
 npm install
-npm install -w contracts
-npm install -w frontend
 ```
 
 ### 2) 配置环境变量
 
-- 复制根目录 `.env.example` 为 `.env`
-- 复制 `frontend/.env.example` 为 `frontend/.env`
+- 在根目录创建 `.env`（前端变量需使用 `VITE_` 前缀）
 
 ### 3) 本地启动前端
 
@@ -25,16 +22,40 @@ npm run dev
 ### 4) 编译与部署合约（Sepolia）
 
 ```bash
-npm run compile -w contracts
-npm run deploy:sepolia -w contracts
+npm run compile
+npm run deploy:sepolia
 ```
 
 > 注意：业务功能全部链上实现，Appwrite 仅用于公告模块。
 
+## 部署到 Vercel
+
+### 1) Build 配置
+
+- Build Command: `npm run build:web`
+- Output Directory: `dist`
+
+### 2) 环境变量（Vercel 项目设置中添加）
+
+- `VITE_USDT_CONTRACT_ADDRESS`
+- `VITE_ICO_TOKEN_ADDRESS`
+- `VITE_LIGHT_TOKEN_ADDRESS`
+- `VITE_CORE_CONTRACT_ADDRESS`
+- `VITE_OTC_CONTRACT_ADDRESS`
+- `VITE_SWAP_POOL_ADDRESS`
+- `VITE_APPWRITE_ENDPOINT`
+- `VITE_APPWRITE_PROJECT_ID`
+- `VITE_APPWRITE_DATABASE_ID`
+- `VITE_APPWRITE_ANNOUNCEMENTS_COLLECTION_ID`
+
+### 3) 路由回退
+
+- 项目已包含 `vercel.json`，用于 SPA 刷新回退到 `index.html`。
+
 ## 代码结构
 
 - `contracts/`: Hardhat 合约工程（Core + OTC）
-- `frontend/`: React + Vite DApp 前端
+- `src/`: React + Vite DApp 前端源码
 - `docs/`: 业务与实施文档
 
 ## Docs

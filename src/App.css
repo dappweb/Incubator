@@ -183,6 +183,43 @@
   gap: 14px;
 }
 
+.flow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.flow-step {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-step span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.flow-step strong {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.flow-step-done {
+  border-color: rgba(0, 242, 254, 0.36);
+  background: rgba(0, 242, 254, 0.08);
+}
+
+.flow-step-done span,
+.flow-step-done strong {
+  color: var(--brand-cyan);
+}
+
 .invite-link-box {
   display: flex;
   gap: 10px;
@@ -395,6 +432,28 @@
 .machine-total-row strong {
   color: var(--text-primary);
   font-size: 20px;
+}
+
+.chip-label {
+  display: inline-flex;
+  margin-top: 2px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 242, 254, 0.24);
+  background: rgba(0, 242, 254, 0.08);
+  color: var(--brand-cyan);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.action-hint {
+  margin-top: 10px;
+  color: #fbbf24;
+  font-size: 13px;
+}
+
+.machine-cta-sticky {
+  margin-top: 12px;
 }
 
 .card h2 {
@@ -919,6 +978,16 @@ tr:hover td {
   }
   .machine-metrics {
     grid-template-columns: 1fr;
+  }
+  .flow-grid {
+    grid-template-columns: 1fr;
+  }
+  .machine-cta-sticky {
+    position: sticky;
+    bottom: 84px;
+    z-index: 2;
+    padding-top: 8px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, var(--card-bg) 28%);
   }
 }
 

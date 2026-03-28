@@ -257,6 +257,7 @@ contract IncubatorCore is Ownable, Pausable {
         ownedIdentityId[to] = identityId;
         identity.owner = to;
         identity.updatedAt = block.timestamp;
+        delete referralOf[from];
         delete identityOperatorApproval[identityId][msg.sender];
 
         emit IdentityTransferred(identityId, from, to, uint8(identity.role));

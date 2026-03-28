@@ -15,9 +15,12 @@ import {
   getUserRole,
   getReferrer,
   getContractOwner,
-  getUserStats,
+  getTeamStats,
   purchaseMachine,
   type MachineOrder,
+  type RewardRecord,
+  type TeamStats,
+  getRewardRecordsByBeneficiary,
 } from "./lib/coreContract";
 import { getActiveOrderIds, getOrder, fillOtcOrder, cancelOtcOrder, createOtcOrder, type OtcOrder } from "./lib/otcContract";
 import { checkConnection, connectWallet, ensureSepoliaNetwork, isOnSepolia, listenToWalletEvents } from "./lib/wallet";
@@ -121,6 +124,10 @@ const App = () => {
     machineGapLabel: lang === "zh" ? "仍需授权" : "Allowance gap",
     machineAllowanceReady: lang === "zh" ? "授权已满足当前下单" : "Allowance already covers this order",
     machineReferrerTip: lang === "zh" ? "如有推荐关系，请填写有效地址；留空则默认无推荐。" : "If you have a referrer, enter a valid address. Leave blank for no referrer.",
+    referrerFromLink: lang === "zh" ? "来源：邀请链接" : "Source: invite link",
+    referrerFromChain: lang === "zh" ? "来源：链上已绑定" : "Source: on-chain bound",
+    referrerFromOwner: lang === "zh" ? "来源：默认 Owner" : "Source: default owner",
+    referrerFromManual: lang === "zh" ? "来源：手动输入" : "Source: manual input",
     machineAutoApproveHint: lang === "zh" ? "支付时将自动完成所需 USDT 授权，无需额外点击授权。" : "Required USDT approval is completed automatically during payment.",
     quantity: lang === "zh" ? "购买数量（1-10）" : "Quantity (1-10)",
     referrer: lang === "zh" ? "推荐人地址（可选）" : "Referrer Address (Optional)",
@@ -129,11 +136,26 @@ const App = () => {
     submitMachine: lang === "zh" ? "确认购买" : "Buy Now",
     insufficientApproval: lang === "zh" ? "若授权不足，系统会在支付流程中自动补齐。" : "If allowance is insufficient, it will be completed automatically in the payment flow.",
     nodeTitle: lang === "zh" ? "购买节点" : "Buy Node",
-    nodeDesc: lang === "zh" ? "直接购买节点资格，成功后立即生效。" : "Purchase node access directly. It becomes effective once confirmed on-chain.",
+    nodeDesc: lang === "zh" ? "无需门槛，可直接购买节点资格，成功后立即生效。" : "No entry requirement. Buy node access directly and it becomes effective once confirmed on-chain.",
     buyNode: lang === "zh" ? "立即购买节点" : "Buy Node",
+    buyNodeLocked: lang === "zh" ? "已拥有节点身份" : "Node Already Owned",
     superNodeTitle: lang === "zh" ? "购买超级节点" : "Buy Super Node",
-    superNodeDesc: lang === "zh" ? "直接购买超级节点资格，无需升级路径。" : "Purchase super node access directly. No upgrade path required.",
+    superNodeDesc: lang === "zh" ? "需先拥有节点身份，再升级为超级节点。" : "You must own a node first before upgrading to a super node.",
     buySuperNode: lang === "zh" ? "立即购买超级节点" : "Buy Super Node",
+    buySuperNodeLocked: lang === "zh" ? "需先购买节点" : "Buy Node First",
+    flowTitle: lang === "zh" ? "购买流程" : "Purchase Flow",
+    flowHint: lang === "zh" ? "按步骤完成后可减少失败率与重复操作。" : "Follow these steps to reduce failures and repeat actions.",
+    stepConnect: lang === "zh" ? "连接钱包" : "Connect Wallet",
+    stepReferrer: lang === "zh" ? "确认推荐人" : "Confirm Referrer",
+    stepApprove: lang === "zh" ? "USDT 授权就绪" : "USDT Allowance Ready",
+    stepPurchase: lang === "zh" ? "提交购买" : "Submit Purchase",
+    accountSnapshot: lang === "zh" ? "账户快照" : "Account Snapshot",
+    accountHint: lang === "zh" ? "关键状态一屏可见，减少来回切换。" : "Keep key states visible to reduce context switching.",
+    needConnectToBuy: lang === "zh" ? "请先连接钱包" : "Connect wallet first",
+    needSepoliaToBuy: lang === "zh" ? "请先切换到 Sepolia" : "Switch to Sepolia first",
+    needReferrerToBuy: lang === "zh" ? "请先确认推荐人地址" : "Confirm referrer address first",
+    roleMismatchForNode: lang === "zh" ? "当前身份不可重复购买节点" : "Current role cannot buy node again",
+    roleMismatchForSuper: lang === "zh" ? "需先购买节点后再升级" : "Buy node first, then upgrade",
     otcTitle: lang === "zh" ? "节点市场" : "Node Market",
     otcHint: lang === "zh" ? "在这里可以挂卖或购买节点身份，所有成交结果以链上状态为准。" : "List or buy node identities here. Final settlement always follows on-chain state.",
     myIdentity: lang === "zh" ? "我的身份 ID" : "My Identity ID",
@@ -196,6 +218,13 @@ const App = () => {
     ordersTitle: lang === "zh" ? "出入金记录" : "In/Out Records",
     ordersHint: lang === "zh" ? "这里汇总你的链上出入金相关记录（当前优先展示矿机订单流水）。" : "This section summarizes your on-chain in/out records (currently focused on machine order flows).",
     noOrders: lang === "zh" ? "暂无出入金记录。" : "No in/out records yet.",
+    rewardsTitle: lang === "zh" ? "奖励记录" : "Reward Records",
+    rewardsHint: lang === "zh" ? "展示当前钱包链上已结算奖励（RewardSettled 事件）。" : "Shows on-chain settled rewards for this wallet (RewardSettled events).",
+    noRewards: lang === "zh" ? "暂无奖励记录。" : "No reward records yet.",
+    rewardOrder: lang === "zh" ? "来源订单" : "Source Order",
+    rewardPool: lang === "zh" ? "奖励池" : "Reward Pool",
+    rewardAmount: lang === "zh" ? "奖励金额" : "Reward Amount",
+    blockNumber: lang === "zh" ? "区块" : "Block",
     amount: lang === "zh" ? "金额" : "Amount",
     quantityUnit: lang === "zh" ? "台" : "units",
     timestamp: lang === "zh" ? "下单时间" : "Order Date",
@@ -256,6 +285,7 @@ const App = () => {
 
   const [machineQty, setMachineQty] = useState(1);
   const [machineReferrer, setMachineReferrer] = useState("");
+  const [referrerSource, setReferrerSource] = useState<"none" | "link" | "onchain" | "owner" | "manual">("none");
   const [machinePrice, setMachinePrice] = useState<bigint>(0n);
   const [nodePrice, setNodePrice] = useState<bigint>(0n);
   const [superPrice, setSuperPrice] = useState<bigint>(0n);
@@ -264,6 +294,7 @@ const App = () => {
   const [coreAllowance, setCoreAllowance] = useState<bigint>(0n);
   const [otcAllowance, setOtcAllowance] = useState<bigint>(0n);
   const [orders, setOrders] = useState<MachineOrder[]>([]);
+  const [rewardRecords, setRewardRecords] = useState<RewardRecord[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStats>({
     directCount: 0n,
     teamCount: 0n,
@@ -302,6 +333,7 @@ const App = () => {
     const ref = params.get("ref");
     if (ref && isAddress(ref)) {
       setMachineReferrer(ref);
+      setReferrerSource("link");
     }
   }, []);
 
@@ -314,6 +346,7 @@ const App = () => {
     setCoreAllowance(0n);
     setOtcAllowance(0n);
     setOrders([]);
+    setRewardRecords([]);
     setIdentityId(null);
     setIdentityApproved(false);
     setActiveOrders([]);
@@ -326,6 +359,7 @@ const App = () => {
     setSwapQuoteOut(0n);
     setSwapQuoteFee(0n);
     setSwapQuoteImpactBps(0);
+    setReferrerSource("none");
   };
 
   const networkLabel = useMemo(() => {
@@ -348,6 +382,41 @@ const App = () => {
   const machineTotal = useMemo(() => machinePrice * BigInt(machineQty || 0), [machinePrice, machineQty]);
   const machineApprovalGap = useMemo(() => (machineTotal > coreAllowance ? machineTotal - coreAllowance : 0n), [coreAllowance, machineTotal]);
   const roleLabel = useMemo(() => (role === 2 ? t.roleSuperNode : role === 1 ? t.roleNode : t.roleUser), [role, t.roleNode, t.roleSuperNode, t.roleUser]);
+  const hasValidReferrer = useMemo(() => Boolean(machineReferrer && isAddress(machineReferrer)), [machineReferrer]);
+  const referrerSourceLabel = useMemo(() => {
+    if (referrerSource === "link") return t.referrerFromLink;
+    if (referrerSource === "onchain") return t.referrerFromChain;
+    if (referrerSource === "owner") return t.referrerFromOwner;
+    if (referrerSource === "manual") return t.referrerFromManual;
+    return "";
+  }, [referrerSource, t.referrerFromChain, t.referrerFromLink, t.referrerFromManual, t.referrerFromOwner]);
+  const machineDisabledReason = useMemo(() => {
+    if (!isConnected) return t.needConnectToBuy;
+    if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (!hasValidReferrer) return t.needReferrerToBuy;
+    return "";
+  }, [hasValidReferrer, isConnected, isWrongNetwork, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy]);
+  const nodeDisabledReason = useMemo(() => {
+    if (!isConnected) return t.needConnectToBuy;
+    if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (role !== 0) return t.roleMismatchForNode;
+    return "";
+  }, [isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needSepoliaToBuy, t.roleMismatchForNode]);
+  const superDisabledReason = useMemo(() => {
+    if (!isConnected) return t.needConnectToBuy;
+    if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (role !== 1) return t.roleMismatchForSuper;
+    return "";
+  }, [isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needSepoliaToBuy, t.roleMismatchForSuper]);
+  const purchaseFlow = useMemo(
+    () => [
+      { label: t.stepConnect, done: isConnected },
+      { label: t.stepReferrer, done: hasValidReferrer },
+      { label: t.stepApprove, done: coreAllowance >= machineTotal && machineTotal > 0n },
+      { label: t.stepPurchase, done: false },
+    ],
+    [coreAllowance, hasValidReferrer, isConnected, machineTotal, t.stepApprove, t.stepConnect, t.stepPurchase, t.stepReferrer],
+  );
   const swapAmountRaw = useMemo(() => {
     try {
       if (!swapAmountIn.trim() || Number(swapAmountIn) <= 0) return 0n;
@@ -458,12 +527,13 @@ const App = () => {
     setNodePrice(nextNodePrice);
     setSuperPrice(nextSuperPrice);
     setRole(nextRole);
+    setUsdtBalance(balance);
     setCoreAllowance(allowanceCore);
     setOtcAllowance(allowanceOtc);
 
     // 团队统计
     try {
-      const stats = await getUserStats(connectedProvider, wallet);
+      const stats = await getTeamStats(connectedProvider, wallet);
       setTeamStats(stats);
     } catch (e) {
       console.error("Failed to fetch user stats", e);
@@ -478,19 +548,31 @@ const App = () => {
       
       if (urlRef && isAddress(urlRef)) {
         setMachineReferrer(urlRef);
+        setReferrerSource("link");
       } else {
         const contractOwner = await getContractOwner(connectedProvider);
         setMachineReferrer(contractOwner);
+        setReferrerSource("owner");
       }
     } else {
       setMachineReferrer(currentReferrer);
+      setReferrerSource("onchain");
     }
 
+    const orderIds = await getUserMachineOrderIds(connectedProvider, wallet);
     const nextOrders = await Promise.all(orderIds.slice(Math.max(0, orderIds.length - 8)).map((id) => getMachineOrder(connectedProvider, id)));
     setOrders(nextOrders.reverse().map(order => ({
       ...order,
       createdAt: order.createdAt * 1000n // Convert seconds to milliseconds
     })));
+
+    try {
+      const nextRewardRecords = await getRewardRecordsByBeneficiary(connectedProvider, wallet, 12);
+      setRewardRecords(nextRewardRecords);
+    } catch (error) {
+      console.error("Failed to fetch reward records", error);
+      setRewardRecords([]);
+    }
 
     const nextIdentityId = await getTokenOfOwner(connectedProvider, wallet);
     setIdentityId(nextIdentityId);
@@ -850,6 +932,25 @@ const App = () => {
 
       {activeTab === "overview" ? (
         <section className="grid">
+          <Card title={t.flowTitle} hint={t.flowHint}>
+            <div className="flow-grid">
+              {purchaseFlow.map((step) => (
+                <div key={step.label} className={step.done ? "flow-step flow-step-done" : "flow-step"}>
+                  <span>{step.label}</span>
+                  <strong>{step.done ? "✓" : "..."}</strong>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card title={t.accountSnapshot} hint={t.accountHint}>
+            <KVRow label={t.walletStatus} value={isConnected ? t.connected : t.notConnected} />
+            <KVRow label={t.network} value={networkLabel} />
+            <KVRow label={t.role} value={roleLabel} />
+            <KVRow label={t.balance} value={formatUsdt(usdtBalance) + " USDT"} />
+            <KVRow label={t.coreApproval} value={formatUsdt(coreAllowance) + " USDT"} />
+          </Card>
+
           {/* 公告卡 */}
           <Card title={t.homeAnnouncementsTitle} hint={t.homeAnnouncementsHint}>
             {announcements.length === 0 ? (
@@ -891,18 +992,25 @@ const App = () => {
                 type="text"
                 placeholder="0x..."
                 value={machineReferrer}
-                onChange={(e) => setMachineReferrer(e.target.value)}
+                onChange={(e) => {
+                  setMachineReferrer(e.target.value);
+                  setReferrerSource("manual");
+                }}
               />
             </label>
+            {referrerSourceLabel ? <p className="chip-label">{referrerSourceLabel}</p> : null}
             <p className="hint">{t.machineReferrerTip}</p>
-            <div className="machine-total-row">
-              <span>{t.orderTotal}</span>
-              <strong>{formatUsdt(machineTotal)} USDT</strong>
-            </div>
-            <div className="actions">
-              <button className="primary-btn" onClick={onBuyMachine} disabled={loading}>
-                {t.submitMachine}
-              </button>
+            <div className="machine-cta-sticky">
+              <div className="machine-total-row">
+                <span>{t.orderTotal}</span>
+                <strong>{formatUsdt(machineTotal)} USDT</strong>
+              </div>
+              <div className="actions">
+                <button className="primary-btn" onClick={onBuyMachine} disabled={loading || Boolean(machineDisabledReason)}>
+                  {loading ? t.loading : t.submitMachine}
+                </button>
+              </div>
+              {machineDisabledReason ? <p className="action-hint">{machineDisabledReason}</p> : null}
             </div>
             <p className="hint">{t.machineAutoApproveHint}</p>
           </Card>
@@ -912,10 +1020,11 @@ const App = () => {
             <KVRow label={t.nodePrice} value={formatUsdt(nodePrice) + " USDT"} />
             <p className="hint">{t.nodeDesc}</p>
             <div className="actions">
-              <button className="primary-btn" onClick={onBuyNode} disabled={loading || role !== 0}>
-                {t.buyNode}
+              <button className="primary-btn" onClick={onBuyNode} disabled={loading || Boolean(nodeDisabledReason)}>
+                {loading ? t.loading : role === 0 ? t.buyNode : t.buyNodeLocked}
               </button>
             </div>
+            {nodeDisabledReason ? <p className="action-hint">{nodeDisabledReason}</p> : null}
           </Card>
 
           {/* 超级节点购买卡 */}
@@ -923,10 +1032,11 @@ const App = () => {
             <KVRow label={t.superNodePrice} value={formatUsdt(superPrice) + " USDT"} />
             <p className="hint">{t.superNodeDesc}</p>
             <div className="actions">
-              <button className="primary-btn" onClick={onBuySuperNode} disabled={loading || role !== 1}>
-                {t.buySuperNode}
+              <button className="primary-btn" onClick={onBuySuperNode} disabled={loading || Boolean(superDisabledReason)}>
+                {loading ? t.loading : role === 1 ? t.buySuperNode : t.buySuperNodeLocked}
               </button>
             </div>
+            {superDisabledReason ? <p className="action-hint">{superDisabledReason}</p> : null}
           </Card>
         </section>
       ) : null}
@@ -976,7 +1086,7 @@ const App = () => {
 
       {activeTab === "swap" ? <section className="card"><h2>{t.swapTitle}</h2><p className="hint">{t.swapHint}</p><p className="hint">{t.swapAutoHint}</p><div className="swap-shell"><div className="swap-panel"><label className="field">{t.swapPool}<select value={swapPairId} onChange={(event) => setSwapPairId(Number(event.target.value))}><option value={0}>USDT / ICO</option><option value={1}>LIGHT / ICO</option></select></label><div className="swap-direction-row"><label className="field swap-field-grow">{t.swapDirection}<select value={swapDirection} onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}><option value="forward">token0 -&gt; token1</option><option value="reverse">token1 -&gt; token0</option></select></label><button className="ghost-btn" onClick={onReverseSwapDirection} type="button">{t.reverseDirection}</button></div><div className="swap-input-card"><div className="swap-input-top"><span>{t.inputAmount}</span><button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button></div><input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} /><p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p></div><label className="field">{t.slippage}<input type="number" min={10} max={2000} value={swapSlippageBps} onChange={(event) => setSwapSlippageBps(Number(event.target.value || 200))} /></label><div className="chip-row"><button className={swapSlippageBps === 50 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(50)} type="button">0.5%</button><button className={swapSlippageBps === 100 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(100)} type="button">1.0%</button><button className={swapSlippageBps === 200 ? "chip-btn chip-btn-active" : "chip-btn"} onClick={() => setSwapSlippageBps(200)} type="button">2.0%</button></div></div><div className="swap-summary"><div className="swap-stat"><span>{t.estimatedOutput}</span><strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong></div><div className="swap-stat"><span>{t.estimatedFee}</span><strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong></div><div className="swap-stat"><span>{t.fee}</span><strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong></div><div className="swap-stat"><span>{t.impactLimit}</span><strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong></div><div className="swap-stat"><span>{t.tokenAllowance}（{swapTokenInSymbol}）</span><strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong></div><div className="swap-stat"><span>{t.estimatedImpact}</span><strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong></div><div className={`swap-status swap-status-${swapImpactTone}`}><strong>{t.quoteStatus}</strong><span>{swapStatusText}</span><small>{swapImpactLabel}</small></div></div></div><div className="actions"><button className="primary-btn" onClick={onRefreshSwapQuote} disabled={loading}>{t.refreshQuote}</button><button className="primary-btn" onClick={onSwapExecute} disabled={loading || swapQuoteOut <= 0n || swapAmountRaw === 0n || swapAmountRaw === null || !swapHasEnoughBalance}>{t.executeSwap}</button></div></section> : null}
 
-      {activeTab === "mine" ? <section className="grid"><article className="card"><h2>{t.ordersTitle}</h2><p className="hint">{t.ordersHint}</p>{orders.length === 0 ? <p className="hint">{t.noOrders}</p> : <ul className="list">{orders.map((order) => <li key={String(order.id)} className="list-item"><div className="list-head"><strong>{`${t.orderId} #${String(order.id)}`}</strong><span>{`${String(order.quantity)} ${t.quantityUnit}`}</span></div><p>{t.amount}：{formatUsdt(order.amountUSDT)} USDT</p><p>{t.timestamp}：{new Date(Number(order.createdAt)).toLocaleString(lang === "zh" ? 'zh-CN' : 'en-US')}</p></li>)}</ul>}</article></section> : null}
+      {activeTab === "mine" ? <section className="grid"><article className="card"><h2>{t.ordersTitle}</h2><p className="hint">{t.ordersHint}</p>{orders.length === 0 ? <p className="hint">{t.noOrders}</p> : <ul className="list">{orders.map((order) => <li key={String(order.id)} className="list-item"><div className="list-head"><strong>{`${t.orderId} #${String(order.id)}`}</strong><span>{`${String(order.quantity)} ${t.quantityUnit}`}</span></div><p>{t.amount}：{formatUsdt(order.amountUSDT)} USDT</p><p>{t.timestamp}：{new Date(Number(order.createdAt)).toLocaleString(lang === "zh" ? 'zh-CN' : 'en-US')}</p></li>)}</ul>}</article><article className="card"><h2>{t.rewardsTitle}</h2><p className="hint">{t.rewardsHint}</p>{rewardRecords.length === 0 ? <p className="hint">{t.noRewards}</p> : <ul className="list">{rewardRecords.map((reward) => <li key={`${reward.txHash}-${String(reward.orderId)}-${reward.poolType}`} className="list-item"><div className="list-head"><strong>{`${t.rewardOrder} #${String(reward.orderId)}`}</strong><span>{`${t.rewardPool} #${reward.poolType}`}</span></div><p>{t.rewardAmount}：{formatUsdt(reward.amountUSDT)} USDT</p><p>{t.blockNumber}：{reward.blockNumber}</p></li>)}</ul>}</article></section> : null}
     
       {/* 底部导航栏 */}
       <nav className="bottom-nav">
