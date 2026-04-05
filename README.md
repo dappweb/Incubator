@@ -76,3 +76,4 @@ npm run upgrade:sepolia
 - [DApp UI 设计方案](docs/DAPP_UI_SPEC.md)
 - [Appwrite + Sepolia 实施蓝图](docs/APPWRITE_SEPOLIA_IMPLEMENTATION.md)
 - [生产就绪任务清单](docs/PRODUCTION_ROADMAP.md)
+- [当前实现状态（真相文档）](docs/CURRENT_IMPLEMENTATION_STATUS.md)

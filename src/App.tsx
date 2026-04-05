@@ -25,7 +25,14 @@ import {
   getRewardRecordsByBeneficiary,
 } from "./lib/coreContract";
 import { getActiveOrderIds, getOrder, fillOtcOrder, cancelOtcOrder, createOtcOrder, type OtcOrder } from "./lib/otcContract";
-import { checkConnection, connectWallet, ensureSepoliaNetwork, isOnSepolia, listenToWalletEvents } from "./lib/wallet";
+import {
+  checkConnection,
+  connectWallet,
+  ensureSepoliaNetwork,
+  isOnSepolia,
+  listenToWalletEvents,
+  setupWalletAfterConnect,
+} from "./lib/wallet";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "./lib/usdtContract";
 import { approveIdentityForOtc, getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
 import { CORE_CONTRACT_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS } from "./config";
@@ -39,6 +46,7 @@ type SwapSubTab = "primary" | "light";
 type SwapDirection = "forward" | "reverse";
 
 const LIGHT_ICO_PAIR_ID = 1;
+const FIRST_CONNECT_GUIDE_DONE_KEY = "incubator:first-connect-guide-done";
 
 const DESKTOP_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "首页" },
@@ -97,7 +105,9 @@ const App = () => {
     walletStatus: lang === "zh" ? "钱包状态" : "Wallet Status",
     connected: lang === "zh" ? "已连接" : "Connected",
     role: lang === "zh" ? "当前身份" : "Role",
+    ownerPanel: lang === "zh" ? "Owner 面板" : "Owner Panel",
     balance: lang === "zh" ? "USDT 余额" : "USDT Balance",
+    openAdminPanel: lang === "zh" ? "进入管理面板" : "Open Admin Panel",
     portfolioHint: lang === "zh" ? "先连接钱包，再开始购买、挂单或兑换操作。" : "Connect your wallet first to start buying, listing, or swapping.",
     notConnected: lang === "zh" ? "未连接" : "Not Connected",
     wrongNetwork: lang === "zh" ? "网络错误" : "Wrong Network",
@@ -172,7 +182,7 @@ const App = () => {
     needSepoliaToBuy: lang === "zh" ? "请先切换到 Sepolia" : "Switch to Sepolia first",
     needReferrerToBuy: lang === "zh" ? "请先绑定推荐人" : "Bind a referrer first",
     roleMismatchForNode: lang === "zh" ? "当前身份不可重复购买节点" : "Current role cannot buy node again",
-    roleMismatchForSuper: lang === "zh" ? "需先购买节点后再升级" : "Buy node first, then upgrade",
+    roleMismatchForSuper: lang === "zh" ? "" : "",
     otcTitle: lang === "zh" ? "节点市场" : "Node Market",
     otcHint: lang === "zh" ? "在这里可以挂卖或购买节点身份，所有成交结果以链上状态为准。" : "List or buy node identities here. Final settlement always follows on-chain state.",
     myIdentity: lang === "zh" ? "我的身份 ID" : "My Identity ID",
@@ -249,6 +259,15 @@ const App = () => {
     ordersTitle: lang === "zh" ? "出入金记录" : "In/Out Records",
     ordersHint: lang === "zh" ? "这里汇总你的链上出入金相关记录（当前优先展示矿机订单流水）。" : "This section summarizes your on-chain in/out records (currently focused on machine order flows).",
     noOrders: lang === "zh" ? "暂无出入金记录。" : "No in/out records yet.",
+    assetsTitle: lang === "zh" ? "我的资产视图" : "My Assets",
+    assetsHint: lang === "zh" ? "汇总当前钱包的身份、余额、授权与订单奖励概览。" : "Overview of wallet role, balances, allowances, orders, and rewards.",
+    totalMachineOrders: lang === "zh" ? "矿机订单总数" : "Total Machine Orders",
+    recentMachineUnits: lang === "zh" ? "最近订单矿机数" : "Recent Machine Units",
+    recentMachineAmount: lang === "zh" ? "最近订单金额" : "Recent Order Amount",
+    recentRewardCount: lang === "zh" ? "最近奖励笔数" : "Recent Reward Count",
+    recentRewardAmount: lang === "zh" ? "最近奖励金额" : "Recent Reward Amount",
+    loadedRecentOrders: lang === "zh" ? "已加载最近订单" : "Loaded Recent Orders",
+    loadedRecentRewards: lang === "zh" ? "已加载最近奖励" : "Loaded Recent Rewards",
     rewardsTitle: lang === "zh" ? "奖励记录" : "Reward Records",
     rewardsHint: lang === "zh" ? "展示当前钱包链上已结算奖励（RewardSettled 事件）。" : "Shows on-chain settled rewards for this wallet (RewardSettled events).",
     noRewards: lang === "zh" ? "暂无奖励记录。" : "No reward records yet.",
@@ -280,6 +299,7 @@ const App = () => {
     approvedOtcSuccess: lang === "zh" ? "市场 USDT 授权已完成。" : "Market USDT approval confirmed.",
     invalidMachineQty: lang === "zh" ? "矿机购买数量需在 1 到 10 之间。" : "Machine quantity must be between 1 and 10.",
     invalidReferrer: lang === "zh" ? "推荐人地址格式不正确。" : "Invalid referrer address.",
+    invalidSelfReferrer: lang === "zh" ? "推荐人不能是当前钱包地址。" : "Referrer cannot be your own wallet address.",
     referrerAlreadyBound: lang === "zh" ? "推荐人已绑定，无需重复操作。" : "Referrer already bound.",
     bindingReferrer: lang === "zh" ? "正在绑定推荐人..." : "Binding referrer...",
     bindReferrerSuccess: lang === "zh" ? "推荐人绑定成功。" : "Referrer bound successfully.",
@@ -312,6 +332,15 @@ const App = () => {
     nav: lang === "zh" ? "导航" : "Navigation",
     statusReady: lang === "zh" ? "系统就绪" : "System Ready",
     loading: lang === "zh" ? "加载中..." : "Loading...",
+    firstGuideTitle: lang === "zh" ? "新钱包快速引导" : "New Wallet Quick Setup",
+    firstGuideHint: lang === "zh" ? "一键完成基础配置：网络 → 代币 → 数据刷新。" : "Complete base setup in one click: network → tokens → data refresh.",
+    firstGuideStepNetwork: lang === "zh" ? "1. 切换并确认 Sepolia 网络" : "1. Switch and confirm Sepolia network",
+    firstGuideStepToken: lang === "zh" ? "2. 添加 USDT / ICO / LIGHT 到钱包" : "2. Add USDT / ICO / LIGHT to wallet",
+    firstGuideStepRefresh: lang === "zh" ? "3. 刷新链上数据与权限状态" : "3. Refresh on-chain data and allowances",
+    firstGuideRun: lang === "zh" ? "一键完成" : "Run One-Click Setup",
+    firstGuideLater: lang === "zh" ? "稍后" : "Later",
+    firstGuideRunning: lang === "zh" ? "引导执行中..." : "Running setup...",
+    firstGuideDone: lang === "zh" ? "首次引导已完成。" : "First-time setup completed.",
   };
 
   const [address, setAddress] = useState("");
@@ -320,6 +349,8 @@ const App = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [status, setStatus] = useState("");
   const [contractOwner, setContractOwner] = useState("");
+  const [showFirstConnectGuide, setShowFirstConnectGuide] = useState(false);
+  const [firstConnectGuideRunning, setFirstConnectGuideRunning] = useState(false);
 
   const [machineQty, setMachineQty] = useState(1);
   const [machineReferrer, setMachineReferrer] = useState("");
@@ -331,6 +362,7 @@ const App = () => {
   const [usdtBalance, setUsdtBalance] = useState<bigint>(0n);
   const [coreAllowance, setCoreAllowance] = useState<bigint>(0n);
   const [otcAllowance, setOtcAllowance] = useState<bigint>(0n);
+  const [machineOrderCount, setMachineOrderCount] = useState(0);
   const [orders, setOrders] = useState<MachineOrder[]>([]);
   const [rewardRecords, setRewardRecords] = useState<RewardRecord[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStats>({
@@ -402,14 +434,16 @@ const App = () => {
         const owner = await getContractOwner(readProvider);
         if (owner && isAddress(owner)) {
           setContractOwner(owner);
-          setMachineReferrer(owner);
-          setReferrerSource("owner");
+          if (!address || owner.toLowerCase() !== address.toLowerCase()) {
+            setMachineReferrer(owner);
+            setReferrerSource("owner");
+          }
         }
       } catch {
         // ignore prefill errors
       }
     })();
-  }, [machineReferrer, referrerSource]);
+  }, [address, machineReferrer, referrerSource]);
 
   const resetWalletState = () => {
     setAddress("");
@@ -419,6 +453,7 @@ const App = () => {
     setUsdtBalance(0n);
     setCoreAllowance(0n);
     setOtcAllowance(0n);
+    setMachineOrderCount(0);
     setOrders([]);
     setRewardRecords([]);
     setIdentityId(null);
@@ -458,6 +493,10 @@ const App = () => {
   const machineApprovalGap = useMemo(() => (machineTotal > coreAllowance ? machineTotal - coreAllowance : 0n), [coreAllowance, machineTotal]);
   const roleLabel = useMemo(() => (role === 2 ? t.roleSuperNode : role === 1 ? t.roleNode : t.roleUser), [role, t.roleNode, t.roleSuperNode, t.roleUser]);
   const hasValidReferrer = useMemo(() => Boolean(machineReferrer && isAddress(machineReferrer)), [machineReferrer]);
+  const isSelfReferrer = useMemo(
+    () => Boolean(address && machineReferrer && machineReferrer.toLowerCase() === address.toLowerCase()),
+    [address, machineReferrer],
+  );
   const hasBoundReferrer = useMemo(
     () => referrerSource === "onchain" && Boolean(machineReferrer && isAddress(machineReferrer)),
     [machineReferrer, referrerSource],
@@ -489,6 +528,12 @@ const App = () => {
     if (role === 2) return t.alreadySuperNode;
     return "";
   }, [hasBoundReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.alreadySuperNode]);
+  const bindReferrerDisabledReason = useMemo(() => {
+    if (!isConnected) return t.connectFirst;
+    if (isWrongNetwork) return t.switchSepolia;
+    if (isSelfReferrer) return t.invalidSelfReferrer;
+    return "";
+  }, [isConnected, isSelfReferrer, isWrongNetwork, t.connectFirst, t.invalidSelfReferrer, t.switchSepolia]);
   const purchaseFlow = useMemo(
     () => [
       { label: t.stepConnect, done: isConnected },
@@ -580,6 +625,18 @@ const App = () => {
     if (loading || swapQuoteOut <= 0n || swapAmountRaw === null || swapAmountRaw === 0n) return false;
     return swapHasEnoughBalance;
   }, [loading, swapAmountRaw, swapHasEnoughBalance, swapQuoteOut]);
+  const recentMachineUnits = useMemo(
+    () => orders.reduce((sum, order) => sum + order.quantity, 0n),
+    [orders],
+  );
+  const recentMachineAmount = useMemo(
+    () => orders.reduce((sum, order) => sum + order.amountUSDT, 0n),
+    [orders],
+  );
+  const recentRewardAmount = useMemo(
+    () => rewardRecords.reduce((sum, row) => sum + row.amountUSDT, 0n),
+    [rewardRecords],
+  );
 
   useEffect(() => {
     if (activePairId === LIGHT_ICO_PAIR_ID && swapDirection !== "forward") {
@@ -679,6 +736,9 @@ const App = () => {
       console.error("Failed to fetch user stats", e);
     }
 
+    const owner = await getContractOwner(connectedProvider);
+    setContractOwner(owner);
+
     // 检查并绑定推荐人
     const currentReferrer = await getReferrer(connectedProvider, wallet);
     if (currentReferrer === "0x0000000000000000000000000000000000000000") {
@@ -687,13 +747,24 @@ const App = () => {
       const urlRef = params.get("ref");
       
       if (urlRef && isAddress(urlRef)) {
-        setMachineReferrer(urlRef);
-        setReferrerSource("link");
+        if (urlRef.toLowerCase() !== wallet.toLowerCase()) {
+          setMachineReferrer(urlRef);
+          setReferrerSource("link");
+        } else if (owner && isAddress(owner) && owner.toLowerCase() !== wallet.toLowerCase()) {
+          setMachineReferrer(owner);
+          setReferrerSource("owner");
+        } else {
+          setMachineReferrer("");
+          setReferrerSource("manual");
+        }
       } else {
-        const owner = await getContractOwner(connectedProvider);
-        setContractOwner(owner);
-        setMachineReferrer(owner);
-        setReferrerSource("owner");
+        if (owner && owner.toLowerCase() !== wallet.toLowerCase()) {
+          setMachineReferrer(owner);
+          setReferrerSource("owner");
+        } else {
+          setMachineReferrer("");
+          setReferrerSource("manual");
+        }
       }
     } else {
       setMachineReferrer(currentReferrer);
@@ -701,6 +772,7 @@ const App = () => {
     }
 
     const orderIds = await getUserMachineOrderIds(connectedProvider, wallet);
+    setMachineOrderCount(orderIds.length);
     const nextOrders = await Promise.all(orderIds.slice(Math.max(0, orderIds.length - 8)).map((id) => getMachineOrder(connectedProvider, id)));
     setOrders(nextOrders.reverse().map(order => ({
       ...order,
@@ -817,12 +889,72 @@ const App = () => {
 
   const onConnect = async () => {
     try {
-      await ensureSepoliaNetwork();
       const connection = await connectWallet();
+      const setupResult = await setupWalletAfterConnect();
       await syncWalletState(connection.provider, connection.address, connection.chainId);
-      setStatus(t.walletConnected);
+
+      if (setupResult.attemptedTokenCount > 0) {
+        if (langRef.current === "zh") {
+          setStatus(`钱包连接成功，已完成网络检查，并配置 ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} 个代币。`);
+        } else {
+          setStatus(
+            `Wallet connected. Network is ready and ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} tokens were configured.`,
+          );
+        }
+      } else {
+        setStatus(t.walletConnected);
+      }
+
+      try {
+        const hasShownFirstGuide = window.localStorage.getItem(FIRST_CONNECT_GUIDE_DONE_KEY) === "1";
+        if (!hasShownFirstGuide) {
+          setShowFirstConnectGuide(true);
+        }
+      } catch {
+        setShowFirstConnectGuide(true);
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : t.walletConnectFailed);
+    }
+  };
+
+  const markFirstConnectGuideDone = () => {
+    try {
+      window.localStorage.setItem(FIRST_CONNECT_GUIDE_DONE_KEY, "1");
+    } catch {
+      // ignore storage write issues
+    }
+    setShowFirstConnectGuide(false);
+  };
+
+  const onRunFirstConnectGuide = async () => {
+    if (!provider || !address) {
+      setStatus(t.connectFirst);
+      return;
+    }
+
+    try {
+      setFirstConnectGuideRunning(true);
+      setStatus(t.firstGuideRunning);
+
+      const setupResult = await setupWalletAfterConnect();
+      const existing = await checkConnection();
+      if (existing) {
+        await syncWalletState(existing.provider, existing.address, existing.chainId);
+      }
+
+      if (langRef.current === "zh") {
+        setStatus(`首次引导完成：已配置 ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} 个代币。`);
+      } else {
+        setStatus(
+          `First-time setup completed: ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} tokens configured.`,
+        );
+      }
+      markFirstConnectGuideDone();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t.walletConnectFailed);
+    } finally {
+      setFirstConnectGuideRunning(false);
     }
   };
 
@@ -945,6 +1077,19 @@ const App = () => {
   const onBindReferrer = async () => guardedAction(async () => {
     const referrer = machineReferrer.trim();
     if (!isAddress(referrer)) throw new Error(t.invalidReferrer);
+    if (address && referrer.toLowerCase() === address.toLowerCase()) {
+      if (contractOwner && isAddress(contractOwner) && contractOwner.toLowerCase() !== address.toLowerCase()) {
+        setMachineReferrer(contractOwner);
+        setReferrerSource("owner");
+        setStatus(lang === "zh" ? "检测到自邀请，已自动切换为合约 Owner" : "Self-invite detected, switched to contract owner");
+        setStatus(t.bindingReferrer);
+        await bindReferrer(provider!, contractOwner);
+        setReferrerSource("onchain");
+        setStatus(t.bindReferrerSuccess);
+        return;
+      }
+      throw new Error(t.invalidSelfReferrer);
+    }
     if (hasBoundReferrer) {
       setStatus(t.referrerAlreadyBound);
       return;
@@ -1073,6 +1218,33 @@ const App = () => {
 
   return (
     <>
+    {showFirstConnectGuide ? (
+      <div className="guide-overlay" role="dialog" aria-modal="true" aria-label={t.firstGuideTitle}>
+        <div className="guide-card">
+          <h3>{t.firstGuideTitle}</h3>
+          <p className="hint">{t.firstGuideHint}</p>
+          <ol className="guide-steps">
+            <li>{t.firstGuideStepNetwork}</li>
+            <li>{t.firstGuideStepToken}</li>
+            <li>{t.firstGuideStepRefresh}</li>
+          </ol>
+          <div className="actions">
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={onRunFirstConnectGuide}
+              disabled={firstConnectGuideRunning || loading}
+            >
+              {firstConnectGuideRunning ? t.firstGuideRunning : t.firstGuideRun}
+            </button>
+            <button className="ghost-btn" type="button" onClick={markFirstConnectGuideDone} disabled={firstConnectGuideRunning}>
+              {t.firstGuideLater}
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+
     <header className="header header-fixed">
       <div className="topbar-logo">
         <div className="brand-mark" aria-hidden="true">
@@ -1081,6 +1253,12 @@ const App = () => {
         <span className="brand-name">Incubator</span>
         {activeTabLabel && <span className="page-title-sep">·</span>}
         <h1 className="page-title">{activeTabLabel}</h1>
+        <div className="status-bar" aria-live="polite">
+          <span className={isConnected && !isWrongNetwork ? "status-dot status-online" : "status-dot status-offline"} />
+          <span className="status-text">
+            {status || `${maskedAddress} · ${headerNetworkBadgeLabel}`}
+          </span>
+        </div>
       </div>
 
       <div className="topbar-actions">
@@ -1120,6 +1298,16 @@ const App = () => {
             <KVRow label={t.role} value={roleLabel} />
             <KVRow label={t.balance} value={formatUsdt(usdtBalance) + " USDT"} />
             <KVRow label={t.coreApproval} value={formatUsdt(coreAllowance) + " USDT"} />
+            {isOwner ? (
+              <KVRow
+                label={t.ownerPanel}
+                value={(
+                  <button type="button" className="link-btn" onClick={() => setActiveTab("admin")}>
+                    {t.openAdminPanel}
+                  </button>
+                )}
+              />
+            ) : null}
           </Card>
 
           {/* 公告卡 */}
@@ -1159,10 +1347,15 @@ const App = () => {
               {referrerSourceLabel ? <p className="chip-label">{referrerSourceLabel}</p> : null}
               <p className="hint">{t.referrerInputTip}</p>
               <div className="actions">
-                <button className="primary-btn" onClick={onBindReferrer} disabled={loading || !hasValidReferrer}>
+                <button
+                  className="primary-btn"
+                  onClick={onBindReferrer}
+                  disabled={loading || !hasValidReferrer || Boolean(bindReferrerDisabledReason)}
+                >
                   {loading ? t.loading : t.bindReferrer}
                 </button>
               </div>
+              {bindReferrerDisabledReason ? <p className="action-hint">{bindReferrerDisabledReason}</p> : null}
             </Card>
           ) : null}
 
@@ -1505,6 +1698,38 @@ const App = () => {
 
       {activeTab === "mine" ? (
         <section className="grid-full">
+          <Card title={t.assetsTitle} hint={t.assetsHint}>
+            <div className="stats-grid">
+              <div className="stat-pill">
+                <span>{t.role}</span>
+                <strong>{roleLabel}</strong>
+              </div>
+              <div className="stat-pill">
+                <span>{t.myIdentity}</span>
+                <strong>{identityId ? String(identityId) : t.none}</strong>
+              </div>
+              <div className="stat-pill">
+                <span>{t.totalMachineOrders}</span>
+                <strong>{machineOrderCount}</strong>
+              </div>
+              <div className="stat-pill">
+                <span>{t.recentRewardCount}</span>
+                <strong>{rewardRecords.length}</strong>
+              </div>
+            </div>
+
+            <div className="kv-list">
+              <KVRow label={t.balance} value={`${formatUsdt(usdtBalance)} USDT`} />
+              <KVRow label={t.coreApproval} value={`${formatUsdt(coreAllowance)} USDT`} />
+              <KVRow label={t.otcApproval} value={`${formatUsdt(otcAllowance)} USDT`} />
+              <KVRow label={t.recentMachineUnits} value={`${String(recentMachineUnits)} ${t.quantityUnit}`} />
+              <KVRow label={t.recentMachineAmount} value={`${formatUsdt(recentMachineAmount)} USDT`} />
+              <KVRow label={t.recentRewardAmount} value={`${formatUsdt(recentRewardAmount)} USDT`} />
+              <KVRow label={t.loadedRecentOrders} value={orders.length} />
+              <KVRow label={t.loadedRecentRewards} value={rewardRecords.length} />
+            </div>
+          </Card>
+
           <Card title={t.ordersTitle} hint={t.ordersHint}>
             {orders.length === 0 ? (
               <p className="hint">{t.noOrders}</p>

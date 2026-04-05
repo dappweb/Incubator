@@ -11,20 +11,20 @@
 ### 身份规则
 - `Node` 限购 1 个。
 - `SuperNode` 限购 1 个。
-- **默认要求 `Node -> SuperNode`，不允许 `None -> SuperNode` 直升。**
+- `SuperNode` 可直接购买，不要求先持有 `Node`。
 
 理由：
-- 更符合身份升级路径。
-- 前端文案更好解释。
-- 后续团队权益和烧伤规则更容易扩展。
+- 统一当前实现逻辑。
+- 简化用户路径。
+- 避免身份升级逻辑与实际业务不一致。
 
 ### OTC 标的
-- **默认采用“身份 NFT”方案**，而不是单纯地址角色映射交易。
+- **当前不采用“身份 NFT”方案**，继续使用 `IncubatorCore` 内部身份账本。
 
 理由：
-- 交易对象清晰。
-- 与 `IERC721` 兼容，现有 OTC 合约改造成本最低。
-- 后续上架、撤单、成交、所有权追踪更标准。
+- 当前实现已基于 Core identity 账本完成 OTC 交易闭环。
+- 避免方案切换带来的接口不一致风险。
+- 业务路径更符合现有前端与合约部署路线。
 
 ### 奖励范围
 - 测试网首版**不做复杂奖励结算**。
@@ -98,22 +98,14 @@
 
 ---
 
-### 建议新增 [contracts/IdentityNFT.sol](contracts/IdentityNFT.sol)
-
-#### 最小能力
-- 基于 `ERC721`。
-- 支持两类身份：`Node`、`SuperNode`。
-- 节点购买成功时铸造节点 NFT。
-- 超级节点升级时：
-  - 方案 A：销毁 Node NFT，铸造 SuperNode NFT
-  - 方案 B：保留旧 NFT 并铸造新 NFT
-
-#### 建议
-- 测试网先走**方案 A**，状态最清晰。
+### 当前身份方案
+- 当前测试网方向：不使用 `IdentityNFT.sol`。
+- OTC 身份基于 `IncubatorCore` 内部 identity 账本。
+- `NodeOTCMarket` 通过 `coreIdentity` 的身份所有权和 `approveIdentityOperator` 机制实现挂单/成交。
 
 #### 验收点
-- 节点购买后钱包可看到身份 NFT。
-- OTC 市场能正确读取并交易该 NFT。
+- `buyNode` / `buySuperNode` 结果可通过 `getUserIdentityId` 与 `getIdentity` 验证。
+- OTC 挂单/成交结果可通过 `getOrder` / `getActiveOrderIds` 验证。
 
 ---
 
@@ -136,14 +128,13 @@
 #### 必改项
 - 支持按顺序部署：
   1. MockUSDT（可选）
-  2. IdentityNFT
-  3. IncubatorCore
-  4. NodeOTCMarket
+  2. IncubatorCore
+  3. NodeOTCMarket
 - 支持部署后做初始化：
   - 池子地址
   - 分账比例
   - OTC 手续费接收地址
-  - Core 与 IdentityNFT 权限绑定
+  - Core 与 NodeOTCMarket 的身份市场绑定
 - 部署结果输出为结构化文本，便于抄到环境变量
 
 #### 验收点
@@ -236,7 +227,6 @@
 #### 建议文件
 - `IncubatorCore.test.ts`
 - `NodeOTCMarket.test.ts`
-- `IdentityNFT.test.ts`
 - `TestnetFlow.test.ts`
 
 #### 最低覆盖场景
@@ -256,9 +246,8 @@
 
 ### 第一步：合约骨架补齐
 1. `MockUSDT.sol`
-2. `IdentityNFT.sol`
-3. `IncubatorCore.sol` 分账与暂停
-4. `NodeOTCMarket.sol` 查询与唯一挂单约束
+2. `IncubatorCore.sol` 分账与暂停
+3. `NodeOTCMarket.sol` 查询与唯一挂单约束
 
 ### 第二步：部署与联调
 1. 改 `scripts/deploy.ts`
@@ -292,7 +281,7 @@
 - [ ] 分账事件正确
 - [ ] 可购买节点
 - [ ] 可升级超级节点
-- [ ] 身份 NFT 正确铸造/升级
+- [ ] 身份凭证正确生成/更新
 - [ ] 可创建 OTC 挂单
 - [ ] 可撤单
 - [ ] 可成交
@@ -334,7 +323,7 @@
 
 如果继续往下做，建议直接进入代码改造阶段，优先顺序：
 
-1. 先补 `MockUSDT + IdentityNFT + Core 分账`
+1. 先补 `MockUSDT + Core 分账`
 2. 再补 `OTC 查询与资产唯一挂单`
 3. 最后补前端最小闭环
 

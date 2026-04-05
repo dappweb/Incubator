@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 async function main() {
   await validateCoreFlow(ethers);
@@ -21,14 +21,15 @@ async function validateCoreFlow(hardhatEthers: typeof ethers) {
 
   await usdt.connect(owner).mint(buyer.address, 10_000_000_000n);
   await usdt.connect(buyer).approve(await core.getAddress(), 10_000_000_000n);
+  await core.connect(buyer).bindReferrer(owner.address);
 
-  await core.connect(buyer).purchaseMachine(2, hardhatEthers.ZeroAddress);
+  await core.connect(buyer).purchaseMachine(2);
   const order = await core.getMachineOrder(1);
   assert.equal(order.quantity, 2n);
   assert.equal(order.amountUSDT, 200_000_000n);
 
   assert.equal(await usdt.balanceOf(lp.address), 120_000_000n);
-  assert.equal(await usdt.balanceOf(referral.address), 10_000_000n);
+  assert.equal(await usdt.balanceOf(referral.address), 0n);
   assert.equal(await usdt.balanceOf(superPool.address), 10_000_000n);
   assert.equal(await usdt.balanceOf(nodePool.address), 16_000_000n);
   assert.equal(await usdt.balanceOf(platform.address), 40_000_000n);
@@ -47,7 +48,7 @@ async function validateCoreFlow(hardhatEthers: typeof ethers) {
   assert.equal(identity.role, 2n);
 
   await core.connect(owner).pause();
-  await assert.rejects(core.connect(buyer).purchaseMachine(1, hardhatEthers.ZeroAddress));
+  await assert.rejects(core.connect(buyer).purchaseMachine(1));
 }
 
 async function validateOtcFlow(hardhatEthers: typeof ethers) {
@@ -68,6 +69,7 @@ async function validateOtcFlow(hardhatEthers: typeof ethers) {
   await usdt.connect(owner).mint(seller.address, 10_000_000_000n);
   await usdt.connect(seller).approve(await core.getAddress(), 10_000_000_000n);
 
+  await core.connect(seller).bindReferrer(owner.address);
   await core.connect(seller).buyNode();
   const identityId = await core.getUserIdentityId(seller.address);
   await core.connect(seller).approveIdentityOperator(identityId, await otc.getAddress(), true);
@@ -145,7 +147,11 @@ async function deployCore(
   recipients: string[],
 ) {
   const factory = await hardhatEthers.getContractFactory("IncubatorCore");
-  const contract = await factory.deploy(usdtAddress, owner, recipients);
+  const contract = await upgrades.deployProxy(factory, [usdtAddress, owner, recipients], {
+    kind: "uups",
+    initializer: "initialize",
+    unsafeAllow: ["constructor", "state-variable-assignment"],
+  });
   await contract.waitForDeployment();
   return contract;
 }
@@ -170,7 +176,11 @@ async function deploySwap(
   initialOwner: string,
 ) {
   const factory = await hardhatEthers.getContractFactory("SwapPoolManager");
-  const contract = await factory.deploy(usdtAddress, icoAddress, lightAddress, initialOwner);
+  const contract = await upgrades.deployProxy(factory, [usdtAddress, icoAddress, lightAddress, initialOwner], {
+    kind: "uups",
+    initializer: "initialize",
+    unsafeAllow: ["constructor"],
+  });
   await contract.waitForDeployment();
   return contract;
 }
@@ -183,7 +193,11 @@ async function deployOtc(
   feeRecipient: string,
 ) {
   const factory = await hardhatEthers.getContractFactory("NodeOTCMarket");
-  const contract = await factory.deploy(usdtAddress, coreAddress, initialOwner, feeRecipient);
+  const contract = await upgrades.deployProxy(factory, [usdtAddress, coreAddress, initialOwner, feeRecipient], {
+    kind: "uups",
+    initializer: "initialize",
+    unsafeAllow: ["constructor"],
+  });
   await contract.waitForDeployment();
   return contract;
 }

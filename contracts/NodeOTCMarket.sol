@@ -31,9 +31,9 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
     IERC20 public usdt;
     IIncubatorCoreIdentity public coreIdentity;
     address public feeRecipient;
-    uint256 public feeBps = 1000;
+    uint256 public feeBps;
 
-    uint256 public nextOrderId = 1;
+    uint256 public nextOrderId;
     mapping(uint256 => Order) public orders;
     mapping(uint8 => uint256) public lastTradePriceByRole;
     mapping(uint256 => uint256) private activeOrderByIdentity;
@@ -72,6 +72,8 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
         usdt = IERC20(usdtAddress);
         coreIdentity = IIncubatorCoreIdentity(coreIdentityAddress);
         feeRecipient = feeRecipient_;
+        feeBps = 1000;
+        nextOrderId = 1;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

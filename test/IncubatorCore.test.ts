@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 describe("IncubatorCore", function () {
   it("splits machine orders and upgrades identity roles", async function () {
@@ -110,6 +110,28 @@ describe("IncubatorCore", function () {
     await core.connect(buyer).buyNode();
     assert.equal(await core.roles(buyer.address), 1n);
   });
+
+  it("allows direct super node purchase without prior node", async function () {
+    const [owner, buyer, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+
+    const usdt = await deployMockUsdt(owner.address);
+    const core = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+
+    await usdt.connect(owner).mint(buyer.address, 10_000_000_000n);
+    await usdt.connect(buyer).approve(await core.getAddress(), 10_000_000_000n);
+
+    await core.connect(buyer).bindReferrer(owner.address);
+    await core.connect(buyer).buySuperNode();
+
+    assert.equal(await core.roles(buyer.address), 2n);
+    const identityId = await core.getUserIdentityId(buyer.address);
+    const identity = await core.getIdentity(identityId);
+    assert.equal(identity.role, 2n);
+  });
 });
 
 async function deployMockUsdt(initialOwner: string) {
@@ -121,7 +143,11 @@ async function deployMockUsdt(initialOwner: string) {
 
 async function deployCore(usdtAddress: string, owner: string, recipients: string[]) {
   const factory = await ethers.getContractFactory("IncubatorCore");
-  const contract = await factory.deploy(usdtAddress, owner, recipients);
+  const contract = await upgrades.deployProxy(factory, [usdtAddress, owner, recipients], {
+    kind: "uups",
+    initializer: "initialize",
+    unsafeAllow: ["constructor", "state-variable-assignment"],
+  });
   await contract.waitForDeployment();
   return contract;
 }

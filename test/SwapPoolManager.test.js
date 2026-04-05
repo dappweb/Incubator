@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 
 describe("SwapPoolManager", function () {
   it("allows USDT/ICO both ways and restricts LIGHT/ICO to LIGHT->ICO", async function () {
@@ -76,7 +76,11 @@ async function deployMockToken(name, symbol, initialOwner) {
 
 async function deploySwapPool(usdtAddress, icoAddress, lightAddress, initialOwner) {
   const factory = await ethers.getContractFactory("SwapPoolManager");
-  const contract = await factory.deploy(usdtAddress, icoAddress, lightAddress, initialOwner);
+  const contract = await upgrades.deployProxy(factory, [usdtAddress, icoAddress, lightAddress, initialOwner], {
+    kind: "uups",
+    initializer: "initialize",
+    unsafeAllow: ["constructor"],
+  });
   await contract.waitForDeployment();
   return contract;
 }

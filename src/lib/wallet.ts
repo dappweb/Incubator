@@ -1,5 +1,28 @@
 import { BrowserProvider } from "ethers";
-import { SEPOLIA_CHAIN_ID, SEPOLIA_HEX_CHAIN_ID } from "../config";
+import {
+  ICO_TOKEN_ADDRESS,
+  LIGHT_TOKEN_ADDRESS,
+  SEPOLIA_CHAIN_ID,
+  SEPOLIA_HEX_CHAIN_ID,
+  USDT_CONTRACT_ADDRESS,
+} from "../config";
+
+type WalletWatchToken = {
+  address: string;
+  symbol: string;
+  decimals: number;
+};
+
+type WalletSetupResult = {
+  addedTokenCount: number;
+  attemptedTokenCount: number;
+};
+
+const WATCHABLE_TOKENS: WalletWatchToken[] = [
+  { address: USDT_CONTRACT_ADDRESS, symbol: "USDT", decimals: 6 },
+  { address: ICO_TOKEN_ADDRESS, symbol: "ICO", decimals: 18 },
+  { address: LIGHT_TOKEN_ADDRESS, symbol: "LIGHT", decimals: 18 },
+];
 
 export async function connectWallet() {
   if (!window.ethereum) {
@@ -16,6 +39,49 @@ export async function connectWallet() {
     signer,
     address: await signer.getAddress(),
     chainId: Number(network.chainId),
+  };
+}
+
+async function watchTokenInWallet(token: WalletWatchToken) {
+  if (!window.ethereum || !token.address) {
+    return false;
+  }
+
+  try {
+    const result = await window.ethereum.request({
+      method: "wallet_watchAsset",
+      params: [
+        {
+          type: "ERC20",
+          options: {
+            address: token.address,
+            symbol: token.symbol,
+            decimals: token.decimals,
+          },
+        },
+      ],
+    });
+
+    return result === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function setupWalletAfterConnect(): Promise<WalletSetupResult> {
+  await ensureSepoliaNetwork();
+
+  const validTokens = WATCHABLE_TOKENS.filter((token) => token.address);
+  if (validTokens.length === 0) {
+    return { addedTokenCount: 0, attemptedTokenCount: 0 };
+  }
+
+  const watchResults = await Promise.all(validTokens.map((token) => watchTokenInWallet(token)));
+  const addedTokenCount = watchResults.filter(Boolean).length;
+
+  return {
+    addedTokenCount,
+    attemptedTokenCount: validTokens.length,
   };
 }
 

@@ -58,16 +58,16 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
     uint256 public constant USDT_DECIMALS = 1e6;
     uint16 public constant BPS_DENOMINATOR = 10_000;
-    uint256 public machineUnitPrice = 100 * USDT_DECIMALS;
+    uint256 public machineUnitPrice;
     uint256 public constant MAX_MACHINE_PER_ORDER = 10;
     uint256 public constant MAX_MACHINE_UNIT_PRICE = 10_000 * USDT_DECIMALS;
     uint256 public constant MAX_NODE_PRICE = 100_000 * USDT_DECIMALS;
     uint256 public constant MAX_SUPER_NODE_PRICE = 300_000 * USDT_DECIMALS;
 
-    uint256 public nodePrice = 1000 * USDT_DECIMALS;
-    uint256 public superNodePrice = 3000 * USDT_DECIMALS;
+    uint256 public nodePrice;
+    uint256 public superNodePrice;
 
-    uint256 public nextIdentityId = 1;
+    uint256 public nextIdentityId;
     address public identityMarket;
     mapping(uint256 => IdentityAccount) private identities;
     mapping(address => uint256) private ownedIdentityId;
@@ -76,7 +76,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     mapping(uint256 => MachineOrder) public machineOrders;
     mapping(address => uint256[]) private userOrderIds;
     PoolConfig[6] private poolConfigs;
-    uint256 public nextMachineOrderId = 1;
+    uint256 public nextMachineOrderId;
 
     mapping(address => address) public referralOf;
     mapping(address => uint256) public personalPower;
@@ -94,7 +94,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     mapping(uint256 => LeaderboardState) private leaderboards;
     mapping(uint256 => mapping(address => uint256)) public dailyVolume;
 
-    uint16[10] private rankShares = [4000, 2000, 500, 500, 500, 500, 500, 500, 500, 500];
+    uint16[10] private rankShares;
 
     event MachinePurchased(
         address indexed user,
@@ -146,6 +146,12 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         __Pausable_init();
 
         usdt = IERC20(usdtAddress);
+        machineUnitPrice = 100 * USDT_DECIMALS;
+        nodePrice = 1000 * USDT_DECIMALS;
+        superNodePrice = 3000 * USDT_DECIMALS;
+        nextIdentityId = 1;
+        nextMachineOrderId = 1;
+        rankShares = [4000, 2000, 500, 500, 500, 500, 500, 500, 500, 500];
 
         _setPoolConfig(PoolType.Liquidity, initialRecipients[0], 6000);
         _setPoolConfig(PoolType.Referral, initialRecipients[1], 500);
@@ -231,7 +237,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
         uint256 identityId;
         if (currentRole == Role.None) {
-            // No existing node identity — create one directly as SuperNode
             identityId = nextIdentityId;
             nextIdentityId = identityId + 1;
             identities[identityId] = IdentityAccount({
@@ -242,7 +247,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
             });
             ownedIdentityId[msg.sender] = identityId;
         } else {
-            // Existing Node identity — upgrade to SuperNode
             identityId = ownedIdentityId[msg.sender];
             identities[identityId].role = Role.SuperNode;
             identities[identityId].updatedAt = block.timestamp;
