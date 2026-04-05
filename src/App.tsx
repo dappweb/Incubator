@@ -1,35 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BrowserProvider, isAddress } from "ethers";
-import { parseContractError } from "./lib/errorParser";
-
-import "./App.css";
-import "./types/ethereum";
-import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
-import {
-  buyNode,
-  bindReferrer,
-  buySuperNode,
-  getMachineOrder,
-  getMachineUnitPrice,
-  getNodePrice,
-  getSuperNodePrice,
-  getUserMachineOrderIds,
-  getUserRole,
-  getReferrer,
-  getContractOwner,
-  getTeamStats,
-  purchaseMachine,
-  type MachineOrder,
-  type RewardRecord,
-  type TeamStats,
-  getRewardRecordsByBeneficiary,
-} from "./lib/coreContract";
-import { getActiveOrderIds, getOrder, fillOtcOrder, cancelOtcOrder, createOtcOrder, type OtcOrder } from "./lib/otcContract";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { isOnSepolia } from "./lib/wallet";
 import {
   checkConnection,
-  connectWallet,
   ensureSepoliaNetwork,
-  isOnSepolia,
   listenToWalletEvents,
   setupWalletAfterConnect,
 } from "./lib/wallet";
@@ -38,8 +13,38 @@ import { approveIdentityForOtc, getTokenOfOwner, isIdentityApproved } from "./li
 import { CORE_CONTRACT_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS } from "./config";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { getSwapPool, quoteSwapExactIn, swapExactIn } from "./lib/swapContract";
+import {
+  bindReferrer,
+  buyNode,
+  buySuperNode,
+  getContractOwner,
+  getMachineOrder,
+  getMachineUnitPrice,
+  getNodePrice,
+  getReferrer,
+  getRewardRecordsByBeneficiary,
+  getSuperNodePrice,
+  getTeamStats,
+  getUserMachineOrderIds,
+  getUserRole,
+  purchaseMachine,
+  type MachineOrder,
+  type RewardRecord,
+  type TeamStats,
+} from "./lib/coreContract";
+import {
+  cancelOtcOrder,
+  createOtcOrder,
+  fillOtcOrder,
+  getActiveOrderIds,
+  getOrder,
+  type OtcOrder,
+} from "./lib/otcContract";
+import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
+import { parseContractError } from "./lib/errorParser";
 import { Card, KVRow } from "./components/Common";
 import Admin from "./components/Admin";
+import "./App.css";
 
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
 type SwapSubTab = "primary" | "light";
@@ -47,6 +52,30 @@ type SwapDirection = "forward" | "reverse";
 
 const LIGHT_ICO_PAIR_ID = 1;
 const FIRST_CONNECT_GUIDE_DONE_KEY = "incubator:first-connect-guide-done";
+
+const toSafeBigInt = (value: unknown): bigint => {
+  if (typeof value === "bigint") {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return BigInt(Math.trunc(value));
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return 0n;
+    }
+    try {
+      return BigInt(trimmed);
+    } catch {
+      return 0n;
+    }
+  }
+
+  return 0n;
+};
 
 const DESKTOP_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "首页" },
@@ -489,6 +518,23 @@ const App = () => {
 
   const isConnected = Boolean(address && provider);
 
+  useEffect(() => {
+    if (!isConnected) {
+      return;
+    }
+
+    let hasCompletedGuide = false;
+    try {
+      hasCompletedGuide = window.localStorage.getItem(FIRST_CONNECT_GUIDE_DONE_KEY) === "1";
+    } catch {
+      hasCompletedGuide = false;
+    }
+
+    if (!hasCompletedGuide) {
+      setShowFirstConnectGuide(true);
+    }
+  }, [isConnected]);
+
   const machineTotal = useMemo(() => machinePrice * BigInt(machineQty || 0), [machinePrice, machineQty]);
   const machineApprovalGap = useMemo(() => (machineTotal > coreAllowance ? machineTotal - coreAllowance : 0n), [coreAllowance, machineTotal]);
   const roleLabel = useMemo(() => (role === 2 ? t.roleSuperNode : role === 1 ? t.roleNode : t.roleUser), [role, t.roleNode, t.roleSuperNode, t.roleUser]);
@@ -626,15 +672,15 @@ const App = () => {
     return swapHasEnoughBalance;
   }, [loading, swapAmountRaw, swapHasEnoughBalance, swapQuoteOut]);
   const recentMachineUnits = useMemo(
-    () => orders.reduce((sum, order) => sum + order.quantity, 0n),
+    () => orders.reduce((sum, order) => sum + toSafeBigInt(order.quantity), 0n),
     [orders],
   );
   const recentMachineAmount = useMemo(
-    () => orders.reduce((sum, order) => sum + order.amountUSDT, 0n),
+    () => orders.reduce((sum, order) => sum + toSafeBigInt(order.amountUSDT), 0n),
     [orders],
   );
   const recentRewardAmount = useMemo(
-    () => rewardRecords.reduce((sum, row) => sum + row.amountUSDT, 0n),
+    () => rewardRecords.reduce((sum, row) => sum + toSafeBigInt(row.amountUSDT), 0n),
     [rewardRecords],
   );
 
@@ -774,14 +820,24 @@ const App = () => {
     const orderIds = await getUserMachineOrderIds(connectedProvider, wallet);
     setMachineOrderCount(orderIds.length);
     const nextOrders = await Promise.all(orderIds.slice(Math.max(0, orderIds.length - 8)).map((id) => getMachineOrder(connectedProvider, id)));
-    setOrders(nextOrders.reverse().map(order => ({
-      ...order,
-      createdAt: order.createdAt * 1000n // Convert seconds to milliseconds
-    })));
+    setOrders(
+      nextOrders.reverse().map((order) => ({
+        ...order,
+        quantity: toSafeBigInt(order.quantity),
+        amountUSDT: toSafeBigInt(order.amountUSDT),
+        createdAt: toSafeBigInt(order.createdAt) * 1000n,
+      })),
+    );
 
     try {
       const nextRewardRecords = await getRewardRecordsByBeneficiary(connectedProvider, wallet, 12);
-      setRewardRecords(nextRewardRecords);
+      setRewardRecords(
+        nextRewardRecords.map((record) => ({
+          ...record,
+          orderId: toSafeBigInt(record.orderId),
+          amountUSDT: toSafeBigInt(record.amountUSDT),
+        })),
+      );
     } catch (error) {
       console.error("Failed to fetch reward records", error);
       setRewardRecords([]);
@@ -887,37 +943,6 @@ const App = () => {
     };
   }, [isSwapTab, swapSubTab, address, provider, activePairId, activeSwapDirection, swapAmountIn]);
 
-  const onConnect = async () => {
-    try {
-      const connection = await connectWallet();
-      const setupResult = await setupWalletAfterConnect();
-      await syncWalletState(connection.provider, connection.address, connection.chainId);
-
-      if (setupResult.attemptedTokenCount > 0) {
-        if (langRef.current === "zh") {
-          setStatus(`钱包连接成功，已完成网络检查，并配置 ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} 个代币。`);
-        } else {
-          setStatus(
-            `Wallet connected. Network is ready and ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} tokens were configured.`,
-          );
-        }
-      } else {
-        setStatus(t.walletConnected);
-      }
-
-      try {
-        const hasShownFirstGuide = window.localStorage.getItem(FIRST_CONNECT_GUIDE_DONE_KEY) === "1";
-        if (!hasShownFirstGuide) {
-          setShowFirstConnectGuide(true);
-        }
-      } catch {
-        setShowFirstConnectGuide(true);
-      }
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : t.walletConnectFailed);
-    }
-  };
-
   const markFirstConnectGuideDone = () => {
     try {
       window.localStorage.setItem(FIRST_CONNECT_GUIDE_DONE_KEY, "1");
@@ -956,11 +981,6 @@ const App = () => {
     } finally {
       setFirstConnectGuideRunning(false);
     }
-  };
-
-  const onDisconnect = () => {
-    resetWalletState();
-    setStatus(t.walletDisconnected);
   };
 
   const onCopyAddress = async () => {
@@ -1268,9 +1288,12 @@ const App = () => {
         <button className="icon-btn" onClick={toggleLang} title="Toggle Language" type="button">
           {lang === "zh" ? "中" : "EN"}
         </button>
-        <button onClick={isConnected ? onDisconnect : onConnect} className="primary-btn" disabled={loading} type="button">
-          {loading ? t.loading : (isConnected ? t.disconnect : t.connect)}
-        </button>
+        <ConnectButton
+          label={t.connect}
+          showBalance={false}
+          chainStatus="icon"
+          accountStatus={{ smallScreen: "avatar", largeScreen: "full" }}
+        />
       </div>
     </header>
 
@@ -1525,7 +1548,7 @@ const App = () => {
 
       {activeTab === "swap" ? (
         <section className="grid-full">
-          <Card className="swap-card">
+          <Card title={t.swapTitle} className="swap-card">
             <div className="swap-sub-tabs">
               <button 
                 className={swapSubTab === "primary" ? "tab-btn tab-active" : "tab-btn"} 
