@@ -782,18 +782,18 @@ const App = () => {
       console.error("Failed to fetch user stats", e);
     }
 
-    const owner = await getContractOwner(connectedProvider);
-    setContractOwner(owner);
+    // 合约 Owner 与推荐人状态（单独 try/catch，失败不影响整体刷新）
+    try {
+      const owner = await getContractOwner(connectedProvider);
+      setContractOwner(owner);
 
-    // 检查并绑定推荐人
-    const currentReferrer = await getReferrer(connectedProvider, wallet);
-    if (currentReferrer === "0x0000000000000000000000000000000000000000") {
-      // 检查 URL 中是否有推荐人
-      const params = new URLSearchParams(window.location.search);
-      const urlRef = params.get("ref");
-      
-      if (urlRef && isAddress(urlRef)) {
-        if (urlRef.toLowerCase() !== wallet.toLowerCase()) {
+      const currentReferrer = await getReferrer(connectedProvider, wallet);
+      const zeroAddr = "0x0000000000000000000000000000000000000000";
+      if (!currentReferrer || currentReferrer === zeroAddr) {
+        // 未绑定：检查 URL 参数 → 默认 Owner
+        const params = new URLSearchParams(window.location.search);
+        const urlRef = params.get("ref");
+        if (urlRef && isAddress(urlRef) && urlRef.toLowerCase() !== wallet.toLowerCase()) {
           setMachineReferrer(urlRef);
           setReferrerSource("link");
         } else if (owner && isAddress(owner) && owner.toLowerCase() !== wallet.toLowerCase()) {
@@ -804,31 +804,32 @@ const App = () => {
           setReferrerSource("manual");
         }
       } else {
-        if (owner && owner.toLowerCase() !== wallet.toLowerCase()) {
-          setMachineReferrer(owner);
-          setReferrerSource("owner");
-        } else {
-          setMachineReferrer("");
-          setReferrerSource("manual");
-        }
+        // 已绑定：同步链上状态
+        setMachineReferrer(currentReferrer);
+        setReferrerSource("onchain");
       }
-    } else {
-      setMachineReferrer(currentReferrer);
-      setReferrerSource("onchain");
+    } catch (e) {
+      console.error("Failed to fetch owner / referrer", e);
     }
 
-    const orderIds = await getUserMachineOrderIds(connectedProvider, wallet);
-    setMachineOrderCount(orderIds.length);
-    const nextOrders = await Promise.all(orderIds.slice(Math.max(0, orderIds.length - 8)).map((id) => getMachineOrder(connectedProvider, id)));
-    setOrders(
-      nextOrders.reverse().map((order) => ({
-        ...order,
-        quantity: toSafeBigInt(order.quantity),
-        amountUSDT: toSafeBigInt(order.amountUSDT),
-        createdAt: toSafeBigInt(order.createdAt) * 1000n,
-      })),
-    );
+    // 矿机订单
+    try {
+      const orderIds = await getUserMachineOrderIds(connectedProvider, wallet);
+      setMachineOrderCount(orderIds.length);
+      const nextOrders = await Promise.all(orderIds.slice(Math.max(0, orderIds.length - 8)).map((id) => getMachineOrder(connectedProvider, id)));
+      setOrders(
+        nextOrders.reverse().map((order) => ({
+          ...order,
+          quantity: toSafeBigInt(order.quantity),
+          amountUSDT: toSafeBigInt(order.amountUSDT),
+          createdAt: toSafeBigInt(order.createdAt) * 1000n,
+        })),
+      );
+    } catch (e) {
+      console.error("Failed to fetch machine orders", e);
+    }
 
+    // 奖励记录
     try {
       const nextRewardRecords = await getRewardRecordsByBeneficiary(connectedProvider, wallet, 12);
       setRewardRecords(
@@ -843,19 +844,34 @@ const App = () => {
       setRewardRecords([]);
     }
 
-    const nextIdentityId = await getTokenOfOwner(connectedProvider, wallet);
-    setIdentityId(nextIdentityId);
-    setIdentityApproved(nextIdentityId && OTC_CONTRACT_ADDRESS ? await isIdentityApproved(connectedProvider, nextIdentityId, OTC_CONTRACT_ADDRESS) : false);
+    // 身份 ID
+    try {
+      const nextIdentityId = await getTokenOfOwner(connectedProvider, wallet);
+      setIdentityId(nextIdentityId);
+      setIdentityApproved(nextIdentityId && OTC_CONTRACT_ADDRESS ? await isIdentityApproved(connectedProvider, nextIdentityId, OTC_CONTRACT_ADDRESS) : false);
+    } catch (e) {
+      console.error("Failed to fetch identity", e);
+    }
 
+    // OTC 挂单
     if (OTC_CONTRACT_ADDRESS) {
-      const ids = await getActiveOrderIds(connectedProvider);
-      const nextActiveOrders = await Promise.all(ids.slice(0, 20).map((id) => getOrder(connectedProvider, id)));
-      setActiveOrders(nextActiveOrders.filter((row) => row.active));
+      try {
+        const ids = await getActiveOrderIds(connectedProvider);
+        const nextActiveOrders = await Promise.all(ids.slice(0, 20).map((id) => getOrder(connectedProvider, id)));
+        setActiveOrders(nextActiveOrders.filter((row) => row.active));
+      } catch (e) {
+        console.error("Failed to fetch OTC orders", e);
+      }
     } else {
       setActiveOrders([]);
     }
 
-    await refreshSwapPanel(connectedProvider, wallet);
+    // Swap 面板（可选，失败不影响）
+    try {
+      await refreshSwapPanel(connectedProvider, wallet);
+    } catch (e) {
+      console.error("Failed to refresh swap panel", e);
+    }
   };
 
   const syncWalletState = async (connectedProvider: BrowserProvider, wallet: string, nextChainId: number) => {
@@ -1095,27 +1111,36 @@ const App = () => {
   });
 
   const onBindReferrer = async () => guardedAction(async () => {
+    if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     const referrer = machineReferrer.trim();
-    if (!isAddress(referrer)) throw new Error(t.invalidReferrer);
+    if (!referrer || !isAddress(referrer)) throw new Error(t.invalidReferrer);
+
+    // 自邀请：自动切换为合约 Owner
     if (address && referrer.toLowerCase() === address.toLowerCase()) {
       if (contractOwner && isAddress(contractOwner) && contractOwner.toLowerCase() !== address.toLowerCase()) {
-        setMachineReferrer(contractOwner);
+        const ownerRef = contractOwner;
+        setMachineReferrer(ownerRef);
         setReferrerSource("owner");
-        setStatus(lang === "zh" ? "检测到自邀请，已自动切换为合约 Owner" : "Self-invite detected, switched to contract owner");
         setStatus(t.bindingReferrer);
-        await bindReferrer(provider!, contractOwner);
+        await bindReferrer(provider!, ownerRef);
+        setMachineReferrer(ownerRef);
         setReferrerSource("onchain");
         setStatus(t.bindReferrerSuccess);
         return;
       }
       throw new Error(t.invalidSelfReferrer);
     }
+
+    // 已绑定：提示无需重复
     if (hasBoundReferrer) {
       setStatus(t.referrerAlreadyBound);
       return;
     }
+
     setStatus(t.bindingReferrer);
     await bindReferrer(provider!, referrer);
+    // 立即更新本地状态，避免依赖 refreshAll 时序
+    setMachineReferrer(referrer);
     setReferrerSource("onchain");
     setStatus(t.bindReferrerSuccess);
   });
