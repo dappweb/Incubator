@@ -13,6 +13,7 @@ async function main() {
   const core = await upgrades.deployProxy(CoreFactory, [usdtAddress, deployer.address, poolRecipients], {
     kind: "uups",
     initializer: "initialize",
+    unsafeAllow: ["constructor"],
   });
   await core.waitForDeployment();
 
@@ -20,6 +21,7 @@ async function main() {
   const otc = await upgrades.deployProxy(OtcFactory, [usdtAddress, await core.getAddress(), deployer.address, deployer.address], {
     kind: "uups",
     initializer: "initialize",
+    unsafeAllow: ["constructor"],
   });
   await otc.waitForDeployment();
 
@@ -30,6 +32,7 @@ async function main() {
   const swap = await upgrades.deployProxy(SwapFactory, [usdtAddress, icoAddress, lightAddress, deployer.address], {
     kind: "uups",
     initializer: "initialize",
+    unsafeAllow: ["constructor"],
   });
   await swap.waitForDeployment();
 

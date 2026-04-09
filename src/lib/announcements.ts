@@ -1,11 +1,3 @@
-import { Client, Databases, Query } from "appwrite";
-import {
-  APPWRITE_ANNOUNCEMENTS_COLLECTION_ID,
-  APPWRITE_DATABASE_ID,
-  APPWRITE_ENDPOINT,
-  APPWRITE_PROJECT_ID,
-} from "../config";
-
 export type Announcement = {
   $id: string;
   title: string;
@@ -17,38 +9,22 @@ export type Announcement = {
   createdAt: string;
 };
 
-const client = new Client();
-
-if (APPWRITE_ENDPOINT && APPWRITE_PROJECT_ID) {
-  client.setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
-}
-
-const databases = new Databases(client);
-
-export async function fetchPublishedAnnouncements() {
-  if (
-    !APPWRITE_DATABASE_ID ||
-    !APPWRITE_ANNOUNCEMENTS_COLLECTION_ID ||
-    !APPWRITE_ENDPOINT ||
-    !APPWRITE_PROJECT_ID
-  ) {
-    return [] as Announcement[];
+/**
+ * Loads announcements from the static file /announcements.json (served from public/).
+ * To add or update announcements, edit public/announcements.json — no rebuild required.
+ */
+export async function fetchPublishedAnnouncements(): Promise<Announcement[]> {
+  try {
+    const response = await fetch("/announcements.json");
+    if (!response.ok) {
+      return [];
+    }
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) {
+      return [];
+    }
+    return data as Announcement[];
+  } catch {
+    return [];
   }
-
-  const nowIso = new Date().toISOString();
-  const result = await databases.listDocuments(
-    APPWRITE_DATABASE_ID,
-    APPWRITE_ANNOUNCEMENTS_COLLECTION_ID,
-    [
-      Query.equal("status", "published"),
-      Query.or([Query.isNull("startAt"), Query.lessThanEqual("startAt", nowIso)]),
-      Query.or([Query.isNull("endAt"), Query.greaterThan("endAt", nowIso)]),
-      Query.orderDesc("pin"),
-      Query.orderDesc("priority"),
-      Query.orderDesc("createdAt"),
-      Query.limit(20),
-    ],
-  );
-
-  return result.documents as unknown as Announcement[];
 }

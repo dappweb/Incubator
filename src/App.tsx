@@ -547,6 +547,25 @@ const App = () => {
     () => referrerSource === "onchain" && Boolean(machineReferrer && isAddress(machineReferrer)),
     [machineReferrer, referrerSource],
   );
+  const referrerCandidate = useMemo(() => {
+    if (!address) return "";
+
+    const manualReferrer = machineReferrer.trim();
+    if (manualReferrer && isAddress(manualReferrer) && manualReferrer.toLowerCase() !== address.toLowerCase()) {
+      return manualReferrer;
+    }
+
+    if (contractOwner && isAddress(contractOwner) && contractOwner.toLowerCase() !== address.toLowerCase()) {
+      return contractOwner;
+    }
+
+    return "";
+  }, [address, contractOwner, machineReferrer]);
+  const isRootNode = useMemo(() => role > 0, [role]);
+  const hasEffectiveReferrer = useMemo(
+    () => (isRootNode || hasBoundReferrer || Boolean(referrerCandidate)),
+    [hasBoundReferrer, isRootNode, referrerCandidate],
+  );
   const referrerSourceLabel = useMemo(() => {
     if (referrerSource === "link") return t.referrerFromLink;
     if (referrerSource === "onchain") return t.referrerFromChain;
@@ -557,23 +576,23 @@ const App = () => {
   const machineDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
-    if (!hasBoundReferrer) return t.needReferrerToBuy;
+    if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     return "";
-  }, [hasBoundReferrer, isConnected, isWrongNetwork, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy]);
   const nodeDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
-    if (!hasBoundReferrer) return t.needReferrerToBuy;
+    if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role !== 0) return t.roleMismatchForNode;
     return "";
-  }, [hasBoundReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.roleMismatchForNode]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.roleMismatchForNode]);
   const superDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needSepoliaToBuy;
-    if (!hasBoundReferrer) return t.needReferrerToBuy;
+    if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role === 2) return t.alreadySuperNode;
     return "";
-  }, [hasBoundReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.alreadySuperNode]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.alreadySuperNode]);
   const bindReferrerDisabledReason = useMemo(() => {
     if (!isConnected) return t.connectFirst;
     if (isWrongNetwork) return t.switchSepolia;
@@ -583,11 +602,11 @@ const App = () => {
   const purchaseFlow = useMemo(
     () => [
       { label: t.stepConnect, done: isConnected },
-      { label: t.stepReferrer, done: hasBoundReferrer },
+      { label: t.stepReferrer, done: hasEffectiveReferrer },
       { label: t.stepApprove, done: coreAllowance >= machineTotal && machineTotal > 0n },
       { label: t.stepPurchase, done: false },
     ],
-    [coreAllowance, hasBoundReferrer, isConnected, machineTotal, t.stepApprove, t.stepConnect, t.stepPurchase, t.stepReferrer],
+    [coreAllowance, hasEffectiveReferrer, isConnected, machineTotal, t.stepApprove, t.stepConnect, t.stepPurchase, t.stepReferrer],
   );
   const swapAmountRaw = useMemo(() => {
     try {
@@ -628,17 +647,26 @@ const App = () => {
   const visibleDesktopTabs = useMemo(() => {
     const tabs = [...DESKTOP_TABS];
     if (isOwner) {
-      tabs.push({ key: "admin" as TabKey, label: "管理" });
+      tabs.push({ key: "admin" as TabKey, label: t.tab_admin });
     }
     return tabs;
-  }, [isOwner]);
+  }, [isOwner, t.tab_admin]);
   const visibleMobileTabs = useMemo(() => {
     const tabs = [...MOBILE_TABS];
     if (isOwner) {
-      tabs.push({ key: "admin" as TabKey, label: "管理" });
+      tabs.push({ key: "admin" as TabKey, label: t.tab_admin });
     }
     return tabs;
+  }, [isOwner, t.tab_admin]);
+
+  useEffect(() => {
+    if (isOwner) {
+      setActiveTab((current) => (current === "admin" ? current : "admin"));
+      return;
+    }
+    setActiveTab((current) => (current === "admin" ? "overview" : current));
   }, [isOwner]);
+
   const isLightRecoveryPool = useMemo(() => activePairId === LIGHT_ICO_PAIR_ID, [activePairId]);
   const effectiveSwapDirection = useMemo<SwapDirection>(
     () => activeSwapDirection,
@@ -756,23 +784,35 @@ const App = () => {
   };
 
   const refreshAll = async (connectedProvider: BrowserProvider, wallet: string) => {
-    const [nextMachinePrice, nextNodePrice, nextSuperPrice, nextRole, balance, allowanceCore, allowanceOtc] = await Promise.all([
-      getMachineUnitPrice(connectedProvider),
-      getNodePrice(connectedProvider),
-      getSuperNodePrice(connectedProvider),
-      getUserRole(connectedProvider, wallet),
-      getUsdtBalance(connectedProvider, wallet),
-      CORE_CONTRACT_ADDRESS ? getUsdtAllowance(connectedProvider, wallet, CORE_CONTRACT_ADDRESS) : Promise.resolve(0n),
-      OTC_CONTRACT_ADDRESS ? getUsdtAllowance(connectedProvider, wallet, OTC_CONTRACT_ADDRESS) : Promise.resolve(0n),
-    ]);
+    let nextMachinePrice: bigint | undefined;
+    let nextNodePrice: bigint | undefined;
+    let nextSuperPrice: bigint | undefined;
+    let nextRole: number | undefined;
+    let balance: bigint | undefined;
+    let allowanceCore: bigint | undefined;
+    let allowanceOtc: bigint | undefined;
+    try {
+      [nextMachinePrice, nextNodePrice, nextSuperPrice, nextRole, balance, allowanceCore, allowanceOtc] = await Promise.all([
+        getMachineUnitPrice(connectedProvider),
+        getNodePrice(connectedProvider),
+        getSuperNodePrice(connectedProvider),
+        getUserRole(connectedProvider, wallet),
+        getUsdtBalance(connectedProvider, wallet),
+        CORE_CONTRACT_ADDRESS ? getUsdtAllowance(connectedProvider, wallet, CORE_CONTRACT_ADDRESS) : Promise.resolve(0n),
+        OTC_CONTRACT_ADDRESS ? getUsdtAllowance(connectedProvider, wallet, OTC_CONTRACT_ADDRESS) : Promise.resolve(0n),
+      ]);
+    } catch (e) {
+      console.error("Failed to fetch core chain data", e);
+    }
 
-    setMachinePrice(nextMachinePrice);
-    setNodePrice(nextNodePrice);
-    setSuperPrice(nextSuperPrice);
-    setRole(nextRole);
-    setUsdtBalance(balance);
-    setCoreAllowance(allowanceCore);
-    setOtcAllowance(allowanceOtc);
+    if (nextMachinePrice !== undefined) setMachinePrice(nextMachinePrice);
+    if (nextNodePrice !== undefined) setNodePrice(nextNodePrice);
+    if (nextSuperPrice !== undefined) setSuperPrice(nextSuperPrice);
+    if (nextRole !== undefined) setRole(nextRole);
+    if (balance !== undefined) setUsdtBalance(balance);
+    if (allowanceCore !== undefined) setCoreAllowance(allowanceCore);
+    if (allowanceOtc !== undefined) setOtcAllowance(allowanceOtc);
+    if (allowanceOtc !== undefined) setOtcAllowance(allowanceOtc);
 
     // 团队统计
     try {
@@ -1067,9 +1107,17 @@ const App = () => {
     try {
       setLoading(true);
       await action();
-      await refreshAll(provider, address);
     } catch (error) {
       setStatus(parseContractError(error, langRef.current));
+      setLoading(false);
+      return;
+    }
+    // Post-action refresh — run in the background so a refresh failure
+    // does NOT overwrite the success status from action().
+    try {
+      await refreshAll(provider, address);
+    } catch (e) {
+      console.error("Post-action refresh failed", e);
     } finally {
       setLoading(false);
     }
@@ -1083,6 +1131,46 @@ const App = () => {
     setStatus(`${t.autoApproveThenPay} ${mode === "core" ? t.approvingUsdtCore : t.approvingUsdtOtc}`);
     await approveUsdt(provider!, spender, parseUsdt("1000000000"));
     setStatus(mode === "core" ? t.approvedCoreSuccess : t.approvedOtcSuccess);
+  };
+
+  const ensureReferrerReady = async () => {
+    if (!provider || !address) {
+      throw new Error(t.connectFirst);
+    }
+
+    if (isRootNode) {
+      return;
+    }
+
+    const zeroAddr = "0x0000000000000000000000000000000000000000";
+    const currentReferrer = await getReferrer(provider, address);
+    if (currentReferrer && currentReferrer !== zeroAddr) {
+      setMachineReferrer(currentReferrer);
+      setReferrerSource("onchain");
+      return;
+    }
+
+    let candidate = referrerCandidate;
+    if (!candidate) {
+      try {
+        const nextOwner = await getContractOwner(provider);
+        if (nextOwner && isAddress(nextOwner) && nextOwner.toLowerCase() !== address.toLowerCase()) {
+          candidate = nextOwner;
+          setContractOwner(nextOwner);
+        }
+      } catch {
+      }
+    }
+
+    if (!candidate) {
+      throw new Error(t.needReferrerToBuy);
+    }
+
+    setStatus(t.bindingReferrer);
+    await bindReferrer(provider, candidate);
+    setMachineReferrer(candidate);
+    setReferrerSource("onchain");
+    setStatus(t.bindReferrerSuccess);
   };
 
   const onApproveCore = async () => guardedAction(async () => {
@@ -1101,7 +1189,7 @@ const App = () => {
 
   const onBuyMachine = async () => guardedAction(async () => {
     if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
-    if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
+    await ensureReferrerReady();
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     if (usdtBalance < machineTotal) throw new Error(t.insufficientUsdtBalance);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, machineTotal, coreAllowance, "core");
@@ -1146,7 +1234,7 @@ const App = () => {
   });
 
   const onBuyNode = async () => guardedAction(async () => {
-    if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
+    await ensureReferrerReady();
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     if (usdtBalance < nodePrice) throw new Error(t.insufficientUsdtBalance);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, nodePrice, coreAllowance, "core");
@@ -1156,7 +1244,7 @@ const App = () => {
   });
 
   const onBuySuperNode = async () => guardedAction(async () => {
-    if (!hasBoundReferrer) throw new Error(t.needReferrerToBuy);
+    await ensureReferrerReady();
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     if (usdtBalance < superPrice) throw new Error(t.insufficientUsdtBalance);
     await ensureUsdtApproval(CORE_CONTRACT_ADDRESS, superPrice, coreAllowance, "core");
@@ -1378,7 +1466,7 @@ const App = () => {
           </Card>
 
           {/* 绑定推荐人（仅未绑定时显示） */}
-          {!hasBoundReferrer ? (
+          {!isRootNode && !hasBoundReferrer ? (
             <Card title={t.referrerCardTitle} hint={t.referrerCardHint}>
               <label className="field">
                 {t.referrerInputLabel}

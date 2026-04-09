@@ -1,0 +1,30 @@
+# Caddy configuration for t3.test2dapp.xyz (Sepolia DApp)
+# Place this file at /etc/caddy/Caddyfile on the server
+# Caddy auto-provisions TLS via Let's Encrypt.
+
+t3.test2dapp.xyz {
+    root * /var/www/incubator/dist
+
+    # Gzip compression
+    encode gzip
+
+    # SPA fallback: all routes serve index.html
+    try_files {path} /index.html
+
+    # Serve static files
+    file_server
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        # Cache busted assets (hashed filenames from vite build)
+        @assets path /assets/*
+        Cache-Control @assets "public, max-age=31536000, immutable"
+        # Short cache for index.html and JSON data files
+        @html path *.html /announcements.json
+        Cache-Control @html "no-cache, must-revalidate"
+    }
+}

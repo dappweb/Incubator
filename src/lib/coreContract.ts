@@ -23,7 +23,6 @@ const coreAbi = [
   "function teamTotalVolume(address user) view returns (uint256)",
   "function referralOf(address user) view returns (address)",
   "function owner() view returns (address)",
-  "function getUserStats(address user) view returns (uint256 directCount, uint256 teamCount, uint256 directVolume, uint256 teamVolume)",
   "event RewardSettled(uint256 indexed orderId, uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT)",
 ];
 
@@ -107,7 +106,15 @@ export type RewardRecord = {
 
 export async function getMachineOrder(provider: BrowserProvider, orderId: bigint): Promise<MachineOrder> {
   const contract = getCoreContract(provider) as any;
-  return contract.getMachineOrder(orderId);
+  const row = await contract.getMachineOrder(orderId);
+  return {
+    id: (row.id ?? row[0]) as bigint,
+    user: (row.user ?? row[1]) as string,
+    quantity: (row.quantity ?? row[2]) as bigint,
+    amountUSDT: (row.amountUSDT ?? row[3]) as bigint,
+    referrer: (row.referrer ?? row[4]) as string,
+    createdAt: (row.createdAt ?? row[5]) as bigint,
+  };
 }
 
 export async function getRewardRecordsByBeneficiary(
@@ -198,17 +205,6 @@ export async function getContractOwner(provider: BrowserProvider): Promise<strin
   return contract.owner();
 }
 
-export async function getUserStats(provider: BrowserProvider, user: string) {
-  const contract = getCoreContract(provider) as any;
-  const stats = await contract.getUserStats(user);
-  return {
-    directCount: stats.directCount as bigint,
-    teamCount: stats.teamCount as bigint,
-    directVolume: stats.directVolume as bigint,
-    teamVolume: stats.teamVolume as bigint,
-  };
-}
-
 export type TeamStats = {
   directCount: bigint;
   teamCount: bigint;
@@ -217,18 +213,12 @@ export type TeamStats = {
 };
 
 export async function getTeamStats(provider: BrowserProvider, user: string): Promise<TeamStats> {
-  try {
-    // Prefer single-call getUserStats for efficiency (1 RPC call instead of 4)
-    return await getUserStats(provider, user);
-  } catch {
-    // Fallback to individual calls if getUserStats is not available on-chain
-    const contract = getCoreContract(provider) as any;
-    const [directCount, teamCount, directVolume, teamVolume] = await Promise.all([
-      contract.directReferralCount(user),
-      contract.teamTotalMemberCount(user),
-      contract.directReferralVolume(user),
-      contract.teamTotalVolume(user),
-    ]);
-    return { directCount, teamCount, directVolume, teamVolume };
-  }
+  const contract = getCoreContract(provider) as any;
+  const [directCount, teamCount, directVolume, teamVolume] = await Promise.all([
+    contract.directReferralCount(user),
+    contract.teamTotalMemberCount(user),
+    contract.directReferralVolume(user),
+    contract.teamTotalVolume(user),
+  ]);
+  return { directCount, teamCount, directVolume, teamVolume };
 }
