@@ -697,8 +697,8 @@ const App = () => {
   }, [effectiveSwapDirection, poolToken0Name, poolToken1Name, swapTokenInSymbol, swapTokenOutSymbol]);
   const swapCanExecute = useMemo(() => {
     if (loading || swapQuoteOut <= 0n || swapAmountRaw === null || swapAmountRaw === 0n) return false;
-    return swapHasEnoughBalance;
-  }, [loading, swapAmountRaw, swapHasEnoughBalance, swapQuoteOut]);
+    return swapHasEnoughBalance && swapHasEnoughAllowance;
+  }, [loading, swapAmountRaw, swapHasEnoughAllowance, swapHasEnoughBalance, swapQuoteOut]);
   const recentMachineUnits = useMemo(
     () => orders.reduce((sum, order) => sum + toSafeBigInt(order.quantity), 0n),
     [orders],
@@ -811,7 +811,6 @@ const App = () => {
     if (nextRole !== undefined) setRole(nextRole);
     if (balance !== undefined) setUsdtBalance(balance);
     if (allowanceCore !== undefined) setCoreAllowance(allowanceCore);
-    if (allowanceOtc !== undefined) setOtcAllowance(allowanceOtc);
     if (allowanceOtc !== undefined) setOtcAllowance(allowanceOtc);
 
     // 团队统计

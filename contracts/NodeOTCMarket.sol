@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IIncubatorCoreIdentity {
     function ownerOfIdentity(uint256 identityId) external view returns (address);
@@ -19,6 +20,8 @@ interface IIncubatorCoreIdentity {
 }
 
 contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
+    using SafeERC20 for IERC20;
+
     struct Order {
         uint256 id;
         uint256 identityId;
@@ -131,11 +134,11 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
         uint256 fee = (order.priceUSDT * feeBps) / 10000;
         uint256 toSeller = order.priceUSDT - fee;
 
-        bool paidSeller = usdt.transferFrom(msg.sender, order.seller, toSeller);
-        require(paidSeller, "pay seller failed");
+        usdt.safeTransferFrom(msg.sender, order.seller, toSeller);
 
-        bool paidFee = usdt.transferFrom(msg.sender, feeRecipient, fee);
-        require(paidFee, "pay fee failed");
+        if (fee > 0) {
+            usdt.safeTransferFrom(msg.sender, feeRecipient, fee);
+        }
 
         coreIdentity.transferIdentityByMarket(order.identityId, order.seller, msg.sender);
         order.active = false;

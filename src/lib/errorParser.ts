@@ -56,6 +56,20 @@ const REVERT_REASON_MAP: Array<{ key: string; zh: string; en: string }> = [
   { key: "identity not approved",     zh: "身份 NFT 未授权给市场合约，请先授权", en: "Identity NFT not approved for the market — approve first" },
   // Quantity
   { key: "invalid quantity",          zh: "购买数量无效（范围 1–10）",    en: "Invalid quantity (must be 1–10)" },
+  { key: "invalid qty",               zh: "购买数量无效（范围 1–10）",    en: "Invalid quantity (must be 1–10)" },
+  // OTC additional
+  { key: "inactive",                  zh: "该订单已失效，请刷新列表",     en: "Order is no longer active — refresh the list" },
+  { key: "below last trade price",    zh: "挂单价格低于最近成交价，请提高价格", en: "Price is below the last trade price — increase the price" },
+  { key: "identity already listed",   zh: "该身份已有挂单，请先撤销旧挂单", en: "Identity already has an active listing — cancel it first" },
+  { key: "seller not owner",          zh: "卖家不再是此身份的持有人",     en: "Seller is no longer the identity owner" },
+  { key: "market not approved",       zh: "身份 NFT 未授权给市场合约，请先授权", en: "Identity NFT not approved for the market — approve first" },
+  { key: "recipient has identity",    zh: "买家已持有身份，无法接收转移", en: "Buyer already has an identity — cannot transfer" },
+  // Swap additional
+  { key: "no liquidity",              zh: "交易对流动性不足，请等待流动性注入", en: "Swap pool has no liquidity" },
+  { key: "price impact exceeded",     zh: "价格影响过高，流动性不足，请减少兑换数量", en: "Price impact too high — reduce swap amount" },
+  { key: "LIGHT->ICO only",           zh: "LIGHT 回收池仅支持 LIGHT → ICO 方向", en: "The LIGHT recovery pool only supports LIGHT → ICO swaps" },
+  { key: "pair not found",            zh: "交易对不存在",                 en: "Swap pool not found" },
+  { key: "too small in",              zh: "输入金额过小，扣除手续费后无法完成兑换", en: "Input amount too small — nothing left after fee" },
   // Paused
   { key: "EnforcedPause",             zh: "合约已暂停维护，请稍后再试",   en: "Contract is paused — try again later" },
   { key: "Pausable: paused",          zh: "合约已暂停维护，请稍后再试",   en: "Contract is paused — try again later" },
