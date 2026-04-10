@@ -23,8 +23,23 @@ const coreAbi = [
   "function teamTotalVolume(address user) view returns (uint256)",
   "function referralOf(address user) view returns (address)",
   "function owner() view returns (address)",
+  "function paused() view returns (bool)",
+  "function getPoolConfig(uint8 poolType) view returns (address recipient, uint16 bps)",
+  "function updateMachineUnitPrice(uint256 newPrice) external",
+  "function updateNodePrice(uint256 newPrice) external",
+  "function updateSuperNodePrice(uint256 newPrice) external",
+  "function updatePoolRecipient(uint8 poolType, address newRecipient) external",
+  "function updatePoolShare(uint8 poolType, uint16 newBps) external",
+  "function pause() external",
+  "function unpause() external",
   "event RewardSettled(uint256 indexed orderId, uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT)",
+  "event ReferralBound(address indexed user, address indexed referrer)",
 ];
+
+export type CorePoolConfig = {
+  recipient: string;
+  bps: number;
+};
 
 export function getCoreContract(provider: BrowserProvider) {
   if (!CORE_CONTRACT_ADDRESS) {
@@ -200,9 +215,106 @@ export async function getReferrer(provider: BrowserProvider, user: string): Prom
   return contract.referralOf(user);
 }
 
+export async function getDirectReferralsByReferrer(
+  provider: BrowserProvider,
+  referrer: string,
+  maxRecords = 100,
+  lookbackBlocks = 500_000,
+): Promise<string[]> {
+  const contract = getCoreContract(provider) as any;
+  const latestBlock = await provider.getBlockNumber();
+  const fromBlock = Math.max(0, latestBlock - lookbackBlocks);
+  const eventFilter = contract.filters.ReferralBound(null, referrer);
+  const logs = await contract.queryFilter(eventFilter, fromBlock, latestBlock);
+
+  const dedup = new Set<string>();
+  const directReferrals: string[] = [];
+
+  for (const log of logs.slice().reverse()) {
+    const userAddress = String(log.args?.user ?? "");
+    if (!userAddress) {
+      continue;
+    }
+    const normalized = userAddress.toLowerCase();
+    if (dedup.has(normalized)) {
+      continue;
+    }
+    dedup.add(normalized);
+    directReferrals.push(userAddress);
+    if (directReferrals.length >= maxRecords) {
+      break;
+    }
+  }
+
+  return directReferrals;
+}
+
 export async function getContractOwner(provider: BrowserProvider): Promise<string> {
   const contract = getCoreContract(provider) as any;
   return contract.owner();
+}
+
+export async function isCorePaused(provider: BrowserProvider): Promise<boolean> {
+  const contract = getCoreContract(provider) as any;
+  return contract.paused();
+}
+
+export async function getCorePoolConfig(provider: BrowserProvider, poolType: number): Promise<CorePoolConfig> {
+  const contract = getCoreContract(provider) as any;
+  const result = await contract.getPoolConfig(poolType);
+  return {
+    recipient: result.recipient as string,
+    bps: Number(result.bps),
+  };
+}
+
+export async function pauseCore(provider: BrowserProvider) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.pause();
+  return tx.wait();
+}
+
+export async function unpauseCore(provider: BrowserProvider) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.unpause();
+  return tx.wait();
+}
+
+export async function updateMachinePrice(provider: BrowserProvider, newPrice: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.updateMachineUnitPrice(newPrice);
+  return tx.wait();
+}
+
+export async function updateCoreNodePrice(provider: BrowserProvider, newPrice: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.updateNodePrice(newPrice);
+  return tx.wait();
+}
+
+export async function updateCoreSuperNodePrice(provider: BrowserProvider, newPrice: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.updateSuperNodePrice(newPrice);
+  return tx.wait();
+}
+
+export async function updateCorePoolRecipient(provider: BrowserProvider, poolType: number, recipient: string) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.updatePoolRecipient(poolType, recipient);
+  return tx.wait();
+}
+
+export async function updateCorePoolShare(provider: BrowserProvider, poolType: number, bps: number) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.updatePoolShare(poolType, bps);
+  return tx.wait();
 }
 
 export type TeamStats = {

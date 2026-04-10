@@ -59,7 +59,8 @@ src/
   ├─ lib/
   │   ├─ coreContract.ts (智能合约交互)
   │   ├─ usdtContract.ts (USDT 授权和转账)
-  │   ├─ useReferrer.ts (推荐人管理 hook)
+  │   ├─ otcContract.ts (OTC 交易合约交互)
+  │   ├─ swapContract.ts (Swap 池报价和执行)
   │   └─ wallet.ts (钱包连接和网络检查)
   └─ components/
       └─ Common.tsx (UI 组件库)

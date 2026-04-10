@@ -8,6 +8,10 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+interface IERC20Burnable is IERC20 {
+    function burn(uint256 amount) external;
+}
+
 contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     constructor() {
         _disableInitializers();
@@ -23,6 +27,13 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         usdt = IERC20(usdtAddress);
         ico = IERC20(icoAddress);
         light = IERC20(lightAddress);
+        lightBurnBps = 6000;
+        lightBootstrapBps = 3000;
+        lightNodeBps = 700;
+        lightSuperNodeBps = 300;
+        lightBootstrapRecipient = initialOwner;
+        lightNodeRecipient = initialOwner;
+        lightSuperNodeRecipient = initialOwner;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
@@ -49,6 +60,14 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     IERC20 public ico;
     IERC20 public light;
 
+    uint16 public lightBurnBps;
+    uint16 public lightBootstrapBps;
+    uint16 public lightNodeBps;
+    uint16 public lightSuperNodeBps;
+    address public lightBootstrapRecipient;
+    address public lightNodeRecipient;
+    address public lightSuperNodeRecipient;
+
     mapping(uint8 => Pool) private pools;
     mapping(uint8 => mapping(address => uint256)) public feeVault;
 
@@ -73,6 +92,23 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     );
     event FeeDistributed(uint8 indexed pairId, address indexed token, address indexed to, uint256 amount);
     event PoolConfigUpdated(uint8 indexed pairId, uint16 feeBps, uint16 maxPriceImpactBps);
+    event LightFeeConfigUpdated(
+        uint16 burnBps,
+        uint16 bootstrapBps,
+        uint16 nodeBps,
+        uint16 superNodeBps,
+        address indexed bootstrapRecipient,
+        address indexed nodeRecipient,
+        address indexed superNodeRecipient
+    );
+    event TokenBurned(address indexed token, uint256 amount, uint8 indexed pairId);
+    event LightFeesSettled(
+        uint256 totalAmount,
+        uint256 burnedAmount,
+        uint256 bootstrapAmount,
+        uint256 nodeAmount,
+        uint256 superNodeAmount
+    );
 
     function createDefaultPools(uint16 feeBpsUsdtIco, uint16 feeBpsLightIco, uint16 maxPriceImpactBps) external onlyOwner {
         _createPool(uint8(PairId.UsdtIco), address(usdt), address(ico), feeBpsUsdtIco, maxPriceImpactBps);
@@ -206,6 +242,77 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
 
         require(totalBps == BPS_DENOMINATOR, "invalid bps total");
         feeVault[pairId][token] = 0;
+    }
+
+    function updateLightFeeConfig(
+        uint16 burnBps,
+        uint16 bootstrapBps,
+        uint16 nodeBps,
+        uint16 superNodeBps,
+        address bootstrapRecipient,
+        address nodeRecipient,
+        address superNodeRecipient
+    ) external onlyOwner {
+        require(bootstrapRecipient != address(0), "invalid bootstrap recipient");
+        require(nodeRecipient != address(0), "invalid node recipient");
+        require(superNodeRecipient != address(0), "invalid super recipient");
+        require(
+            uint256(burnBps) + uint256(bootstrapBps) + uint256(nodeBps) + uint256(superNodeBps) == BPS_DENOMINATOR,
+            "invalid light bps total"
+        );
+
+        lightBurnBps = burnBps;
+        lightBootstrapBps = bootstrapBps;
+        lightNodeBps = nodeBps;
+        lightSuperNodeBps = superNodeBps;
+        lightBootstrapRecipient = bootstrapRecipient;
+        lightNodeRecipient = nodeRecipient;
+        lightSuperNodeRecipient = superNodeRecipient;
+
+        emit LightFeeConfigUpdated(
+            burnBps,
+            bootstrapBps,
+            nodeBps,
+            superNodeBps,
+            bootstrapRecipient,
+            nodeRecipient,
+            superNodeRecipient
+        );
+    }
+
+    function settleLightFees() external onlyOwner whenNotPaused {
+        uint8 pairId = uint8(PairId.LightIco);
+        uint256 totalAmount = feeVault[pairId][address(light)];
+        require(totalAmount > 0, "no light fee");
+
+        uint256 burnedAmount = (totalAmount * lightBurnBps) / BPS_DENOMINATOR;
+        uint256 bootstrapAmount = (totalAmount * lightBootstrapBps) / BPS_DENOMINATOR;
+        uint256 nodeAmount = (totalAmount * lightNodeBps) / BPS_DENOMINATOR;
+        uint256 superNodeAmount = totalAmount - burnedAmount - bootstrapAmount - nodeAmount;
+
+        feeVault[pairId][address(light)] = 0;
+
+        if (burnedAmount > 0) {
+            IERC20Burnable(address(light)).burn(burnedAmount);
+            emit TokenBurned(address(light), burnedAmount, pairId);
+        }
+
+        if (bootstrapAmount > 0) {
+            light.safeTransfer(lightBootstrapRecipient, bootstrapAmount);
+            emit FeeDistributed(pairId, address(light), lightBootstrapRecipient, bootstrapAmount);
+        }
+
+        if (nodeAmount > 0) {
+            light.safeTransfer(lightNodeRecipient, nodeAmount);
+            emit FeeDistributed(pairId, address(light), lightNodeRecipient, nodeAmount);
+        }
+
+        if (superNodeAmount > 0) {
+            light.safeTransfer(lightSuperNodeRecipient, superNodeAmount);
+            emit FeeDistributed(pairId, address(light), lightSuperNodeRecipient, superNodeAmount);
+        }
+
+        emit LightFeesSettled(totalAmount, burnedAmount, bootstrapAmount, nodeAmount, superNodeAmount);
     }
 
     function updatePoolConfig(uint8 pairId, uint16 feeBps, uint16 maxPriceImpactBps) external onlyOwner {

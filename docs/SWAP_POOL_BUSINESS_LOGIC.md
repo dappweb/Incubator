@@ -101,6 +101,11 @@ $$amountOut = \frac{reserveOut \cdot amountInAfterFee}{reserveIn + amountInAfter
 - `7%` 节点池
 - `3%` 超级节点池
 
+当前仓库已落地最小执行口径：
+- `MockToken` 支持真实 `burn()`
+- `SwapPoolManager.settleLightFees()` 会对 `feeVault[LIGHT/ICO][LIGHT]` 执行 `60/30/7/3` 清算
+- 若线上 LIGHT 代币不支持 `burn()`，则需要先升级为可燃烧 ERC20，或改为黑洞地址销毁方案
+
 ---
 
 ## 6. 风控与限制

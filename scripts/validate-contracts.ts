@@ -2,10 +2,30 @@ import * as assert from "node:assert/strict";
 import { ethers, upgrades } from "hardhat";
 
 async function main() {
+  await validateIcoBurnFlow(ethers);
   await validateCoreFlow(ethers);
   await validateOtcFlow(ethers);
   await validateSwapFlow(ethers);
   console.log("Contract validation passed.");
+}
+
+async function validateIcoBurnFlow(hardhatEthers: typeof ethers) {
+  const [owner, saleWallet, burnOperator, holder] = await hardhatEthers.getSigners();
+
+  const ico = await deployIcoToken(hardhatEthers, owner.address, saleWallet.address);
+  await ico.connect(owner).mint(saleWallet.address, 1_000_000_000_000_000_000_000n);
+  await ico.connect(owner).mint(holder.address, 200_000_000_000_000_000_000n);
+  await ico.connect(owner).setBurnExecutor(burnOperator.address, true);
+
+  const supplyBefore = await ico.totalSupply();
+  await ico.connect(burnOperator).burnUnsold(400_000_000_000_000_000_000n);
+  await ico.connect(holder).burn(50_000_000_000_000_000_000n);
+
+  assert.equal(await ico.balanceOf(saleWallet.address), 600_000_000_000_000_000_000n);
+  assert.equal(await ico.totalBurned(), 450_000_000_000_000_000_000n);
+  assert.equal(supplyBefore - (await ico.totalSupply()), 450_000_000_000_000_000_000n);
+
+  await assert.rejects(ico.connect(holder).burnUnsold(1n));
 }
 
 async function validateCoreFlow(hardhatEthers: typeof ethers) {
@@ -33,8 +53,8 @@ async function validateCoreFlow(hardhatEthers: typeof ethers) {
   assert.equal(await usdt.balanceOf(superPool.address), 10_000_000n);
   assert.equal(await usdt.balanceOf(nodePool.address), 16_000_000n);
   assert.equal(await usdt.balanceOf(platform.address), 40_000_000n);
-  assert.equal(await usdt.balanceOf(leaderboard.address), 0n);
-  assert.equal(await usdt.balanceOf(buyer.address), 9_804_000_000n);
+  assert.equal(await usdt.balanceOf(leaderboard.address), 4_000_000n);
+  assert.equal(await usdt.balanceOf(buyer.address), 9_800_000_000n);
 
   await core.connect(buyer).buyNode();
   assert.equal(await core.roles(buyer.address), 1n);
@@ -89,10 +109,10 @@ async function validateOtcFlow(hardhatEthers: typeof ethers) {
 }
 
 async function validateSwapFlow(hardhatEthers: typeof ethers) {
-  const [owner, trader, feeA, feeB] = await hardhatEthers.getSigners();
+  const [owner, trader, feeA, feeB, bootstrap, nodePool, superNodePool] = await hardhatEthers.getSigners();
 
   const usdt = await deployMockUsdt(hardhatEthers, owner.address);
-  const ico = await deployMockToken(hardhatEthers, "Incubator ICO", "ICO", owner.address);
+  const ico = await deployIcoToken(hardhatEthers, owner.address, owner.address);
   const light = await deployMockToken(hardhatEthers, "Incubator LIGHT", "LIGHT", owner.address);
   const swap = await deploySwap(hardhatEthers, await usdt.getAddress(), await ico.getAddress(), await light.getAddress(), owner.address);
 
@@ -128,6 +148,21 @@ async function validateSwapFlow(hardhatEthers: typeof ethers) {
   await swap.connect(owner).distributeFees(0, await usdt.getAddress(), [feeA.address, feeB.address], [5000, 5000]);
   assert.ok((await usdt.balanceOf(feeA.address)) > 0n);
   assert.ok((await usdt.balanceOf(feeB.address)) > 0n);
+
+  await light.connect(owner).mint(trader.address, 2_000_000_000_000_000_000n);
+  await light.connect(trader).approve(await swap.getAddress(), 2_000_000_000_000_000_000n);
+  await swap.connect(owner).updateLightFeeConfig(6000, 3000, 700, 300, bootstrap.address, nodePool.address, superNodePool.address);
+
+  const lightSupplyBefore = await light.totalSupply();
+  await swap.connect(trader).swapExactIn(1, await light.getAddress(), 1_000_000_000_000_000_000n, 1n, trader.address);
+  assert.equal(await swap.feeVault(1, await light.getAddress()), 20_000_000_000_000_000n);
+
+  await swap.connect(owner).settleLightFees();
+  assert.equal(await swap.feeVault(1, await light.getAddress()), 0n);
+  assert.equal(lightSupplyBefore - (await light.totalSupply()), 12_000_000_000_000_000n);
+  assert.equal(await light.balanceOf(bootstrap.address), 6_000_000_000_000_000n);
+  assert.equal(await light.balanceOf(nodePool.address), 1_400_000_000_000_000n);
+  assert.equal(await light.balanceOf(superNodePool.address), 600_000_000_000_000n);
 }
 
 async function deployMockUsdt(
@@ -164,6 +199,17 @@ async function deployMockToken(
 ) {
   const factory = await hardhatEthers.getContractFactory("MockToken");
   const contract = await factory.deploy(name, symbol, initialOwner);
+  await contract.waitForDeployment();
+  return contract;
+}
+
+async function deployIcoToken(
+  hardhatEthers: typeof ethers,
+  initialOwner: string,
+  saleWallet: string,
+) {
+  const factory = await hardhatEthers.getContractFactory("IncubatorToken");
+  const contract = await factory.deploy("Incubator ICO", "ICO", initialOwner, saleWallet);
   await contract.waitForDeployment();
   return contract;
 }

@@ -10,7 +10,14 @@ const otcAbi = [
   "function getIdentityActiveOrder(uint256 identityId) view returns (uint256)",
   "function lastTradePriceByRole(uint8 role) view returns (uint256)",
   "function feeBps() view returns (uint256)",
+  "function feeRecipient() view returns (address)",
+  "function updateFeeConfig(uint256 newFeeBps, address newRecipient) external",
 ];
+
+export type OtcFeeConfig = {
+  feeBps: number;
+  feeRecipient: string;
+};
 
 export type OtcOrder = {
   id: bigint;
@@ -68,4 +75,25 @@ export async function getOtcFeeBps(provider: BrowserProvider): Promise<number> {
   const contract = getOtcContract(provider) as any;
   const value = (await contract.feeBps()) as bigint;
   return Number(value);
+}
+
+export async function getOtcFeeConfig(provider: BrowserProvider): Promise<OtcFeeConfig> {
+  const contract = getOtcContract(provider) as any;
+  const [feeBps, feeRecipient] = await Promise.all([contract.feeBps(), contract.feeRecipient()]);
+  return {
+    feeBps: Number(feeBps),
+    feeRecipient: feeRecipient as string,
+  };
+}
+
+export async function updateOtcFeeConfig(provider: BrowserProvider, feeBps: number, feeRecipient: string) {
+  const signer = await provider.getSigner();
+  const contract = getOtcContract(provider).connect(signer) as any;
+  const tx = await contract.updateFeeConfig(feeBps, feeRecipient);
+  return tx.wait();
+}
+
+export async function getLastTradePriceByRole(provider: BrowserProvider, role: number): Promise<bigint> {
+  const contract = getOtcContract(provider) as any;
+  return contract.lastTradePriceByRole(role);
 }

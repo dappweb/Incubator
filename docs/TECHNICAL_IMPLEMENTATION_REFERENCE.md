@@ -76,14 +76,11 @@ function buySuperNode() external whenNotPaused
 #### 团队统计相关
 
 ```solidity
-// 查询用户的团队统计（推荐统计所有数据）
-function getUserStats(address user) 
-  view returns (
-    uint256 directCount,       // 直推人数
-    uint256 teamCount,         // 团队总人数
-    uint256 directVolume,      // 直推业绩
-    uint256 teamVolume         // 团队业绩
-  )
+// 当前实现使用 4 个只读 mapping
+function directReferralCount(address user) view returns (uint256)
+function teamTotalMemberCount(address user) view returns (uint256)
+function directReferralVolume(address user) view returns (uint256)
+function teamTotalVolume(address user) view returns (uint256)
 ```
 
 #### 事件定义
@@ -149,18 +146,11 @@ event SuperNodePurchased(
 VITE_CORE_CONTRACT_ADDRESS=0x...
 VITE_OTC_CONTRACT_ADDRESS=0x...
 VITE_SWAP_POOL_ADDRESS=0x...
-VITE_IDENTITY_NFT_ADDRESS=0x...
 
 # Token 地址（Sepolia）
-VITE_USDT_ADDRESS=0x...
+VITE_USDT_CONTRACT_ADDRESS=0x...
 VITE_ICO_TOKEN_ADDRESS=0x...
 VITE_LIGHT_TOKEN_ADDRESS=0x...
-
-# RPC 端点
-VITE_RPC_URL=https://sepolia.infura.io/v3/...
-
-# 网络配置
-VITE_CHAIN_ID=11155111  // Sepolia Chain ID
 ```
 
 ### 核心库函数
@@ -293,34 +283,14 @@ export function formatUsdt(value: bigint): string
   // 1000000 (1e6) = "1"
 ```
 
-### 推荐人管理 Hook
+### 推荐人管理实现
 
-**文件**: `src/lib/useReferrer.ts`
+**文件**: `src/App.tsx`
 
 ```typescript
-interface UseReferrerConfig {
-  userAddress: string | null
-  provider: BrowserProvider | null
-}
-
-interface ReferrerState {
-  address: string
-  source: "none" | "link" | "onchain" | "owner" | "manual"
-}
-
-export function useReferrer(config: UseReferrerConfig): {
-  referrer: ReferrerState
-  contractOwner: string
-  isInitializing: boolean
-  setMachineReferrer: (address: string) => void
-  isValidReferrer: () => boolean
-}
-
-// 内部使用：
-// - 从 URL 读取 referrer 参数
-// - 从链上查询历史推荐人
-// - 读取合约 Owner 作为默认值
-// - 验证推荐人有效性（非自邀请等）
+// 当前版本已将推荐人状态与优先级策略整合在 App.tsx
+// 优先级：URL 参数 -> 链上 referralOf -> owner 默认 -> 手动输入
+// 并在执行购买前通过 ensureReferrerReady() 做链上最终校验/绑定
 ```
 
 ---
@@ -465,11 +435,10 @@ const [userAddress, setUserAddress] = useState<string | null>(null)
 const [provider, setProvider] = useState<BrowserProvider | null>(null)
 const [isConnected, setIsConnected] = useState(false)
 
-// 2. 推荐人状态
-const { referrer, contractOwner, isValidReferrer } = useReferrer({
-  userAddress,
-  provider
-})
+// 2. 推荐人状态（当前在 App.tsx 内集中管理）
+const [machineReferrer, setMachineReferrer] = useState("")
+const [referrerSource, setReferrerSource] = useState<"none" | "link" | "onchain" | "owner" | "manual">("none")
+const [contractOwner, setContractOwner] = useState("")
 
 // 3. 矿机购买状态
 const [machineQty, setMachineQty] = useState(1)
@@ -510,10 +479,10 @@ const needApproval = useMemo(() => {
 // 是否可以购买
 const canPurchase = useMemo(() => {
   return isConnected && 
-         hasValidReferrer && 
+         hasEffectiveReferrer && 
          usdtBalance >= orderTotal && 
          !needApproval
-}, [isConnected, hasValidReferrer, usdtBalance, orderTotal, needApproval])
+}, [isConnected, hasEffectiveReferrer, usdtBalance, orderTotal, needApproval])
 ```
 
 ---

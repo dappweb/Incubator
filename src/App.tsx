@@ -3,6 +3,7 @@ import { BrowserProvider, isAddress } from "ethers";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { isOnSepolia } from "./lib/wallet";
 import {
+  addProjectTokenToWallet,
   checkConnection,
   ensureSepoliaNetwork,
   listenToWalletEvents,
@@ -10,7 +11,7 @@ import {
 } from "./lib/wallet";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "./lib/usdtContract";
 import { approveIdentityForOtc, getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
-import { CORE_CONTRACT_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS } from "./config";
+import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS } from "./config";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { getSwapPool, quoteSwapExactIn, swapExactIn } from "./lib/swapContract";
 import {
@@ -18,6 +19,7 @@ import {
   buyNode,
   buySuperNode,
   getContractOwner,
+  getDirectReferralsByReferrer,
   getMachineOrder,
   getMachineUnitPrice,
   getNodePrice,
@@ -37,6 +39,8 @@ import {
   createOtcOrder,
   fillOtcOrder,
   getActiveOrderIds,
+  getLastTradePriceByRole,
+  getOtcFeeBps,
   getOrder,
   type OtcOrder,
 } from "./lib/otcContract";
@@ -49,6 +53,7 @@ import "./App.css";
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
 type SwapSubTab = "primary" | "light";
 type SwapDirection = "forward" | "reverse";
+type TeamSubTab = "myReferrer" | "myDirects";
 
 const LIGHT_ICO_PAIR_ID = 1;
 const FIRST_CONNECT_GUIDE_DONE_KEY = "incubator:first-connect-guide-done";
@@ -161,9 +166,17 @@ const App = () => {
     quickActionsTitle: lang === "zh" ? "快捷入口" : "Quick Actions",
     quickActionsHint: lang === "zh" ? "移动端底部菜单已精简，兑换入口可从这里快速进入。" : "The mobile menu is simplified. You can jump to Swap from here anytime.",
     goSwap: lang === "zh" ? "前往兑换" : "Go to Swap",
+    addTokenTitle: lang === "zh" ? "添加代币到钱包" : "Add Tokens to Wallet",
+    addTokenHint: lang === "zh" ? "把项目两种核心代币快速加入钱包，方便直接查看余额与发起兑换。" : "Add the project's two core tokens to your wallet for quick balance checks and swaps.",
+    addIcoToken: lang === "zh" ? "添加 ICO" : "Add ICO",
+    addLightToken: lang === "zh" ? "添加 LIGHT" : "Add LIGHT",
+    tokenAdded: lang === "zh" ? "已添加到钱包" : "Added to wallet",
+    tokenAddFailed: lang === "zh" ? "添加代币失败" : "Failed to add token",
+    tokenConfigMissing: lang === "zh" ? "代币地址未配置" : "Token address is not configured",
     machineTitle: lang === "zh" ? "购买矿机" : "Buy Mining Machines",
     machineBadge: lang === "zh" ? "MINER ENTRY" : "MINER ENTRY",
     machineHint: lang === "zh" ? "适合希望快速参与生态的用户，可按需灵活购买数量。" : "Designed for users who want fast access to the ecosystem with flexible quantity selection.",
+    machineBusinessHint: lang === "zh" ? "矿机订单按 60% LP 底池、5% 直推、5% 超级节点池、8% 节点池、20% 平台、2% 排行榜池入账。" : "Machine orders flow into the 60% LP base pool, 5% referral, 5% super-node pool, 8% node pool, 20% platform, and 2% leaderboard pool.",
     machineHeroTitle: lang === "zh" ? "轻量入场，快速建立矿机仓位" : "Start light, build your miner position fast",
     machineHeroDesc: lang === "zh" ? "矿机购买已整合到首页，适合新用户直接完成授权、下单与首笔生态配置。" : "Machine purchase now lives on the home page so new users can approve, place orders and complete their first allocation in one flow.",
     machineFeatureA: lang === "zh" ? "支持 1-10 台灵活购买" : "Flexible orders from 1 to 10 units",
@@ -189,13 +202,13 @@ const App = () => {
     submitMachine: lang === "zh" ? "确认购买" : "Buy Now",
     insufficientApproval: lang === "zh" ? "若授权不足，系统会在支付流程中自动补齐。" : "If allowance is insufficient, it will be completed automatically in the payment flow.",
     nodeTitle: lang === "zh" ? "购买节点" : "Buy Node",
-    nodeDesc: lang === "zh" ? "无需门槛，可直接购买节点资格，成功后立即生效。" : "No entry requirement. Buy node access directly and it becomes effective once confirmed on-chain.",
+    nodeDesc: lang === "zh" ? "无需门槛，可直接购买节点资格；矿机侧 8% 节点奖池先入池，节点身份也可进入 OTC 市场流转。" : "No entry requirement. Buy node access directly; the 8% node pool accrues first and the identity can later circulate in the OTC market.",
     buyNode: lang === "zh" ? "立即购买节点" : "Buy Node",
     buyNodeLocked: lang === "zh" ? "已拥有节点身份" : "Node Already Owned",
     superNodeTitle: lang === "zh" ? "购买超级节点" : "Buy Super Node",
-    superNodeDesc: lang === "zh" ? "无需门槛，可直接购买超级节点资格，成功后立即生效。" : "No entry requirement. Buy super node access directly and it takes effect immediately on-chain.",
+    superNodeDesc: lang === "zh" ? "可直接购买超级节点资格；矿机侧 5% 超级节点奖池先入池，超级节点身份同样支持 OTC 流转。" : "Buy super-node access directly; the 5% super-node pool accrues first and the identity can also circulate through OTC.",
     buySuperNode: lang === "zh" ? "立即购买超级节点" : "Buy Super Node",
-    buySuperNodeLocked: lang === "zh" ? "需先购买节点" : "Buy Node First",
+    buySuperNodeLocked: lang === "zh" ? "已拥有超级节点身份" : "Already a Super Node",
     alreadySuperNode: lang === "zh" ? "已拥有超级节点身份" : "Already a Super Node",
     flowTitle: lang === "zh" ? "购买流程" : "Purchase Flow",
     flowHint: lang === "zh" ? "按步骤完成后可减少失败率与重复操作。" : "Follow these steps to reduce failures and repeat actions.",
@@ -212,9 +225,10 @@ const App = () => {
     needReferrerToBuy: lang === "zh" ? "请先绑定推荐人" : "Bind a referrer first",
     roleMismatchForNode: lang === "zh" ? "当前身份不可重复购买节点" : "Current role cannot buy node again",
     roleMismatchForSuper: lang === "zh" ? "" : "",
-    otcTitle: lang === "zh" ? "节点市场" : "Node Market",
-    otcHint: lang === "zh" ? "在这里可以挂卖或购买节点身份，所有成交结果以链上状态为准。" : "List or buy node identities here. Final settlement always follows on-chain state.",
+    otcTitle: lang === "zh" ? "节点 / 超级节点市场" : "Node / Super-Node Market",
+    otcHint: lang === "zh" ? "节点与超级节点身份都可在此挂卖或购买；成交价不能低于对应身份的上次成交价，且卖出扣 10% 手续费。" : "Node and super-node identities can both be traded here; listings cannot go below the last trade price for that role and selling charges a 10% fee by default.",
     myIdentity: lang === "zh" ? "我的身份 ID" : "My Identity ID",
+    myIdentityRole: lang === "zh" ? "我的身份类型" : "My Identity Role",
     none: lang === "zh" ? "暂无" : "None",
     identityApproval: lang === "zh" ? "身份授权状态" : "Identity Approval",
     approved: lang === "zh" ? "已授权" : "Approved",
@@ -224,10 +238,18 @@ const App = () => {
     approveOtc: lang === "zh" ? "授权市场 USDT" : "Approve Market USDT",
     createListing: lang === "zh" ? "创建挂单" : "Create Listing",
     otcAutoApproveHint: lang === "zh" ? "首次挂单或购买时，将自动完成所需身份 / USDT 授权。" : "Required identity or USDT approvals are completed automatically on first list or buy.",
-    activeListings: lang === "zh" ? "节点挂单" : "Node Listings",
+    otcRuleTitle: lang === "zh" ? "市场规则" : "Market Rules",
+    otcRuleHint: lang === "zh" ? "按当前业务口径展示交易门槛、手续费与价格约束。" : "Shows the current business rules for fees and price constraints.",
+    otcFeeRate: lang === "zh" ? "市场手续费" : "Market Fee",
+    otcNodeLastPrice: lang === "zh" ? "节点上次成交价" : "Last Node Trade",
+    otcSuperLastPrice: lang === "zh" ? "超节点上次成交价" : "Last Super-Node Trade",
+    otcRuleSingleListing: lang === "zh" ? "同一个身份 ID 只能存在 1 个活跃挂单。" : "Each identity ID can only have one active listing at a time.",
+    otcRuleFloorPrice: lang === "zh" ? "新挂单价格不能低于该身份类型的上次成交价；低价旧单会在更高成交后自动失效。" : "New listings cannot go below the last trade price for that role; older lower-priced listings are auto-cancelled after a higher fill.",
+    activeListings: lang === "zh" ? "市场挂单" : "Market Listings",
     noListings: lang === "zh" ? "当前暂无可交易挂单。" : "No active listings right now.",
     orderId: lang === "zh" ? "订单ID" : "Order ID",
     identityId: lang === "zh" ? "身份ID" : "Identity ID",
+    otcRole: lang === "zh" ? "身份类型" : "Role",
     seller: lang === "zh" ? "卖家" : "Seller",
     priceUsdt: lang === "zh" ? "价格(USDT)" : "Price (USDT)",
     action: lang === "zh" ? "操作" : "Action",
@@ -239,6 +261,13 @@ const App = () => {
     teamDirects: lang === "zh" ? "直推人数" : "Direct Referrals",
     teamDirectVolume: lang === "zh" ? "直推业绩" : "Direct Volume",
     teamTotalVolume: lang === "zh" ? "团队业绩" : "Team Volume",
+    myReferrerTab: lang === "zh" ? "我的推荐人" : "My Referrer",
+    myDirectsTab: lang === "zh" ? "我的直推人" : "My Direct Referrals",
+    myReferrerTitle: lang === "zh" ? "我的推荐人地址" : "My Referrer Address",
+    myDirectsTitle: lang === "zh" ? "我的直推列表" : "My Direct Referral List",
+    noReferrerBound: lang === "zh" ? "当前尚未绑定推荐人。" : "No referrer is bound yet.",
+    noDirectReferrals: lang === "zh" ? "当前暂无直推成员。" : "No direct referrals yet.",
+    directReferralCountLabel: lang === "zh" ? "直推地址数" : "Direct Referral Addresses",
     inviteTitle: lang === "zh" ? "邀请好友" : "Invite Friends",
     inviteHint: lang === "zh" ? "分享你的专属链接，邀请好友加入生态。" : "Share your exclusive link to invite friends to the ecosystem.",
     inviteLink: lang === "zh" ? "你的邀请链接" : "Your Invite Link",
@@ -273,6 +302,16 @@ const App = () => {
     quoteNeedAmount: lang === "zh" ? "请输入兑换数量以获取报价。" : "Enter an amount to get a quote.",
     quoteInsufficientBalance: lang === "zh" ? "余额不足，请调整数量或更换钱包。" : "Insufficient balance. Reduce the amount or switch wallet.",
     quoteNeedApproval: lang === "zh" ? "授权不足，请先授权输入币。" : "Allowance is too low. Approve the input token first.",
+    swapFlowTitle: lang === "zh" ? "兑换流程" : "Swap Flow",
+    swapStepAmount: lang === "zh" ? "输入数量" : "Enter Amount",
+    swapStepApprove: lang === "zh" ? "完成授权" : "Approve Token",
+    swapStepExecute: lang === "zh" ? "确认兑换" : "Confirm Swap",
+    swapNextAction: lang === "zh" ? "下一步操作" : "Next Action",
+    swapActionApproveHint: lang === "zh" ? "当前额度不足，先完成输入币授权后再发起兑换。" : "Allowance is too low. Approve the input token before swapping.",
+    swapActionExecuteHint: lang === "zh" ? "报价和授权都已满足，可以直接提交兑换。" : "Quote and allowance are ready. You can submit the swap now.",
+    swapActionWaitHint: lang === "zh" ? "先输入有效数量，系统会自动给出报价和后续操作。" : "Enter a valid amount first. The app will prepare the quote and next step automatically.",
+    swapRouteLockedBadge: lang === "zh" ? "方向已锁定" : "Route Locked",
+    swapNeedQuoteHint: lang === "zh" ? "先输入数量并等待报价刷新。" : "Enter an amount and wait for the quote to refresh.",
     lowImpact: lang === "zh" ? "价格冲击较低" : "Low price impact",
     mediumImpact: lang === "zh" ? "价格冲击中等" : "Medium price impact",
     highImpact: lang === "zh" ? "价格冲击偏高，请谨慎确认。" : "High price impact. Review carefully before swapping.",
@@ -298,7 +337,7 @@ const App = () => {
     loadedRecentOrders: lang === "zh" ? "已加载最近订单" : "Loaded Recent Orders",
     loadedRecentRewards: lang === "zh" ? "已加载最近奖励" : "Loaded Recent Rewards",
     rewardsTitle: lang === "zh" ? "奖励记录" : "Reward Records",
-    rewardsHint: lang === "zh" ? "展示当前钱包链上已结算奖励（RewardSettled 事件）。" : "Shows on-chain settled rewards for this wallet (RewardSettled events).",
+    rewardsHint: lang === "zh" ? "仅展示当前钱包链上已结算奖励；节点池、超级节点池与排行榜池按业务口径先入池，再由后续日结流程发放。" : "Shows only settled on-chain rewards; node, super-node, and leaderboard funds accrue into their pools first and are distributed by a later daily settlement flow.",
     noRewards: lang === "zh" ? "暂无奖励记录。" : "No reward records yet.",
     rewardOrder: lang === "zh" ? "来源订单" : "Source Order",
     rewardPool: lang === "zh" ? "奖励池" : "Reward Pool",
@@ -328,7 +367,8 @@ const App = () => {
     approvedOtcSuccess: lang === "zh" ? "市场 USDT 授权已完成。" : "Market USDT approval confirmed.",
     invalidMachineQty: lang === "zh" ? "矿机购买数量需在 1 到 10 之间。" : "Machine quantity must be between 1 and 10.",
     invalidReferrer: lang === "zh" ? "推荐人地址格式不正确。" : "Invalid referrer address.",
-    invalidSelfReferrer: lang === "zh" ? "推荐人不能是当前钱包地址。" : "Referrer cannot be your own wallet address.",
+    invalidSelfReferrer: lang === "zh" ? "推荐人不能是当前钱包地址，且当前无法回退到合约 Owner。" : "Referrer cannot be your own wallet address and no contract-owner fallback is available.",
+    selfReferrerFallback: lang === "zh" ? "检测到自邀请，提交时会自动回退为合约 Owner。" : "Self-referral detected. Submission will fall back to the contract owner.",
     referrerAlreadyBound: lang === "zh" ? "推荐人已绑定，无需重复操作。" : "Referrer already bound.",
     bindingReferrer: lang === "zh" ? "正在绑定推荐人..." : "Binding referrer...",
     bindReferrerSuccess: lang === "zh" ? "推荐人绑定成功。" : "Referrer bound successfully.",
@@ -380,6 +420,7 @@ const App = () => {
   const [contractOwner, setContractOwner] = useState("");
   const [showFirstConnectGuide, setShowFirstConnectGuide] = useState(false);
   const [firstConnectGuideRunning, setFirstConnectGuideRunning] = useState(false);
+  const [addingTokenSymbol, setAddingTokenSymbol] = useState<"ICO" | "LIGHT" | null>(null);
 
   const [machineQty, setMachineQty] = useState(1);
   const [machineReferrer, setMachineReferrer] = useState("");
@@ -400,11 +441,17 @@ const App = () => {
     directVolume: 0n,
     teamVolume: 0n,
   });
+  const [teamSubTab, setTeamSubTab] = useState<TeamSubTab>("myReferrer");
+  const [myReferrer, setMyReferrer] = useState("");
+  const [directReferrals, setDirectReferrals] = useState<string[]>([]);
 
   const [identityId, setIdentityId] = useState<bigint | null>(null);
   const [identityApproved, setIdentityApproved] = useState(false);
   const [newOtcPrice, setNewOtcPrice] = useState("100");
   const [activeOrders, setActiveOrders] = useState<OtcOrder[]>([]);
+  const [otcFeeBps, setOtcFeeBps] = useState(0);
+  const [lastNodeTradePrice, setLastNodeTradePrice] = useState<bigint>(0n);
+  const [lastSuperTradePrice, setLastSuperTradePrice] = useState<bigint>(0n);
 
   const [swapPairId, setSwapPairId] = useState(0);
   const [swapDirection, setSwapDirection] = useState<SwapDirection>("forward");
@@ -485,6 +532,8 @@ const App = () => {
     setMachineOrderCount(0);
     setOrders([]);
     setRewardRecords([]);
+    setMyReferrer("");
+    setDirectReferrals([]);
     setIdentityId(null);
     setIdentityApproved(false);
     setActiveOrders([]);
@@ -538,10 +587,15 @@ const App = () => {
   const machineTotal = useMemo(() => machinePrice * BigInt(machineQty || 0), [machinePrice, machineQty]);
   const machineApprovalGap = useMemo(() => (machineTotal > coreAllowance ? machineTotal - coreAllowance : 0n), [coreAllowance, machineTotal]);
   const roleLabel = useMemo(() => (role === 2 ? t.roleSuperNode : role === 1 ? t.roleNode : t.roleUser), [role, t.roleNode, t.roleSuperNode, t.roleUser]);
-  const hasValidReferrer = useMemo(() => Boolean(machineReferrer && isAddress(machineReferrer)), [machineReferrer]);
+  const trimmedMachineReferrer = useMemo(() => machineReferrer.trim(), [machineReferrer]);
+  const hasValidReferrer = useMemo(() => Boolean(trimmedMachineReferrer && isAddress(trimmedMachineReferrer)), [trimmedMachineReferrer]);
+  const hasInvalidManualReferrer = useMemo(
+    () => Boolean(trimmedMachineReferrer && !isAddress(trimmedMachineReferrer)),
+    [trimmedMachineReferrer],
+  );
   const isSelfReferrer = useMemo(
-    () => Boolean(address && machineReferrer && machineReferrer.toLowerCase() === address.toLowerCase()),
-    [address, machineReferrer],
+    () => Boolean(address && trimmedMachineReferrer && trimmedMachineReferrer.toLowerCase() === address.toLowerCase()),
+    [address, trimmedMachineReferrer],
   );
   const hasBoundReferrer = useMemo(
     () => referrerSource === "onchain" && Boolean(machineReferrer && isAddress(machineReferrer)),
@@ -550,7 +604,7 @@ const App = () => {
   const referrerCandidate = useMemo(() => {
     if (!address) return "";
 
-    const manualReferrer = machineReferrer.trim();
+    const manualReferrer = trimmedMachineReferrer;
     if (manualReferrer && isAddress(manualReferrer) && manualReferrer.toLowerCase() !== address.toLowerCase()) {
       return manualReferrer;
     }
@@ -560,11 +614,11 @@ const App = () => {
     }
 
     return "";
-  }, [address, contractOwner, machineReferrer]);
+  }, [address, contractOwner, trimmedMachineReferrer]);
   const isRootNode = useMemo(() => role > 0, [role]);
   const hasEffectiveReferrer = useMemo(
-    () => (isRootNode || hasBoundReferrer || Boolean(referrerCandidate)),
-    [hasBoundReferrer, isRootNode, referrerCandidate],
+    () => (hasBoundReferrer || Boolean(referrerCandidate)),
+    [hasBoundReferrer, referrerCandidate],
   );
   const referrerSourceLabel = useMemo(() => {
     if (referrerSource === "link") return t.referrerFromLink;
@@ -596,9 +650,14 @@ const App = () => {
   const bindReferrerDisabledReason = useMemo(() => {
     if (!isConnected) return t.connectFirst;
     if (isWrongNetwork) return t.switchSepolia;
-    if (isSelfReferrer) return t.invalidSelfReferrer;
     return "";
-  }, [isConnected, isSelfReferrer, isWrongNetwork, t.connectFirst, t.invalidSelfReferrer, t.switchSepolia]);
+  }, [isConnected, isWrongNetwork, t.connectFirst, t.switchSepolia]);
+  const bindReferrerHint = useMemo(() => {
+    if (bindReferrerDisabledReason) return bindReferrerDisabledReason;
+    if (hasInvalidManualReferrer) return t.invalidReferrer;
+    if (isSelfReferrer) return t.selfReferrerFallback;
+    return "";
+  }, [bindReferrerDisabledReason, hasInvalidManualReferrer, isSelfReferrer, t.invalidReferrer, t.selfReferrerFallback]);
   const purchaseFlow = useMemo(
     () => [
       { label: t.stepConnect, done: isConnected },
@@ -641,9 +700,10 @@ const App = () => {
     return t.lowImpact;
   }, [swapQuoteImpactBps, t.highImpact, t.lowImpact, t.mediumImpact]);
   const isOwner = useMemo(
-    () => address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase(),
+    () => Boolean(address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase()),
     [address, contractOwner],
   );
+  const getRoleLabelByValue = (roleValue: number) => (roleValue === 2 ? t.roleSuperNode : roleValue === 1 ? t.roleNode : t.roleUser);
   const visibleDesktopTabs = useMemo(() => {
     const tabs = [...DESKTOP_TABS];
     if (isOwner) {
@@ -660,11 +720,9 @@ const App = () => {
   }, [isOwner, t.tab_admin]);
 
   useEffect(() => {
-    if (isOwner) {
-      setActiveTab((current) => (current === "admin" ? current : "admin"));
-      return;
+    if (!isOwner) {
+      setActiveTab((current) => (current === "admin" ? "overview" : current));
     }
-    setActiveTab((current) => (current === "admin" ? "overview" : current));
   }, [isOwner]);
 
   const isLightRecoveryPool = useMemo(() => activePairId === LIGHT_ICO_PAIR_ID, [activePairId]);
@@ -699,6 +757,39 @@ const App = () => {
     if (loading || swapQuoteOut <= 0n || swapAmountRaw === null || swapAmountRaw === 0n) return false;
     return swapHasEnoughBalance && swapHasEnoughAllowance;
   }, [loading, swapAmountRaw, swapHasEnoughAllowance, swapHasEnoughBalance, swapQuoteOut]);
+  const swapFlow = useMemo(
+    () => [
+      { label: t.swapStepAmount, done: swapAmountRaw !== null && swapAmountRaw > 0n },
+      { label: t.swapStepApprove, done: swapAmountRaw !== null && swapAmountRaw > 0n && swapHasEnoughAllowance },
+      { label: t.swapStepExecute, done: swapCanExecute },
+    ],
+    [swapAmountRaw, swapCanExecute, swapHasEnoughAllowance, t.swapStepAmount, t.swapStepApprove, t.swapStepExecute],
+  );
+  const swapPrimaryActionLabel = useMemo(() => {
+    if (swapAmountRaw === null || swapAmountRaw === 0n) return t.executeSwap;
+    return swapHasEnoughAllowance ? t.executeSwap : t.approveToken;
+  }, [swapAmountRaw, swapHasEnoughAllowance, t.approveToken, t.executeSwap]);
+  const swapPrimaryActionHint = useMemo(() => {
+    if (swapAmountRaw === null || swapAmountRaw === 0n) return t.swapActionWaitHint;
+    if (swapQuoteOut <= 0n) return t.swapNeedQuoteHint;
+    return swapHasEnoughAllowance ? t.swapActionExecuteHint : t.swapActionApproveHint;
+  }, [swapAmountRaw, swapHasEnoughAllowance, swapQuoteOut, t.swapActionApproveHint, t.swapActionExecuteHint, t.swapActionWaitHint, t.swapNeedQuoteHint]);
+  const swapCanApprove = useMemo(() => {
+    if (loading || swapAmountRaw === null || swapAmountRaw === 0n) return false;
+    if (swapHasEnoughAllowance || !swapTokenInAddress) return false;
+    return swapHasEnoughBalance;
+  }, [loading, swapAmountRaw, swapHasEnoughAllowance, swapHasEnoughBalance, swapTokenInAddress]);
+  const onSwapPrimaryAction = () => {
+    if (swapAmountRaw === null || swapAmountRaw === 0n) {
+      setStatus(t.quoteNeedAmount);
+      return;
+    }
+    if (!swapHasEnoughAllowance) {
+      void onApproveSwapToken();
+      return;
+    }
+    void onSwapExecute();
+  };
   const recentMachineUnits = useMemo(
     () => orders.reduce((sum, order) => sum + toSafeBigInt(order.quantity), 0n),
     [orders],
@@ -821,6 +912,14 @@ const App = () => {
       console.error("Failed to fetch user stats", e);
     }
 
+    try {
+      const referrals = await getDirectReferralsByReferrer(connectedProvider, wallet, 100);
+      setDirectReferrals(referrals);
+    } catch (e) {
+      console.error("Failed to fetch direct referrals", e);
+      setDirectReferrals([]);
+    }
+
     // 合约 Owner 与推荐人状态（单独 try/catch，失败不影响整体刷新）
     try {
       const owner = await getContractOwner(connectedProvider);
@@ -829,6 +928,7 @@ const App = () => {
       const currentReferrer = await getReferrer(connectedProvider, wallet);
       const zeroAddr = "0x0000000000000000000000000000000000000000";
       if (!currentReferrer || currentReferrer === zeroAddr) {
+        setMyReferrer("");
         // 未绑定：检查 URL 参数 → 默认 Owner
         const params = new URLSearchParams(window.location.search);
         const urlRef = params.get("ref");
@@ -844,6 +944,7 @@ const App = () => {
         }
       } else {
         // 已绑定：同步链上状态
+        setMyReferrer(currentReferrer);
         setMachineReferrer(currentReferrer);
         setReferrerSource("onchain");
       }
@@ -895,14 +996,25 @@ const App = () => {
     // OTC 挂单
     if (OTC_CONTRACT_ADDRESS) {
       try {
-        const ids = await getActiveOrderIds(connectedProvider);
+        const [ids, nextOtcFeeBps, nextNodeLastTrade, nextSuperLastTrade] = await Promise.all([
+          getActiveOrderIds(connectedProvider),
+          getOtcFeeBps(connectedProvider),
+          getLastTradePriceByRole(connectedProvider, 1),
+          getLastTradePriceByRole(connectedProvider, 2),
+        ]);
         const nextActiveOrders = await Promise.all(ids.slice(0, 20).map((id) => getOrder(connectedProvider, id)));
+        setOtcFeeBps(nextOtcFeeBps);
+        setLastNodeTradePrice(nextNodeLastTrade);
+        setLastSuperTradePrice(nextSuperLastTrade);
         setActiveOrders(nextActiveOrders.filter((row) => row.active));
       } catch (e) {
         console.error("Failed to fetch OTC orders", e);
       }
     } else {
       setActiveOrders([]);
+      setOtcFeeBps(0);
+      setLastNodeTradePrice(0n);
+      setLastSuperTradePrice(0n);
     }
 
     // Swap 面板（可选，失败不影响）
@@ -1068,6 +1180,31 @@ const App = () => {
     }
   };
 
+  const onAddProjectToken = async (symbol: "ICO" | "LIGHT") => {
+    const tokenAddress = symbol === "ICO" ? ICO_TOKEN_ADDRESS : LIGHT_TOKEN_ADDRESS;
+    if (!tokenAddress) {
+      setStatus(`${symbol} ${t.tokenConfigMissing}`);
+      return;
+    }
+
+    if (!window.ethereum) {
+      setStatus(t.walletConnectFailed);
+      return;
+    }
+
+    try {
+      setAddingTokenSymbol(symbol);
+      await ensureSepoliaNetwork();
+      await addProjectTokenToWallet(symbol);
+      setStatus(`${symbol} ${t.tokenAdded}`);
+    } catch (error) {
+      const fallback = error instanceof Error ? error.message : `${symbol} ${t.tokenAddFailed}`;
+      setStatus(fallback);
+    } finally {
+      setAddingTokenSymbol(null);
+    }
+  };
+
   const onSetSwapMax = () => {
     setSwapAmountIn(formatTokenAmount(swapTokenInBalance, swapTokenInDecimals));
   };
@@ -1137,10 +1274,6 @@ const App = () => {
       throw new Error(t.connectFirst);
     }
 
-    if (isRootNode) {
-      return;
-    }
-
     const zeroAddr = "0x0000000000000000000000000000000000000000";
     const currentReferrer = await getReferrer(provider, address);
     if (currentReferrer && currentReferrer !== zeroAddr) {
@@ -1199,29 +1332,24 @@ const App = () => {
 
   const onBindReferrer = async () => guardedAction(async () => {
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
-    const referrer = machineReferrer.trim();
-    if (!referrer || !isAddress(referrer)) throw new Error(t.invalidReferrer);
 
-    // 自邀请：自动切换为合约 Owner
-    if (address && referrer.toLowerCase() === address.toLowerCase()) {
-      if (contractOwner && isAddress(contractOwner) && contractOwner.toLowerCase() !== address.toLowerCase()) {
-        const ownerRef = contractOwner;
-        setMachineReferrer(ownerRef);
-        setReferrerSource("owner");
-        setStatus(t.bindingReferrer);
-        await bindReferrer(provider!, ownerRef);
-        setMachineReferrer(ownerRef);
-        setReferrerSource("onchain");
-        setStatus(t.bindReferrerSuccess);
-        return;
-      }
-      throw new Error(t.invalidSelfReferrer);
-    }
-
-    // 已绑定：提示无需重复
     if (hasBoundReferrer) {
       setStatus(t.referrerAlreadyBound);
       return;
+    }
+
+    if (hasInvalidManualReferrer) {
+      throw new Error(t.invalidReferrer);
+    }
+
+    const referrer = referrerCandidate;
+    if (!referrer) throw new Error(t.needReferrerToBuy);
+
+    // 自邀请：自动切换为合约 Owner
+    if (address && trimmedMachineReferrer && trimmedMachineReferrer.toLowerCase() === address.toLowerCase()) {
+      if (!contractOwner || !isAddress(contractOwner) || contractOwner.toLowerCase() === address.toLowerCase()) {
+        throw new Error(t.invalidSelfReferrer);
+      }
     }
 
     setStatus(t.bindingReferrer);
@@ -1394,6 +1522,11 @@ const App = () => {
       </div>
 
       <div className="topbar-actions">
+        {isOwner ? (
+          <button className="ghost-btn" type="button" onClick={() => setActiveTab("admin")}>
+            {t.tab_admin}
+          </button>
+        ) : null}
         <button className="icon-btn" onClick={toggleTheme} title="Toggle Theme" type="button">
           {theme === "dark" ? "🌙" : "☀️"}
         </button>
@@ -1416,17 +1549,6 @@ const App = () => {
 
       {activeTab === "overview" ? (
         <section className="grid">
-          <Card title={t.flowTitle} hint={t.flowHint}>
-            <div className="flow-grid">
-              {purchaseFlow.map((step) => (
-                <div key={step.label} className={step.done ? "flow-step flow-step-done" : "flow-step"}>
-                  <span>{step.label}</span>
-                  <strong>{step.done ? "✓" : "..."}</strong>
-                </div>
-              ))}
-            </div>
-          </Card>
-
           <Card title={t.accountSnapshot} hint={t.accountHint}>
             <KVRow label={t.walletStatus} value={isConnected ? t.connected : t.notConnected} />
             <KVRow label={t.network} value={networkLabel} />
@@ -1445,27 +1567,8 @@ const App = () => {
             ) : null}
           </Card>
 
-          {/* 公告卡 */}
-          <Card title={t.homeAnnouncementsTitle} hint={t.homeAnnouncementsHint}>
-            {announcements.length === 0 ? (
-              <p className="hint">{t.homeNoAnnouncements}</p>
-            ) : (
-              <ul className="list">
-                {announcements.slice(0, 5).map((item) => (
-                  <li key={item.$id} className="list-item">
-                    <div className="list-head">
-                      <strong>{item.title}</strong>
-                      <span>{item.category}</span>
-                    </div>
-                    <p>{item.summary}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          {/* 绑定推荐人（仅未绑定时显示） */}
-          {!isRootNode && !hasBoundReferrer ? (
+          {/* 绑定推荐人（非 Owner 且未绑定且非默认 Owner 来源时显示） */}
+          {!isOwner && !hasBoundReferrer && referrerSource !== "owner" ? (
             <Card title={t.referrerCardTitle} hint={t.referrerCardHint}>
               <label className="field">
                 {t.referrerInputLabel}
@@ -1485,14 +1588,46 @@ const App = () => {
                 <button
                   className="primary-btn"
                   onClick={onBindReferrer}
-                  disabled={loading || !hasValidReferrer || Boolean(bindReferrerDisabledReason)}
+                  disabled={loading || !referrerCandidate || hasInvalidManualReferrer || Boolean(bindReferrerDisabledReason)}
                 >
                   {loading ? t.loading : t.bindReferrer}
                 </button>
               </div>
-              {bindReferrerDisabledReason ? <p className="action-hint">{bindReferrerDisabledReason}</p> : null}
+              {bindReferrerHint ? <p className="action-hint">{bindReferrerHint}</p> : null}
             </Card>
           ) : null}
+
+          <Card title={t.flowTitle} hint={t.flowHint}>
+            <div className="flow-grid">
+              {purchaseFlow.map((step) => (
+                <div key={step.label} className={step.done ? "flow-step flow-step-done" : "flow-step"}>
+                  <span>{step.label}</span>
+                  <strong>{step.done ? "✓" : "..."}</strong>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card title={t.addTokenTitle} hint={t.addTokenHint}>
+            <div className="actions">
+              <button
+                className="primary-btn primary-btn--ghost"
+                type="button"
+                onClick={() => onAddProjectToken("ICO")}
+                disabled={addingTokenSymbol !== null || !ICO_TOKEN_ADDRESS}
+              >
+                {addingTokenSymbol === "ICO" ? t.loading : t.addIcoToken}
+              </button>
+              <button
+                className="primary-btn primary-btn--ghost"
+                type="button"
+                onClick={() => onAddProjectToken("LIGHT")}
+                disabled={addingTokenSymbol !== null || !LIGHT_TOKEN_ADDRESS}
+              >
+                {addingTokenSymbol === "LIGHT" ? t.loading : t.addLightToken}
+              </button>
+            </div>
+          </Card>
 
           {/* 矿机购买卡 */}
           <Card title={t.machineTitle} className="machine-card">
@@ -1523,6 +1658,7 @@ const App = () => {
               {machineDisabledReason ? <p className="action-hint">{machineDisabledReason}</p> : null}
             </div>
             <p className="hint">{t.machineAutoApproveHint}</p>
+            <p className="hint">{t.machineBusinessHint}</p>
           </Card>
 
           {/* 节点购买卡 */}
@@ -1548,6 +1684,25 @@ const App = () => {
             </div>
             {superDisabledReason ? <p className="action-hint">{superDisabledReason}</p> : null}
           </Card>
+
+          {/* 公告卡 */}
+          <Card title={t.homeAnnouncementsTitle} hint={t.homeAnnouncementsHint}>
+            {announcements.length === 0 ? (
+              <p className="hint">{t.homeNoAnnouncements}</p>
+            ) : (
+              <ul className="list">
+                {announcements.slice(0, 5).map((item) => (
+                  <li key={item.$id} className="list-item">
+                    <div className="list-head">
+                      <strong>{item.title}</strong>
+                      <span>{item.category}</span>
+                    </div>
+                    <p>{item.summary}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </section>
       ) : null}
 
@@ -1572,6 +1727,57 @@ const App = () => {
                 <strong>{formatUsdt(teamStats.teamVolume)} USDT</strong>
               </div>
             </div>
+            <div className="swap-sub-tabs">
+              <button
+                className={teamSubTab === "myReferrer" ? "tab-btn tab-active" : "tab-btn"}
+                onClick={() => setTeamSubTab("myReferrer")}
+                type="button"
+              >
+                {t.myReferrerTab}
+              </button>
+              <button
+                className={teamSubTab === "myDirects" ? "tab-btn tab-active" : "tab-btn"}
+                onClick={() => setTeamSubTab("myDirects")}
+                type="button"
+              >
+                {t.myDirectsTab}
+              </button>
+            </div>
+
+            {teamSubTab === "myReferrer" ? (
+              myReferrer ? (
+                <ul className="list">
+                  <li className="list-item">
+                    <div className="list-head">
+                      <strong>{t.myReferrerTitle}</strong>
+                      <span>{`${myReferrer.slice(0, 6)}...${myReferrer.slice(-4)}`}</span>
+                    </div>
+                    <p>{myReferrer}</p>
+                  </li>
+                </ul>
+              ) : (
+                <p className="hint">{t.noReferrerBound}</p>
+              )
+            ) : (
+              directReferrals.length === 0 ? (
+                <p className="hint">{t.noDirectReferrals}</p>
+              ) : (
+                <>
+                  <KVRow label={t.directReferralCountLabel} value={directReferrals.length} />
+                  <ul className="list">
+                    {directReferrals.map((ref, index) => (
+                      <li className="list-item" key={ref}>
+                        <div className="list-head">
+                          <strong>{`#${index + 1}`}</strong>
+                          <span>{`${ref.slice(0, 6)}...${ref.slice(-4)}`}</span>
+                        </div>
+                        <p>{ref}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )
+            )}
           </Card>
 
           <Card title={t.inviteTitle} hint={t.inviteHint}>
@@ -1600,6 +1806,10 @@ const App = () => {
               <strong>{identityId ? String(identityId) : t.none}</strong>
             </div>
             <div className="kv-row">
+              <span>{t.myIdentityRole}</span>
+              <strong>{identityId ? getRoleLabelByValue(role) : t.none}</strong>
+            </div>
+            <div className="kv-row">
               <span>{t.identityApproval}</span>
               <strong>{identityApproved ? t.approved : t.notApproved}</strong>
             </div>
@@ -1615,6 +1825,14 @@ const App = () => {
             <p className="hint">{t.otcAutoApproveHint}</p>
           </Card>
 
+          <Card title={t.otcRuleTitle} hint={t.otcRuleHint}>
+            <KVRow label={t.otcFeeRate} value={`${(otcFeeBps / 100).toFixed(2)}%`} />
+            <KVRow label={t.otcNodeLastPrice} value={`${formatUsdt(lastNodeTradePrice)} USDT`} />
+            <KVRow label={t.otcSuperLastPrice} value={`${formatUsdt(lastSuperTradePrice)} USDT`} />
+            <p className="hint">{t.otcRuleSingleListing}</p>
+            <p className="hint">{t.otcRuleFloorPrice}</p>
+          </Card>
+
           <Card title={t.activeListings}>
             {activeOrders.length === 0 ? (
               <p className="hint">{t.noListings}</p>
@@ -1625,6 +1843,7 @@ const App = () => {
                     <tr>
                       <th>{t.orderId}</th>
                       <th>{t.identityId}</th>
+                      <th>{t.otcRole}</th>
                       <th>{t.seller}</th>
                       <th>{t.priceUsdt}</th>
                       <th>{t.action}</th>
@@ -1635,6 +1854,7 @@ const App = () => {
                       <tr key={String(order.id)}>
                         <td>{String(order.id)}</td>
                         <td>{String(order.identityId)}</td>
+                        <td>{getRoleLabelByValue(order.role)}</td>
                         <td>{`${order.seller.slice(0, 6)}...${order.seller.slice(-4)}`}</td>
                         <td>{formatUsdt(order.priceUSDT)}</td>
                         <td>
@@ -1691,6 +1911,20 @@ const App = () => {
 
                 <div className="swap-shell">
                   <div className="swap-panel">
+                    <div className="swap-flow-card">
+                      <div className="swap-flow-head">
+                        <strong>{t.swapFlowTitle}</strong>
+                        <span>{swapRouteLabel}</span>
+                      </div>
+                      <div className="flow-grid swap-flow-grid">
+                        {swapFlow.map((step) => (
+                          <div key={step.label} className={`flow-step ${step.done ? "flow-step-done" : ""}`}>
+                            <span>{step.label}</span>
+                            <strong>{step.done ? "✓" : "..."}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                     <div className="swap-direction-row">
                       <label className="field swap-field-grow">
                         {t.swapDirection}
@@ -1718,6 +1952,21 @@ const App = () => {
                   </div>
 
                   <div className="swap-summary">
+                    <div className="swap-cta-card">
+                      <div className="swap-cta-copy">
+                        <span>{t.swapNextAction}</span>
+                        <strong>{swapPrimaryActionLabel}</strong>
+                        <p>{swapPrimaryActionHint}</p>
+                      </div>
+                      <div className="swap-cta-actions">
+                        <button className="primary-btn swap-primary-btn" onClick={onSwapPrimaryAction} disabled={!(swapCanApprove || swapCanExecute)}>
+                          {swapPrimaryActionLabel}
+                        </button>
+                        <button className="ghost-btn swap-secondary-btn" onClick={onRefreshSwapQuote} disabled={loading || !provider || !address} type="button">
+                          {t.refreshQuote}
+                        </button>
+                      </div>
+                    </div>
                     <div className="swap-stat">
                       <span>{t.estimatedOutput}</span>
                       <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
@@ -1752,10 +2001,6 @@ const App = () => {
                       <small>{swapImpactLabel}</small>
                     </div>
                   </div>
-                </div>
-
-                <div className="actions">
-                  <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
                 </div>
               </>
             ) : (
@@ -1773,6 +2018,21 @@ const App = () => {
 
                 <div className="swap-shell">
                   <div className="swap-panel">
+                    <div className="swap-flow-card swap-flow-card-warn">
+                      <div className="swap-flow-head">
+                        <strong>{t.swapFlowTitle}</strong>
+                        <span>{t.swapRouteLockedBadge}</span>
+                      </div>
+                      <div className="flow-grid swap-flow-grid">
+                        {swapFlow.map((step) => (
+                          <div key={step.label} className={`flow-step ${step.done ? "flow-step-done" : ""}`}>
+                            <span>{step.label}</span>
+                            <strong>{step.done ? "✓" : "..."}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div>
 
                     <div className="swap-input-card">
@@ -1786,6 +2046,21 @@ const App = () => {
                   </div>
 
                   <div className="swap-summary">
+                    <div className="swap-cta-card swap-cta-card-warn">
+                      <div className="swap-cta-copy">
+                        <span>{t.swapNextAction}</span>
+                        <strong>{swapPrimaryActionLabel}</strong>
+                        <p>{swapPrimaryActionHint}</p>
+                      </div>
+                      <div className="swap-cta-actions">
+                        <button className="primary-btn swap-primary-btn" onClick={onSwapPrimaryAction} disabled={!(swapCanApprove || swapCanExecute)}>
+                          {swapPrimaryActionLabel}
+                        </button>
+                        <button className="ghost-btn swap-secondary-btn" onClick={onRefreshSwapQuote} disabled={loading || !provider || !address} type="button">
+                          {t.refreshQuote}
+                        </button>
+                      </div>
+                    </div>
                     <div className="swap-stat">
                       <span>{t.estimatedOutput}</span>
                       <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
@@ -1820,10 +2095,6 @@ const App = () => {
                       <small>{swapImpactLabel}</small>
                     </div>
                   </div>
-                </div>
-
-                <div className="actions">
-                  <button className="primary-btn" onClick={onSwapExecute} disabled={!swapCanExecute}>{t.executeSwap}</button>
                 </div>
               </>
             )}
@@ -1906,7 +2177,7 @@ const App = () => {
       ) : null}
 
       {activeTab === "admin" && isOwner ? (
-        <Admin lang={lang} address={address} contractOwner={contractOwner} />
+        <Admin lang={lang} address={address} contractOwner={contractOwner} provider={provider} onRefresh={onRefreshWallet} onStatusChange={setStatus} />
       ) : null}
     
       {/* 底部导航栏 */}

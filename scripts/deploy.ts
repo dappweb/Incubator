@@ -6,7 +6,7 @@ async function main() {
 
   const poolRecipients = buildPoolRecipients(deployer.address);
   const usdtAddress = await resolveUsdtAddress(ethers, deployer.address);
-  const icoAddress = await resolveNamedTokenAddress(ethers, "ICO", "Incubator ICO", "ICO", deployer.address);
+  const icoAddress = await resolveIcoTokenAddress(ethers, deployer.address);
   const lightAddress = await resolveNamedTokenAddress(ethers, "LIGHT", "Incubator LIGHT", "LIGHT", deployer.address);
 
   const CoreFactory = await ethers.getContractFactory("IncubatorCore");
@@ -85,7 +85,7 @@ async function resolveUsdtAddress(
 
 async function resolveNamedTokenAddress(
   hardhatEthers: typeof ethers,
-  envPrefix: "ICO" | "LIGHT",
+  envPrefix: "LIGHT",
   name: string,
   symbol: string,
   deployerAddress: string,
@@ -107,6 +107,26 @@ async function resolveNamedTokenAddress(
   return await token.getAddress();
 }
 
+async function resolveIcoTokenAddress(
+  hardhatEthers: typeof ethers,
+  deployerAddress: string,
+) {
+  const existingAddress = process.env.ICO_TOKEN_ADDRESS;
+
+  if (existingAddress) {
+    return existingAddress;
+  }
+
+  const IcoTokenFactory = await hardhatEthers.getContractFactory("IncubatorToken");
+  const token = await IcoTokenFactory.deploy("Incubator ICO", "ICO", deployerAddress, deployerAddress);
+  await token.waitForDeployment();
+
+  const mintAmountRaw = process.env.ICO_MINT_AMOUNT || "10000000000000000000000000";
+  await (await token.mint(deployerAddress, mintAmountRaw)).wait();
+
+  return await token.getAddress();
+}
+
 async function trySeedSwapLiquidity(
   hardhatEthers: typeof ethers,
   swap: any,
@@ -116,7 +136,7 @@ async function trySeedSwapLiquidity(
   deployerAddress: string,
 ) {
   const usdt = await hardhatEthers.getContractAt("MockUSDT", usdtAddress);
-  const ico = await hardhatEthers.getContractAt("MockToken", icoAddress);
+  const ico = await hardhatEthers.getContractAt("IncubatorToken", icoAddress);
   const light = await hardhatEthers.getContractAt("MockToken", lightAddress);
 
   const swapAddress = await swap.getAddress();

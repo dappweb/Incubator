@@ -42,7 +42,7 @@ async function main() {
   /* ─── 获取合约实例 ─── */
   const swap  = await ethers.getContractAt("SwapPoolManager", SWAP_ADDRESS);
   const usdt  = await ethers.getContractAt("MockUSDT", USDT_ADDRESS);
-  const ico   = await ethers.getContractAt("MockToken", ICO_ADDRESS);
+  const ico   = await ethers.getContractAt("IncubatorToken", ICO_ADDRESS);
   const light = await ethers.getContractAt("MockToken", LIGHT_ADDRESS);
 
   /* ─── Step 1 : 检查 / 创建池子 ─── */

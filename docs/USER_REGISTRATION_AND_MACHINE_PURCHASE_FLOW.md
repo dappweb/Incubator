@@ -78,7 +78,7 @@ export async function isOnSepolia(): Promise<boolean> {
     ↓ (EIP-1193)
 前端获得: { address, provider }
     ↓
-useReferrer hook 初始化推荐人
+App.tsx 初始化推荐人来源（URL / 链上 / Owner / 手动）
     ↓
 【状态已就绪，等待推荐人绑定】
 ```
@@ -97,7 +97,7 @@ useReferrer hook 初始化推荐人
 | **自邀请处理** | 若用户输入自己的地址，自动切换为合约 Owner |
 | **相同用户检查** | 不允许推荐人 = 用户地址（防止自邀请）|
 
-#### 推荐人优先级（按 [src/lib/useReferrer.ts](src/lib/useReferrer.ts) 确定）
+#### 推荐人优先级（按 [src/App.tsx](src/App.tsx) 当前实现确定）
 
 1. **URL 邀请链接** (优先级最高)
    - 格式：`?referrer=0x...`
@@ -130,17 +130,12 @@ const onBindReferrer = async () => guardedAction(async () => {
     throw new Error("推荐人地址无效");
   }
 
-  // 2. 验证可结合性（通过 useReferrer 的 isValidReferrer 方法）
-  if (!isValidReferrer()) {
-    throw new Error("推荐人验证失败");
-  }
-
-  // 3. 调用链上 bindReferrer 函数
+  // 2. 调用链上 bindReferrer 函数
   await bindReferrer(provider, finalReferrer);
   
   setStatus("推荐人绑定成功。");
   
-  // 4. 刷新推荐人状态
+  // 3. 刷新推荐人状态
   await refreshReferrer();
 });
 ```
@@ -499,7 +494,7 @@ User A 的视角：
 | `bindReferrer(provider, referrer)` | src/lib/coreContract.ts | 调用链上绑定 |
 | `purchaseMachine(provider, qty)` | src/lib/coreContract.ts | 调用链上购买 |
 | `getReferrer(provider, user)` | src/lib/coreContract.ts | 查询链上推荐人 |
-| `useReferrer()` | src/lib/useReferrer.ts | 推荐人管理 hook |
+| `ensureReferrerReady()` | src/App.tsx | 购买前推荐人校验与必要绑定 |
 | `approveUsdt()` | src/lib/usdtContract.ts | USDT 授权 |
 | `getUsdtBalance()` | src/lib/usdtContract.ts | 查询 USDT 余额 |
 | `getUsdtAllowance()` | src/lib/usdtContract.ts | 查询授权额度 |

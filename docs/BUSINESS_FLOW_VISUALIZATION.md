@@ -406,7 +406,7 @@ userAddress
 
 【关键转换触发器】
 
-钱包连接 ──▶ onConnect() ──▶ 启用 useReferrer hook
+钱包连接 ──▶ onConnect() ──▶ App.tsx 初始化推荐人来源
 推荐人绑定 ──▶ onBindReferrer() ──▶ 调用 bindReferrer()
 购买提交 ──▶ onPurchase() ──▶ 调用 purchaseMachine()
 授权 USDT ──▶ onApproveUsdt() ──▶ 调用 approveUsdt()
@@ -479,9 +479,9 @@ userAddress
     │
     └─ 【业务逻辑】
         │
-        ├─ useReferrer hook
-        │   ├─ 推荐人自动检测
-        │   └─ 推荐人验证 (validateReferrer)
+        ├─ 推荐人状态管理（App.tsx 内）
+        │   ├─ URL / 链上 / Owner / 手动优先级
+        │   └─ ensureReferrerReady() 购买前校验与绑定
         │
         ├─ 与智能合约交互
         │   ├─ bindReferrer() [coreContract.ts]

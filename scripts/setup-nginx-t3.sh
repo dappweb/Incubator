@@ -6,9 +6,21 @@ PROJECT_DIR="/home/ubuntu/Incubator"
 SOURCE_CONF="$PROJECT_DIR/deploy/nginx/$DOMAIN.conf"
 TARGET_CONF="/etc/nginx/sites-available/$DOMAIN"
 ENABLED_LINK="/etc/nginx/sites-enabled/$DOMAIN"
+ORIGIN_CERT="/etc/ssl/cloudflare/$DOMAIN.pem"
+ORIGIN_KEY="/etc/ssl/cloudflare/$DOMAIN.key"
 
 if [[ ! -f "$SOURCE_CONF" ]]; then
   echo "Nginx source config not found: $SOURCE_CONF"
+  exit 1
+fi
+
+if [[ ! -f "$ORIGIN_CERT" || ! -f "$ORIGIN_KEY" ]]; then
+  echo "Missing Cloudflare Origin Certificate files."
+  echo "Expected:"
+  echo "  $ORIGIN_CERT"
+  echo "  $ORIGIN_KEY"
+  echo
+  echo "Create an Origin Certificate in Cloudflare dashboard, then upload files to /etc/ssl/cloudflare/."
   exit 1
 fi
 
@@ -27,4 +39,4 @@ fi
 sudo nginx -t
 sudo systemctl reload nginx
 
-echo "Nginx configured for http://$DOMAIN/ -> 127.0.0.1:5173"
+echo "Nginx configured for https://$DOMAIN/ -> 127.0.0.1:5173"

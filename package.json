@@ -41,6 +41,8 @@
     "dev": "vite",
     "build": "vite build && hardhat compile",
     "build:web": "vite build",
+    "deploy:caddy": "bash deploy/caddy/deploy.sh",
+    "diagnose:caddy": "bash scripts/diagnose-caddy-525.sh",
     "compile": "hardhat compile",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
     "precheck:upgrade:sepolia": "hardhat run scripts/precheck-upgrade.ts --network sepolia",

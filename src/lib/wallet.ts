@@ -24,6 +24,11 @@ const WATCHABLE_TOKENS: WalletWatchToken[] = [
   { address: LIGHT_TOKEN_ADDRESS, symbol: "LIGHT", decimals: 18 },
 ];
 
+const PROJECT_TOKENS: Record<"ICO" | "LIGHT", WalletWatchToken> = {
+  ICO: { address: ICO_TOKEN_ADDRESS, symbol: "ICO", decimals: 18 },
+  LIGHT: { address: LIGHT_TOKEN_ADDRESS, symbol: "LIGHT", decimals: 18 },
+};
+
 export async function connectWallet() {
   if (!window.ethereum) {
     throw new Error("未检测到钱包插件，请先安装 MetaMask");
@@ -66,6 +71,22 @@ async function watchTokenInWallet(token: WalletWatchToken) {
   } catch {
     return false;
   }
+}
+
+export async function addProjectTokenToWallet(symbol: "ICO" | "LIGHT") {
+  const token = PROJECT_TOKENS[symbol];
+  if (!token?.address) {
+    throw new Error(`${symbol} token is not configured`);
+  }
+
+  const added = await watchTokenInWallet(token);
+  if (!added) {
+    // User rejected or wallet doesn't support wallet_watchAsset
+    // Still return token as info, but indicate user needs to add manually if desired
+    return token;
+  }
+
+  return token;
 }
 
 export async function setupWalletAfterConnect(): Promise<WalletSetupResult> {

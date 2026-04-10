@@ -448,127 +448,16 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         address referralRecipient = referrer != address(0) ? referrer : poolConfigs[uint8(PoolType.Referral)].recipient;
         _transferPool(orderId, PoolType.Referral, referralRecipient, referralAmount);
 
-        _distributeByRole(orderId, PoolType.SuperNode, true, superAmount);
-        _distributeByRole(orderId, PoolType.Node, false, nodeAmount);
+        // Node and super-node rewards accrue into their pool wallets first.
+        // Daily settlement is handled off the purchase path to match the business flow.
+        _transferPool(orderId, PoolType.SuperNode, poolConfigs[uint8(PoolType.SuperNode)].recipient, superAmount);
+        _transferPool(orderId, PoolType.Node, poolConfigs[uint8(PoolType.Node)].recipient, nodeAmount);
 
         _transferPool(orderId, PoolType.Platform, poolConfigs[uint8(PoolType.Platform)].recipient, platformAmount);
 
-        _distributeLeaderboard(orderId, leaderboardAmount);
-    }
-
-    function _distributeByRole(uint256 orderId, PoolType poolType, bool superOnly, uint256 amount) private {
-        if (amount == 0) {
-            return;
-        }
-
-        uint256 totalWeight;
-        uint256 participantsLength = rewardParticipants.length;
-
-        for (uint256 i = 0; i < participantsLength; i++) {
-            address account = rewardParticipants[i];
-            Role role = _getRole(account);
-            if (superOnly) {
-                if (role != Role.SuperNode) {
-                    continue;
-                }
-            } else {
-                if (role != Role.Node && role != Role.SuperNode) {
-                    continue;
-                }
-            }
-
-            uint256 weight = _effectiveWeight(account);
-            if (weight == 0) {
-                continue;
-            }
-            totalWeight += weight;
-        }
-
-        if (totalWeight == 0) {
-            _transferPool(orderId, poolType, poolConfigs[uint8(poolType)].recipient, amount);
-            return;
-        }
-
-        uint256 distributed;
-        for (uint256 i = 0; i < participantsLength; i++) {
-            address account = rewardParticipants[i];
-            Role role = _getRole(account);
-            if (superOnly) {
-                if (role != Role.SuperNode) {
-                    continue;
-                }
-            } else {
-                if (role != Role.Node && role != Role.SuperNode) {
-                    continue;
-                }
-            }
-
-            uint256 weight = _effectiveWeight(account);
-            if (weight == 0) {
-                continue;
-            }
-
-            uint256 share = (amount * weight) / totalWeight;
-            if (share == 0) {
-                continue;
-            }
-
-            distributed += share;
-            usdt.safeTransfer(account, share);
-            emit RewardSettled(orderId, uint8(poolType), account, share);
-        }
-
-        uint256 remainder = amount - distributed;
-        if (remainder > 0) {
-            _transferPool(orderId, poolType, poolConfigs[uint8(poolType)].recipient, remainder);
-        }
-    }
-
-    function _distributeLeaderboard(uint256 orderId, uint256 amount) private {
-        if (amount == 0) {
-            return;
-        }
-
-        uint256 dayId = currentDay();
-        LeaderboardState storage board = leaderboards[dayId];
-
-        uint256 topAmount = (amount * 7500) / BPS_DENOMINATOR;
-        uint256 lastAmount = amount - topAmount;
-
-        uint256 topDistributed = _distributeRanked(orderId, board.topUsers, board.topCount, topAmount);
-        uint256 lastDistributed = _distributeRanked(orderId, board.lastUsers, board.lastCount, lastAmount);
-
-        uint256 remainder = amount - topDistributed - lastDistributed;
-        if (remainder > 0) {
-            _transferPool(orderId, PoolType.Leaderboard, poolConfigs[uint8(PoolType.Leaderboard)].recipient, remainder);
-        }
-    }
-
-    function _distributeRanked(
-        uint256 orderId,
-        address[10] storage users,
-        uint8 count,
-        uint256 amount
-    ) private returns (uint256 distributed) {
-        if (amount == 0 || count == 0) {
-            return 0;
-        }
-
-        uint256 shareTotal;
-        for (uint8 i = 0; i < count; i++) {
-            shareTotal += rankShares[i];
-        }
-
-        for (uint8 i = 0; i < count; i++) {
-            uint256 reward = i == count - 1 ? amount - distributed : (amount * rankShares[i]) / shareTotal;
-            if (reward == 0 || users[i] == address(0)) {
-                continue;
-            }
-
-            distributed += reward;
-            usdt.safeTransfer(users[i], reward);
-            emit RewardSettled(orderId, uint8(PoolType.Leaderboard), users[i], reward);
-        }
+        // Leaderboard money also accumulates in the dedicated reward pool.
+        // Ranking data is still tracked on-chain for the daily settlement job.
+        _transferPool(orderId, PoolType.Leaderboard, poolConfigs[uint8(PoolType.Leaderboard)].recipient, leaderboardAmount);
     }
 
     function _updateLeaderboard(uint256 dayId, address user, uint256 amount) private {
@@ -653,15 +542,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         directReferralCount[referrer] += 1;
         _updateTeamCount(referrer, 1);
         emit ReferralBound(user, referrer);
-    }
-
-    function _effectiveWeight(address account) private view returns (uint256) {
-        uint256 manualWeight = rewardWeight[account];
-        if (manualWeight > 0) {
-            return manualWeight;
-        }
-
-        return personalPower[account];
     }
 
     function _poolAmount(uint256 totalAmount, uint8 poolType) private view returns (uint256) {
