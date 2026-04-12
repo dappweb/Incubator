@@ -1,7 +1,7 @@
-import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import * as dotenv from "dotenv";
+import type { HardhatUserConfig } from "hardhat/config";
 
 dotenv.config({ path: ".env" });
 
@@ -24,12 +24,12 @@ const config: HardhatUserConfig = {
     artifacts: "./artifacts",
   },
   networks: {
-    sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
+    bscTestnet: {
+      url: process.env.BSC_TESTNET_RPC_URL || "https://data-seed-prebsc-1-s1.binance.org:8545",
       accounts: process.env.DEPLOYER_PRIVATE_KEY
         ? [process.env.DEPLOYER_PRIVATE_KEY]
         : [],
-      chainId: 11155111,
+      chainId: 97,
     },
   },
 };

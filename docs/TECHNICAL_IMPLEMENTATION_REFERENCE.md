@@ -31,7 +31,7 @@ function purchaseMachine(uint256 quantity) external whenNotPaused
 function machineUnitPrice() view returns (uint256)
 
 // 查询单个矿机订单详情
-function getMachineOrder(uint256 orderId) 
+function getMachineOrder(uint256 orderId)
   view returns (
     uint256 id,
     address user,
@@ -42,7 +42,7 @@ function getMachineOrder(uint256 orderId)
   )
 
 // 查询用户的所有矿机订单 ID
-function getUserMachineOrders(address user) 
+function getUserMachineOrders(address user)
   view returns (uint256[] memory)
 ```
 
@@ -50,11 +50,11 @@ function getUserMachineOrders(address user)
 
 ```solidity
 // 查询用户的身份 ID
-function getUserIdentityId(address user) 
+function getUserIdentityId(address user)
   view returns (uint256)
 
 // 查询身份信息
-function getIdentity(uint256 identityId) 
+function getIdentity(uint256 identityId)
   view returns (
     uint256 id,
     address owner,
@@ -63,7 +63,7 @@ function getIdentity(uint256 identityId)
   )
 
 // 查询用户角色 (0=None, 1=Node, 2=SuperNode)
-function getUserRole(address user) 
+function getUserRole(address user)
   view returns (uint8)
 
 // 购买节点
@@ -142,12 +142,12 @@ event SuperNodePurchased(
 **文件**: `.env.local` 或 `vite.config.ts`
 
 ```typescript
-# 智能合约地址（Sepolia）
+# 智能合约地址（BSC Testnet）
 VITE_CORE_CONTRACT_ADDRESS=0x...
 VITE_OTC_CONTRACT_ADDRESS=0x...
 VITE_SWAP_POOL_ADDRESS=0x...
 
-# Token 地址（Sepolia）
+# Token 地址（BSC Testnet）
 VITE_USDT_CONTRACT_ADDRESS=0x...
 VITE_ICO_TOKEN_ADDRESS=0x...
 VITE_LIGHT_TOKEN_ADDRESS=0x...
@@ -160,78 +160,75 @@ VITE_LIGHT_TOKEN_ADDRESS=0x...
 ```typescript
 // ============ 价格查询 ============
 
-export async function getMachineUnitPrice(provider: BrowserProvider): Promise<bigint>
+export async function getMachineUnitPrice(
+  provider: BrowserProvider,
+): Promise<bigint>;
 
-export async function getNodePrice(provider: BrowserProvider): Promise<bigint>
+export async function getNodePrice(provider: BrowserProvider): Promise<bigint>;
 
-export async function getSuperNodePrice(provider: BrowserProvider): Promise<bigint>
+export async function getSuperNodePrice(
+  provider: BrowserProvider,
+): Promise<bigint>;
 
 // ============ 推荐人查询 ============
 
 export async function getReferrer(
-  provider: BrowserProvider, 
-  user: string
-): Promise<string>
+  provider: BrowserProvider,
+  user: string,
+): Promise<string>;
 
 export async function getContractOwner(
-  provider: BrowserProvider
-): Promise<string>
+  provider: BrowserProvider,
+): Promise<string>;
 
 // ============ 订单查询 ============
 
 export async function getMachineOrder(
-  provider: BrowserProvider, 
-  orderId: bigint
-): Promise<MachineOrder>
+  provider: BrowserProvider,
+  orderId: bigint,
+): Promise<MachineOrder>;
 
 export async function getUserMachineOrderIds(
-  provider: BrowserProvider, 
-  user: string
-): Promise<bigint[]>
+  provider: BrowserProvider,
+  user: string,
+): Promise<bigint[]>;
 
 export async function getUserIdentityId(
-  provider: BrowserProvider, 
-  user: string
-): Promise<bigint>
+  provider: BrowserProvider,
+  user: string,
+): Promise<bigint>;
 
 export async function getIdentity(
-  provider: BrowserProvider, 
-  identityId: bigint
-): Promise<IdentityAccount>
+  provider: BrowserProvider,
+  identityId: bigint,
+): Promise<IdentityAccount>;
 
 // ============ 用户角色 ============
 
 export async function getUserRole(
-  provider: BrowserProvider, 
-  user: string
-): Promise<number>  // 0=None, 1=Node, 2=SuperNode
+  provider: BrowserProvider,
+  user: string,
+): Promise<number>; // 0=None, 1=Node, 2=SuperNode
 
 // ============ 团队统计 ============
 
 export async function getTeamStats(
-  provider: BrowserProvider, 
-  user: string
-): Promise<TeamStats>
+  provider: BrowserProvider,
+  user: string,
+): Promise<TeamStats>;
 
 // ============ 执行交易 ============
 
-export async function bindReferrer(
-  provider: BrowserProvider, 
-  referrer: string
-)
+export async function bindReferrer(provider: BrowserProvider, referrer: string);
 
 export async function purchaseMachine(
-  provider: BrowserProvider, 
-  quantity: number
-)
+  provider: BrowserProvider,
+  quantity: number,
+);
 
-export async function buyNode(
-  provider: BrowserProvider
-)
+export async function buyNode(provider: BrowserProvider);
 
-export async function buySuperNode(
-  provider: BrowserProvider
-)
+export async function buySuperNode(provider: BrowserProvider);
 
 // ============ 奖励查询 ============
 
@@ -239,8 +236,8 @@ export async function getRewardRecordsByBeneficiary(
   provider: BrowserProvider,
   beneficiary: string,
   maxRecords?: number,
-  lookbackBlocks?: number
-): Promise<RewardRecord[]>
+  lookbackBlocks?: number,
+): Promise<RewardRecord[]>;
 ```
 
 ### USDT 授权库
@@ -252,18 +249,18 @@ export async function getRewardRecordsByBeneficiary(
 
 export async function getUsdtBalance(
   provider: BrowserProvider,
-  user: string
-): Promise<bigint>
+  user: string,
+): Promise<bigint>;
 
 export async function getUsdtAllowance(
   provider: BrowserProvider,
   user: string,
-  spender: string  // 通常是 CORE_CONTRACT_ADDRESS
-): Promise<bigint>
+  spender: string, // 通常是 CORE_CONTRACT_ADDRESS
+): Promise<bigint>;
 
 export async function getUsdtDecimals(
-  provider: BrowserProvider
-): Promise<number>  // 返回 6 (USDT 有 6 位小数)
+  provider: BrowserProvider,
+): Promise<number>; // 返回 6 (USDT 有 6 位小数)
 
 // ============ 授权操作 ============
 
@@ -271,16 +268,16 @@ export async function approveUsdt(
   provider: BrowserProvider,
   spender: string,
   amount: bigint,
-  allowUnlimited: boolean = false
-): Promise<TransactionResponse>
+  allowUnlimited: boolean = false,
+): Promise<TransactionResponse>;
 
 // ============ 助手函数 ============
 
-export function parseUsdt(value: number | string): bigint
-  // 1 USDT = 1000000 (1e6)
+export function parseUsdt(value: number | string): bigint;
+// 1 USDT = 1000000 (1e6)
 
-export function formatUsdt(value: bigint): string
-  // 1000000 (1e6) = "1"
+export function formatUsdt(value: bigint): string;
+// 1000000 (1e6) = "1"
 ```
 
 ### 推荐人管理实现
@@ -301,48 +298,48 @@ export function formatUsdt(value: bigint): string
 
 ```typescript
 type MachineOrder = {
-  id: bigint                // 订单 ID
-  user: string              // 购买者地址
-  quantity: bigint          // 矿机数量
-  amountUSDT: bigint        // 支付金额 (USDT, 6 decimals)
-  referrer: string          // 推荐人地址
-  createdAt: bigint         // 创建时间戳
-}
+  id: bigint; // 订单 ID
+  user: string; // 购买者地址
+  quantity: bigint; // 矿机数量
+  amountUSDT: bigint; // 支付金额 (USDT, 6 decimals)
+  referrer: string; // 推荐人地址
+  createdAt: bigint; // 创建时间戳
+};
 ```
 
 ### 身份类型
 
 ```typescript
 type IdentityAccount = {
-  id: bigint                // 身份 ID
-  owner: string             // 所有者地址
-  role: number              // 0=None, 1=Node, 2=SuperNode
-  updatedAt: bigint         // 更新时间戳
-}
+  id: bigint; // 身份 ID
+  owner: string; // 所有者地址
+  role: number; // 0=None, 1=Node, 2=SuperNode
+  updatedAt: bigint; // 更新时间戳
+};
 ```
 
 ### 团队统计类型
 
 ```typescript
 type TeamStats = {
-  directCount: bigint       // 直推人数
-  teamCount: bigint         // 团队总人数
-  directVolume: bigint      // 直推业绩 (USDT, 6 decimals)
-  teamVolume: bigint        // 团队业绩 (USDT, 6 decimals)
-}
+  directCount: bigint; // 直推人数
+  teamCount: bigint; // 团队总人数
+  directVolume: bigint; // 直推业绩 (USDT, 6 decimals)
+  teamVolume: bigint; // 团队业绩 (USDT, 6 decimals)
+};
 ```
 
 ### 奖励记录类型
 
 ```typescript
 type RewardRecord = {
-  orderId: bigint           // 相关的订单 ID
-  poolType: number          // 0-5 对应 6 个资金池
-  beneficiary: string       // 受益人地址
-  amountUSDT: bigint        // 奖励金额 (USDT)
-  blockNumber: number       // 区块号
-  txHash: string            // 交易哈希
-}
+  orderId: bigint; // 相关的订单 ID
+  poolType: number; // 0-5 对应 6 个资金池
+  beneficiary: string; // 受益人地址
+  amountUSDT: bigint; // 奖励金额 (USDT)
+  blockNumber: number; // 区块号
+  txHash: string; // 交易哈希
+};
 ```
 
 ---
@@ -352,23 +349,23 @@ type RewardRecord = {
 ### 网络配置
 
 ```javascript
-// Sepolia 测试网参数
-const SEPOLIA_CONFIG = {
-  chainId: 11155111,
-  chainName: "Sepolia Testnet",
-  chainIdHex: "0xaa36a7",
+// BSC Testnet 参数
+const BSC_TESTNET_CONFIG = {
+  chainId: 97,
+  chainName: "BSC Testnet",
+  chainIdHex: "0x61",
   rpcUrls: [
-    "https://sepolia.infura.io/v3/YOUR_KEY",
-    "https://rpc.ankr.com/eth_sepolia",
-    "https://eth-sepolia-public.unifra.io",
+    "https://data-seed-prebsc-1-s1.binance.org:8545",
+    "https://rpc.ankr.com/bsc_testnet_chapel",
+    "https://data-seed-prebsc-1-s1.binance.org:8545",
   ],
-  blockExplorerUrls: ["https://sepolia.etherscan.io"],
+  blockExplorerUrls: ["https://testnet.bscscan.com"],
   nativeCurrency: {
-    name: "Sepolia Ether",
-    symbol: "ETH",
+    name: "Testnet BNB",
+    symbol: "BNB",
     decimals: 18,
-  }
-}
+  },
+};
 ```
 
 ### 代币配置
@@ -389,8 +386,8 @@ const TOKEN_CONFIGS = {
     decimals: 18,
     symbol: "LIGHT",
     name: "Light Token",
-  }
-}
+  },
+};
 ```
 
 ### 值常量
@@ -399,28 +396,28 @@ const TOKEN_CONFIGS = {
 const MACHINE_CONFIG = {
   MIN_QTY: 1,
   MAX_QTY: 10,
-  UNIT_PRICE: 100 * 1e6,      // 100 USDT (with 6 decimals)
+  UNIT_PRICE: 100 * 1e6, // 100 USDT (with 6 decimals)
   MAX_UNIT_PRICE: 10000 * 1e6, // 10,000 USDT
-}
+};
 
 const IDENTITY_CONFIG = {
-  NODE_PRICE: 1000 * 1e6,         // 1,000 USDT
-  MAX_NODE_PRICE: 100000 * 1e6,   // 100,000 USDT
-  SUPER_NODE_PRICE: 3000 * 1e6,   // 3,000 USDT
+  NODE_PRICE: 1000 * 1e6, // 1,000 USDT
+  MAX_NODE_PRICE: 100000 * 1e6, // 100,000 USDT
+  SUPER_NODE_PRICE: 3000 * 1e6, // 3,000 USDT
   MAX_SUPER_NODE_PRICE: 300000 * 1e6, // 300,000 USDT
-}
+};
 
 const POOL_CONFIG = {
-  LIQUIDITY: 6000,     // 60%
-  REFERRAL: 500,       // 5%
-  SUPER_NODE: 500,     // 5%
-  NODE: 800,           // 8%
-  PLATFORM: 2000,      // 20%
-  LEADERBOARD: 200,    // 2%
-}
+  LIQUIDITY: 6000, // 60%
+  REFERRAL: 500, // 5%
+  SUPER_NODE: 500, // 5%
+  NODE: 800, // 8%
+  PLATFORM: 2000, // 20%
+  LEADERBOARD: 200, // 2%
+};
 
 // BPS = basis point (万分之一)
-const BPS_DENOMINATOR = 10000
+const BPS_DENOMINATOR = 10000;
 ```
 
 ---
@@ -431,36 +428,38 @@ const BPS_DENOMINATOR = 10000
 
 ```typescript
 // 1. 连接状态
-const [userAddress, setUserAddress] = useState<string | null>(null)
-const [provider, setProvider] = useState<BrowserProvider | null>(null)
-const [isConnected, setIsConnected] = useState(false)
+const [userAddress, setUserAddress] = useState<string | null>(null);
+const [provider, setProvider] = useState<BrowserProvider | null>(null);
+const [isConnected, setIsConnected] = useState(false);
 
 // 2. 推荐人状态（当前在 App.tsx 内集中管理）
-const [machineReferrer, setMachineReferrer] = useState("")
-const [referrerSource, setReferrerSource] = useState<"none" | "link" | "onchain" | "owner" | "manual">("none")
-const [contractOwner, setContractOwner] = useState("")
+const [machineReferrer, setMachineReferrer] = useState("");
+const [referrerSource, setReferrerSource] = useState<
+  "none" | "link" | "onchain" | "owner" | "manual"
+>("none");
+const [contractOwner, setContractOwner] = useState("");
 
 // 3. 矿机购买状态
-const [machineQty, setMachineQty] = useState(1)
-const [machineUnitPrice, setMachineUnitPrice] = useState(0n)
+const [machineQty, setMachineQty] = useState(1);
+const [machineUnitPrice, setMachineUnitPrice] = useState(0n);
 
 // 4. USDT 授权状态
-const [usdtBalance, setUsdtBalance] = useState(0n)
-const [usdtAllowance, setUsdtAllowance] = useState(0n)
+const [usdtBalance, setUsdtBalance] = useState(0n);
+const [usdtAllowance, setUsdtAllowance] = useState(0n);
 
 // 5. 订单数据
-const [machineOrders, setMachineOrders] = useState<MachineOrder[]>([])
-const [teamStats, setTeamStats] = useState<TeamStats | null>(null)
+const [machineOrders, setMachineOrders] = useState<MachineOrder[]>([]);
+const [teamStats, setTeamStats] = useState<TeamStats | null>(null);
 
 // 6. 操作状态
-const [loading, setLoading] = useState(false)
-const [status, setStatus] = useState("")
-const [error, setError] = useState("")
+const [loading, setLoading] = useState(false);
+const [status, setStatus] = useState("");
+const [error, setError] = useState("");
 
 // 7. UI 状态
-const [activeTab, setActiveTab] = useState<TabKey>("overview")
-const [theme, setTheme] = useState<"dark" | "light">("dark")
-const [lang, setLang] = useState<"zh" | "en">("zh")
+const [activeTab, setActiveTab] = useState<TabKey>("overview");
+const [theme, setTheme] = useState<"dark" | "light">("dark");
+const [lang, setLang] = useState<"zh" | "en">("zh");
 ```
 
 ### 关键计算
@@ -468,21 +467,23 @@ const [lang, setLang] = useState<"zh" | "en">("zh")
 ```typescript
 // 订单总额
 const orderTotal = useMemo(() => {
-  return toSafeBigInt(machineUnitPrice) * BigInt(machineQty)
-}, [machineUnitPrice, machineQty])
+  return toSafeBigInt(machineUnitPrice) * BigInt(machineQty);
+}, [machineUnitPrice, machineQty]);
 
 // 需要的授权额度
 const needApproval = useMemo(() => {
-  return orderTotal > usdtAllowance
-}, [orderTotal, usdtAllowance])
+  return orderTotal > usdtAllowance;
+}, [orderTotal, usdtAllowance]);
 
 // 是否可以购买
 const canPurchase = useMemo(() => {
-  return isConnected && 
-         hasEffectiveReferrer && 
-         usdtBalance >= orderTotal && 
-         !needApproval
-}, [isConnected, hasEffectiveReferrer, usdtBalance, orderTotal, needApproval])
+  return (
+    isConnected &&
+    hasEffectiveReferrer &&
+    usdtBalance >= orderTotal &&
+    !needApproval
+  );
+}, [isConnected, hasEffectiveReferrer, usdtBalance, orderTotal, needApproval]);
 ```
 
 ---
@@ -494,15 +495,15 @@ const canPurchase = useMemo(() => {
 **文件**: `src/wagmi.ts`
 
 ```typescript
-import { getDefaultConfig } from '@rainbow-me/rainbowkit'
-import { sepolia } from 'wagmi/chains'
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { bscTestnet } from "viem/chains";
 
 export const config = getDefaultConfig({
-  appName: 'Incubator',
-  projectId: 'YOUR_WALLETCONNECT_PROJECT_ID',
-  chains: [sepolia],
-  ssr: false
-})
+  appName: "Incubator",
+  projectId: "YOUR_WALLETCONNECT_PROJECT_ID",
+  chains: [bscTestnet],
+  ssr: false,
+});
 ```
 
 ### App 入口配置
@@ -532,7 +533,7 @@ ReactDOM.render(
 ### 连接按钮
 
 ```tsx
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export function Header() {
   return (
@@ -540,7 +541,7 @@ export function Header() {
       <h1>Incubator</h1>
       <ConnectButton />
     </header>
-  )
+  );
 }
 ```
 
@@ -589,21 +590,21 @@ export function parseContractError(error: unknown): string {
 async function retryableCall<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  delayMs: number = 1000
+  delayMs: number = 1000,
 ): Promise<T> {
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await fn()
+      return await fn();
     } catch (error) {
-      if (i === maxRetries - 1) throw error
-      await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)))
+      if (i === maxRetries - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delayMs * (i + 1)));
     }
   }
-  throw new Error("Max retries exceeded")
+  throw new Error("Max retries exceeded");
 }
 
 // 使用
-const price = await retryableCall(() => getMachineUnitPrice(provider))
+const price = await retryableCall(() => getMachineUnitPrice(provider));
 ```
 
 ---
@@ -615,38 +616,38 @@ const price = await retryableCall(() => getMachineUnitPrice(provider))
 ```typescript
 // 监听矿机购买事件
 function setupMachinePurchasedListener() {
-  const contract = getCoreContract(provider)
-  
+  const contract = getCoreContract(provider);
+
   contract.on("MachinePurchased", (user, orderId, qty, amount, referrer) => {
-    console.log(`Order created: ${orderId}`)
-    console.log(`User: ${user}`)
-    console.log(`Quantity: ${qty}`)
-    console.log(`Amount: ${formatUsdt(amount)} USDT`)
-    
+    console.log(`Order created: ${orderId}`);
+    console.log(`User: ${user}`);
+    console.log(`Quantity: ${qty}`);
+    console.log(`Amount: ${formatUsdt(amount)} USDT`);
+
     // 刷新订单列表
-    refreshUserOrders()
-    
+    refreshUserOrders();
+
     // 刷新团队数据
-    refreshTeamStats()
-  })
+    refreshTeamStats();
+  });
 
   return () => {
-    contract.off("MachinePurchased")
-  }
+    contract.off("MachinePurchased");
+  };
 }
 
 // 监听推荐人绑定事件
 function setupReferralBoundListener() {
-  const contract = getCoreContract(provider)
-  
+  const contract = getCoreContract(provider);
+
   contract.on("ReferralBound", (user, referrer) => {
-    console.log(`${user} bound to ${referrer}`)
+    console.log(`${user} bound to ${referrer}`);
     // 更新推荐人 UI
-  })
+  });
 
   return () => {
-    contract.off("ReferralBound")
-  }
+    contract.off("ReferralBound");
+  };
 }
 ```
 
@@ -654,16 +655,16 @@ function setupReferralBoundListener() {
 
 ```typescript
 useEffect(() => {
-  if (!provider) return
+  if (!provider) return;
 
-  const unsubMachinePurchased = setupMachinePurchasedListener()
-  const unsubReferralBound = setupReferralBoundListener()
+  const unsubMachinePurchased = setupMachinePurchasedListener();
+  const unsubReferralBound = setupReferralBoundListener();
 
   return () => {
-    unsubMachinePurchased()
-    unsubReferralBound()
-  }
-}, [provider])
+    unsubMachinePurchased();
+    unsubReferralBound();
+  };
+}, [provider]);
 ```
 
 ---
@@ -674,19 +675,19 @@ useEffect(() => {
 
 ```typescript
 // 缓存价格数据（5 分钟）
-const cache = new Map<string, { value: any; time: number }>()
+const cache = new Map<string, { value: any; time: number }>();
 
 async function cachedGetMachineUnitPrice(provider: BrowserProvider) {
-  const key = "machineUnitPrice"
-  const cached = cache.get(key)
-  
+  const key = "machineUnitPrice";
+  const cached = cache.get(key);
+
   if (cached && Date.now() - cached.time < 5 * 60 * 1000) {
-    return cached.value
+    return cached.value;
   }
 
-  const price = await getMachineUnitPrice(provider)
-  cache.set(key, { value: price, time: Date.now() })
-  return price
+  const price = await getMachineUnitPrice(provider);
+  cache.set(key, { value: price, time: Date.now() });
+  return price;
 }
 ```
 
@@ -695,39 +696,39 @@ async function cachedGetMachineUnitPrice(provider: BrowserProvider) {
 ```typescript
 // 并行查询所有订单
 async function getUserOrdersInfo(provider: BrowserProvider, user: string) {
-  const orderIds = await getUserMachineOrderIds(provider, user)
+  const orderIds = await getUserMachineOrderIds(provider, user);
   const orders = await Promise.all(
-    orderIds.map(id => getMachineOrder(provider, id))
-  )
-  return orders
+    orderIds.map((id) => getMachineOrder(provider, id)),
+  );
+  return orders;
 }
 ```
 
 ### 3. 防抖和节流
 
 ```typescript
-import { useCallback, useRef } from "react"
+import { useCallback, useRef } from "react";
 
 // 防抖：延迟执行，合并重复调用
 function useDebounce<T extends (...args: any[]) => any>(
   fn: T,
-  delay: number = 300
+  delay: number = 300,
 ) {
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   return useCallback(
     (...args: any[]) => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(() => fn(...args), delay)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => fn(...args), delay);
     },
-    [fn, delay]
-  )
+    [fn, delay],
+  );
 }
 
 // 用法
 const debouncedRefresh = useDebounce(() => {
-  refreshTeamStats()
-}, 500)
+  refreshTeamStats();
+}, 500);
 ```
 
 ---
@@ -735,7 +736,7 @@ const debouncedRefresh = useDebounce(() => {
 ## 十、测试检查清单
 
 - [ ] 连接 MetaMask 成功
-- [ ] 切换到 Sepolia 网络成功
+- [ ] 切换到 BSC Testnet 网络成功
 - [ ] 推荐人自动检测（URL/链上/Owner）
 - [ ] 推荐人绑定成功且不可修改
 - [ ] USDT 授权流程正常

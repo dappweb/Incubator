@@ -1,4 +1,4 @@
-# Caddy configuration for t3.test2dapp.xyz (Sepolia DApp)
+# Caddy configuration for t3.test2dapp.xyz
 # Place this file at /etc/caddy/Caddyfile on the server
 # Caddy auto-provisions TLS via Let's Encrypt.
 

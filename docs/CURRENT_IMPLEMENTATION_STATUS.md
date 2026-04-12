@@ -46,7 +46,7 @@
 
 ### 5) 前端（React）
 - Tab 页面：Overview / Team / OTC / Swap / Mine / Admin(owner)
-- 钱包连接 + Sepolia 校验 + 授权流程提示
+- 钱包连接 + BSC Testnet 校验 + 授权流程提示
 - Core / OTC / Swap 核心交互已接入
 - Appwrite 仅用于公告读取
 

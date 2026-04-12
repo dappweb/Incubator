@@ -333,6 +333,49 @@
   color: var(--brand-green);
 }
 
+.pool-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pool-panel-cell {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pool-panel-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pool-panel-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-green);
+  margin: 2px 0 0;
+  word-break: break-all;
+}
+
+.lb-card-prominent {
+  border: 1px solid rgba(250, 204, 21, 0.36);
+  background:
+    radial-gradient(circle at 85% 15%, rgba(250, 204, 21, 0.20) 0%, rgba(250, 204, 21, 0) 40%),
+    linear-gradient(135deg, rgba(106, 17, 203, 0.16) 0%, rgba(37, 117, 252, 0.14) 100%);
+  box-shadow: 0 16px 48px rgba(37, 117, 252, 0.20), 0 8px 26px rgba(250, 204, 21, 0.10);
+}
+
+.lb-card-prominent:hover {
+  border-color: rgba(250, 204, 21, 0.56);
+  transform: translateY(-2px);
+}
+
 .invite-link-box {
   display: flex;
   gap: 10px;
@@ -2042,5 +2085,527 @@ tr:hover td {
   }
   .referrer-modal__title {
     font-size: 18px;
+  }
+}
+
+/* ========== TokenHistory (流水) ========== */
+.history-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-color, #0d0d1a);
+}
+
+.history-header {
+  background: linear-gradient(135deg, #1a8fd1 0%, #4facfe 100%);
+  padding: 16px 20px 20px;
+  border-radius: 0 0 20px 20px;
+  margin-bottom: 12px;
+}
+
+.history-back-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.9);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.history-back-btn:hover {
+  color: #fff;
+}
+
+.history-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  margin: 0 0 14px;
+}
+
+.history-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.9);
+}
+
+.history-filter-row span {
+  white-space: nowrap;
+  min-width: 68px;
+}
+
+.history-date-input {
+  flex: 1;
+  background: rgba(255,255,255,0.18);
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  color-scheme: dark;
+}
+
+.history-date-input:focus {
+  outline: none;
+  background: rgba(255,255,255,0.28);
+}
+
+.history-filter-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.history-reset-btn,
+.history-query-btn {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 20px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 120px;
+}
+
+.history-reset-btn {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+.history-reset-btn:hover {
+  background: rgba(255,255,255,0.32);
+}
+
+.history-query-btn {
+  background: #00e5c0;
+  color: #08213b;
+}
+
+.history-query-btn:hover:not(:disabled) {
+  background: #00cfac;
+}
+
+.history-query-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.history-list {
+  padding: 0 16px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.history-msg {
+  text-align: center;
+  color: var(--text-secondary, rgba(255,255,255,0.5));
+  font-size: 14px;
+  padding: 24px 0;
+}
+
+.history-err {
+  color: #ff6b6b;
+}
+
+.history-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hi-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.hi-label {
+  color: var(--text-secondary, rgba(255,255,255,0.5));
+  white-space: nowrap;
+}
+
+.hi-hash {
+  color: #4facfe;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.hi-hash:hover {
+  text-decoration: underline;
+}
+
+.hi-date {
+  font-size: 12px;
+  color: var(--text-secondary, rgba(255,255,255,0.5));
+}
+
+.hi-amount-row {
+  gap: 8px;
+}
+
+.hi-amount {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hi-pos {
+  color: #52c41a;
+}
+
+.hi-neg {
+  color: #ff4d4f;
+}
+
+.hi-symbol {
+  font-size: 13px;
+  color: var(--text-secondary, rgba(255,255,255,0.6));
+}
+
+.hi-type {
+  font-size: 13px;
+  color: var(--text-primary, rgba(255,255,255,0.85));
+}
+
+.history-more-btn {
+  margin: 16px auto 0;
+  display: block;
+  background: none;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.15));
+  color: var(--text-secondary, rgba(255,255,255,0.6));
+  border-radius: 20px;
+  padding: 8px 32px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.history-more-btn:hover {
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+/* Buttons in mine tab for history entry */
+.history-entry-btns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.history-entry-btn {
+  padding: 10px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(79, 172, 254, 0.3);
+  background: rgba(79, 172, 254, 0.06);
+  color: #4facfe;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.history-entry-btn:hover {
+  background: rgba(79, 172, 254, 0.14);
+}
+
+/* ========== Leaderboard (奖金分配榜单) ========== */
+.lb-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-color, #0d0d1a);
+}
+
+.lb-header {
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  padding: 16px 20px 20px;
+  border-radius: 0 0 20px 20px;
+  margin-bottom: 12px;
+}
+
+.lb-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lb-back-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.9);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.lb-back-btn:hover { color: #fff; }
+
+.lb-tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 20px;
+  padding: 3px;
+}
+
+.lb-tab {
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: none;
+  background: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lb-tab-active {
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+}
+
+.lb-tab:hover:not(.lb-tab-active) {
+  color: #fff;
+}
+
+.lb-body {
+  padding: 0 12px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lb-err {
+  color: #ff6b6b;
+  text-align: center;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+.lb-table-wrap {
+  background: linear-gradient(160deg, rgba(106,17,203,0.15) 0%, rgba(37,117,252,0.12) 100%);
+  border: 1px solid rgba(106,17,203,0.25);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.lb-table-title {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  padding: 10px 12px 8px;
+  background: rgba(106,17,203,0.25);
+}
+
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.lb-table th {
+  padding: 7px 8px;
+  text-align: center;
+  color: rgba(255,255,255,0.55);
+  font-weight: 600;
+  background: rgba(0,0,0,0.15);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  white-space: nowrap;
+}
+
+.lb-table td {
+  padding: 7px 8px;
+  text-align: center;
+  color: rgba(255,255,255,0.85);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  word-break: break-all;
+}
+
+.lb-row-even td {
+  background: rgba(255,255,255,0.02);
+}
+
+.lb-table tr:last-child td {
+  border-bottom: none;
+}
+
+.lb-cell-center {
+  color: rgba(255,255,255,0.4);
+  padding: 20px;
+  text-align: center;
+}
+
+.lb-refresh-btn {
+  margin: 0 auto;
+  display: block;
+  background: none;
+  border: 1px solid rgba(106,17,203,0.4);
+  color: rgba(255,255,255,0.6);
+  border-radius: 20px;
+  padding: 8px 32px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.lb-refresh-btn:hover {
+  background: rgba(106,17,203,0.15);
+  color: #fff;
+}
+
+/* Entry button for leaderboard in pool panel */
+.lb-entry-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(106,17,203,0.35);
+  background: rgba(106,17,203,0.08);
+  color: #a78bfa;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.lb-entry-btn:hover {
+  background: rgba(106,17,203,0.18);
+}
+
+/* Fullscreen overlay for Leaderboard / future full-page components */
+.fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow-y: auto;
+  background: var(--bg-color, #0d0d1a);
+}
+
+/* ========== Ranking Card Styles ========== */
+.ranking-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ranking-empty {
+  text-align: center;
+  color: rgba(255,255,255,0.4);
+  font-size: 13px;
+  padding: 16px 0;
+  margin: 0;
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.2s ease;
+}
+
+.ranking-row:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.ranking-row.rank-1 {
+  background: linear-gradient(90deg, rgba(255,215,0,0.12) 0%, rgba(255,215,0,0.04) 100%);
+  border-color: rgba(255,215,0,0.25);
+}
+
+.ranking-row.rank-1:hover {
+  background: linear-gradient(90deg, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0.1) 100%);
+}
+
+.ranking-row.rank-2 {
+  background: linear-gradient(90deg, rgba(192,192,192,0.1) 0%, rgba(192,192,192,0.03) 100%);
+  border-color: rgba(192,192,192,0.2);
+}
+
+.ranking-row.rank-2:hover {
+  background: linear-gradient(90deg, rgba(192,192,192,0.18) 0%, rgba(192,192,192,0.08) 100%);
+}
+
+.ranking-row.rank-3 {
+  background: linear-gradient(90deg, rgba(205,127,50,0.1) 0%, rgba(205,127,50,0.03) 100%);
+  border-color: rgba(205,127,50,0.2);
+}
+
+.ranking-row.rank-3:hover {
+  background: linear-gradient(90deg, rgba(205,127,50,0.18) 0%, rgba(205,127,50,0.08) 100%);
+}
+
+.ranking-medal {
+  font-size: 18px;
+  min-width: 24px;
+}
+
+.ranking-addr {
+  flex: 1;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  font-family: monospace;
+}
+
+.ranking-vol {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(100,200,255,0.9);
+  text-align: right;
+}
+
+.ranking-hint {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+}
+
+@media (max-width: 520px) {
+  .pool-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-row {
+    padding: 10px;
+  }
+
+  .ranking-addr {
+    font-size: 11px;
+  }
+
+  .ranking-vol {
+    font-size: 12px;
   }
 }

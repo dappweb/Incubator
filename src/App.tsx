@@ -1,54 +1,72 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { BrowserProvider, isAddress } from "ethers";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { isOnSepolia } from "./lib/wallet";
-import {
-  addProjectTokenToWallet,
-  checkConnection,
-  ensureSepoliaNetwork,
-  listenToWalletEvents,
-  setupWalletAfterConnect,
-} from "./lib/wallet";
-import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "./lib/usdtContract";
-import { approveIdentityForOtc, getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
-import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS } from "./config";
-import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
-import { getSwapPool, quoteSwapExactIn, swapExactIn } from "./lib/swapContract";
-import {
-  bindReferrer,
-  buyNode,
-  buySuperNode,
-  getContractOwner,
-  getDirectReferralsByReferrer,
-  getMachineOrder,
-  getMachineUnitPrice,
-  getNodePrice,
-  getReferrer,
-  getRewardRecordsByBeneficiary,
-  getSuperNodePrice,
-  getTeamStats,
-  getUserMachineOrderIds,
-  getUserRole,
-  purchaseMachine,
-  type MachineOrder,
-  type RewardRecord,
-  type TeamStats,
-} from "./lib/coreContract";
-import {
-  cancelOtcOrder,
-  createOtcOrder,
-  fillOtcOrder,
-  getActiveOrderIds,
-  getLastTradePriceByRole,
-  getOtcFeeBps,
-  getOrder,
-  type OtcOrder,
-} from "./lib/otcContract";
-import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
-import { parseContractError } from "./lib/errorParser";
-import { Card, KVRow } from "./components/Common";
-import Admin from "./components/Admin";
+import { BrowserProvider, isAddress, JsonRpcProvider } from "ethers";
+import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import Admin from "./components/Admin";
+import { Card, KVRow } from "./components/Common";
+import { Leaderboard } from "./components/Leaderboard";
+import { TokenHistory, type TokenType } from "./components/TokenHistory";
+import {
+    CORE_CONTRACT_ADDRESS,
+    ICO_TOKEN_ADDRESS,
+    LIGHT_TOKEN_ADDRESS,
+    OTC_CONTRACT_ADDRESS,
+    PANCAKE_V3_PRIMARY_FEE_PPM,
+    SWAP_POOL_ADDRESS,
+} from "./config";
+import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
+import {
+    bindReferrer,
+    buyNode,
+    buySuperNode,
+    getContractOwner,
+    getDirectReferralsByReferrer,
+    getMachineOrder,
+    getMachineUnitPrice,
+    getNodePrice,
+    getPoolAccumulatedBalances,
+    getReferrer,
+    getRewardRecordsByBeneficiary,
+    getSuperNodePrice,
+    getTeamStats,
+    getUserMachineOrderIds,
+    getUserRole,
+    purchaseMachine,
+    type MachineOrder,
+    type RewardRecord,
+    type TeamStats,
+} from "./lib/coreContract";
+import { parseContractError } from "./lib/errorParser";
+import { approveIdentityForOtc, getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
+import { currentDayId, fetchLeaderboardDay } from "./lib/leaderboard";
+import {
+    cancelOtcOrder,
+    createOtcOrder,
+    fillOtcOrder,
+    getActiveOrderIds,
+    getLastTradePriceByRole,
+    getOrder,
+    getOtcFeeBps,
+    type OtcOrder,
+} from "./lib/otcContract";
+import {
+    getPrimarySwapSpender,
+    getSwapPool,
+    getSwapPoolsInfo,
+    quotePrimarySwapExactIn,
+    quoteSwapExactIn,
+    resolvePrimarySwapTokens,
+    swapExactIn,
+    swapPrimaryExactIn,
+} from "./lib/swapContract";
+import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
+import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "./lib/usdtContract";
+import {
+    addProjectTokenToWallet,
+    checkConnection,
+    ensureBscTestnetNetwork, isOnBscTestnet, listenToWalletEvents,
+    setupWalletAfterConnect
+} from "./lib/wallet";
 
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
 type SwapSubTab = "primary" | "light";
@@ -166,6 +184,16 @@ const App = () => {
     quickActionsTitle: lang === "zh" ? "快捷入口" : "Quick Actions",
     quickActionsHint: lang === "zh" ? "移动端底部菜单已精简，兑换入口可从这里快速进入。" : "The mobile menu is simplified. You can jump to Swap from here anytime.",
     goSwap: lang === "zh" ? "前往兑换" : "Go to Swap",
+    poolPanelTitle: lang === "zh" ? "平台资金池" : "Platform Pools",
+    poolPanelHint: lang === "zh" ? "实时显示各资金池当前余额与流动性储备。" : "Live view of all pool balances and liquidity reserves.",
+    poolPrimary: lang === "zh" ? "聚合交易池" : "Aggregated Trading Pool",
+    poolLight: lang === "zh" ? "Light算力合约池" : "Light Computing Pool",
+    poolSuperNode: lang === "zh" ? "超级节点奖励" : "Super Node Rewards",
+    poolNode: lang === "zh" ? "节点奖励" : "Node Rewards",
+    poolPlatform: lang === "zh" ? "USDT契约池" : "USDT Contract Pool",
+    poolLeaderboard: lang === "zh" ? "FOMO奖励" : "FOMO Rewards",
+    myWallet: lang === "zh" ? "我的钱包" : "My Wallet",
+    buyNodeNow: lang === "zh" ? "抢购节点" : "Buy Node",
     addTokenTitle: lang === "zh" ? "添加代币到钱包" : "Add Tokens to Wallet",
     addTokenHint: lang === "zh" ? "把项目两种核心代币快速加入钱包，方便直接查看余额与发起兑换。" : "Add the project's two core tokens to your wallet for quick balance checks and swaps.",
     addIcoToken: lang === "zh" ? "添加 ICO" : "Add ICO",
@@ -221,7 +249,7 @@ const App = () => {
     accountSnapshot: lang === "zh" ? "账户快照" : "Account Snapshot",
     accountHint: lang === "zh" ? "关键状态一屏可见，减少来回切换。" : "Keep key states visible to reduce context switching.",
     needConnectToBuy: lang === "zh" ? "请先连接钱包" : "Connect wallet first",
-    needSepoliaToBuy: lang === "zh" ? "请先切换到 Sepolia" : "Switch to Sepolia first",
+    needBscTestnetToBuy: lang === "zh" ? "请先切换到 BSC Testnet" : "Switch to BSC Testnet first",
     needReferrerToBuy: lang === "zh" ? "请先绑定推荐人" : "Bind a referrer first",
     roleMismatchForNode: lang === "zh" ? "当前身份不可重复购买节点" : "Current role cannot buy node again",
     roleMismatchForSuper: lang === "zh" ? "" : "",
@@ -356,7 +384,7 @@ const App = () => {
     walletDisconnected: lang === "zh" ? "钱包已断开连接。" : "Wallet disconnected.",
     walletConnectFailed: lang === "zh" ? "连接钱包失败" : "Failed to connect wallet",
     connectFirst: lang === "zh" ? "请先连接钱包。" : "Please connect your wallet first.",
-    switchSepolia: lang === "zh" ? "请先切换到 Sepolia 网络。" : "Please switch to Sepolia first.",
+    switchBscTestnet: lang === "zh" ? "请先切换到 BSC Testnet 网络。" : "Please switch to BSC Testnet first.",
     txFailed: lang === "zh" ? "交易执行失败" : "Transaction failed",
     missingCoreConfig: lang === "zh" ? "缺少 VITE_CORE_CONTRACT_ADDRESS 配置" : "Missing VITE_CORE_CONTRACT_ADDRESS",
     approvingUsdtCore: lang === "zh" ? "正在提交 Core 的 USDT 授权..." : "Submitting Core USDT approval...",
@@ -403,7 +431,7 @@ const App = () => {
     loading: lang === "zh" ? "加载中..." : "Loading...",
     firstGuideTitle: lang === "zh" ? "新钱包快速引导" : "New Wallet Quick Setup",
     firstGuideHint: lang === "zh" ? "一键完成基础配置：网络 → 代币 → 数据刷新。" : "Complete base setup in one click: network → tokens → data refresh.",
-    firstGuideStepNetwork: lang === "zh" ? "1. 切换并确认 Sepolia 网络" : "1. Switch and confirm Sepolia network",
+    firstGuideStepNetwork: lang === "zh" ? "1. 切换并确认 BSC Testnet 网络" : "1. Switch and confirm BSC Testnet network",
     firstGuideStepToken: lang === "zh" ? "2. 添加 USDT / ICO / LIGHT 到钱包" : "2. Add USDT / ICO / LIGHT to wallet",
     firstGuideStepRefresh: lang === "zh" ? "3. 刷新链上数据与权限状态" : "3. Refresh on-chain data and allowances",
     firstGuideRun: lang === "zh" ? "一键完成" : "Run One-Click Setup",
@@ -432,6 +460,17 @@ const App = () => {
   const [usdtBalance, setUsdtBalance] = useState<bigint>(0n);
   const [coreAllowance, setCoreAllowance] = useState<bigint>(0n);
   const [otcAllowance, setOtcAllowance] = useState<bigint>(0n);
+
+  // 首页面板：交易池储备 & 奖励池积累
+  const [historyToken, setHistoryToken] = useState<TokenType | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [top3Leaderboard, setTop3Leaderboard] = useState<{ address: string; volume: bigint; rank: number }[]>([]);
+  const [primaryPoolReserve, setPrimaryPoolReserve] = useState<{ ico: bigint; usdt: bigint }>({ ico: 0n, usdt: 0n });
+  const [lightPoolReserve, setLightPoolReserve] = useState<{ light: bigint; ico: bigint }>({ light: 0n, ico: 0n });
+  const [superNodePoolBalance, setSuperNodePoolBalance] = useState<bigint>(0n);
+  const [nodePoolBalance, setNodePoolBalance] = useState<bigint>(0n);
+  const [platformPoolBalance, setPlatformPoolBalance] = useState<bigint>(0n);
+  const [leaderboardPoolBalance, setLeaderboardPoolBalance] = useState<bigint>(0n);
   const [machineOrderCount, setMachineOrderCount] = useState(0);
   const [orders, setOrders] = useState<MachineOrder[]>([]);
   const [rewardRecords, setRewardRecords] = useState<RewardRecord[]>([]);
@@ -529,6 +568,13 @@ const App = () => {
     setUsdtBalance(0n);
     setCoreAllowance(0n);
     setOtcAllowance(0n);
+    setPrimaryPoolReserve({ ico: 0n, usdt: 0n });
+    setLightPoolReserve({ light: 0n, ico: 0n });
+    setSuperNodePoolBalance(0n);
+    setNodePoolBalance(0n);
+    setPlatformPoolBalance(0n);
+    setLeaderboardPoolBalance(0n);
+    setTop3Leaderboard([]);
     setMachineOrderCount(0);
     setOrders([]);
     setRewardRecords([]);
@@ -552,14 +598,14 @@ const App = () => {
 
   const networkLabel = useMemo(() => {
     if (!chainId) return t.notConnected;
-    return isOnSepolia(chainId) ? "Sepolia" : `${t.wrongNetwork} (chainId=${chainId})`;
+    return isOnBscTestnet(chainId) ? "BSC Testnet" : `${t.wrongNetwork} (chainId=${chainId})`;
   }, [chainId, t.notConnected, t.wrongNetwork]);
 
   const maskedAddress = useMemo(() => {
     if (!address) return "-";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }, [address]);
-  const isWrongNetwork = useMemo(() => Boolean(chainId) && !isOnSepolia(chainId), [chainId]);
+  const isWrongNetwork = useMemo(() => Boolean(chainId) && !isOnBscTestnet(chainId), [chainId]);
   const headerNetworkBadgeLabel = useMemo(() => {
     if (!chainId) return t.notConnected;
     return isWrongNetwork ? t.wrongNetwork : t.networkReady;
@@ -629,29 +675,29 @@ const App = () => {
   }, [referrerSource, t.referrerFromChain, t.referrerFromLink, t.referrerFromManual, t.referrerFromOwner]);
   const machineDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
-    if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (isWrongNetwork) return t.needBscTestnetToBuy;
     if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, t.needBscTestnetToBuy, t.needConnectToBuy, t.needReferrerToBuy]);
   const nodeDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
-    if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (isWrongNetwork) return t.needBscTestnetToBuy;
     if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role !== 0) return t.roleMismatchForNode;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.roleMismatchForNode]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needBscTestnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.roleMismatchForNode]);
   const superDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
-    if (isWrongNetwork) return t.needSepoliaToBuy;
+    if (isWrongNetwork) return t.needBscTestnetToBuy;
     if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role === 2) return t.alreadySuperNode;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needConnectToBuy, t.needReferrerToBuy, t.needSepoliaToBuy, t.alreadySuperNode]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needBscTestnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.alreadySuperNode]);
   const bindReferrerDisabledReason = useMemo(() => {
     if (!isConnected) return t.connectFirst;
-    if (isWrongNetwork) return t.switchSepolia;
+    if (isWrongNetwork) return t.switchBscTestnet;
     return "";
-  }, [isConnected, isWrongNetwork, t.connectFirst, t.switchSepolia]);
+  }, [isConnected, isWrongNetwork, t.connectFirst, t.switchBscTestnet]);
   const bindReferrerHint = useMemo(() => {
     if (bindReferrerDisabledReason) return bindReferrerDisabledReason;
     if (hasInvalidManualReferrer) return t.invalidReferrer;
@@ -826,9 +872,47 @@ const App = () => {
     direction = activeSwapDirection,
     amountInput = swapAmountIn,
   ) => {
-    if (!SWAP_POOL_ADDRESS) return;
+    const isLightPair = pairId === LIGHT_ICO_PAIR_ID;
+    const activeDirection = isLightPair ? "forward" : direction;
 
-    const activeDirection = pairId === LIGHT_ICO_PAIR_ID ? "forward" : direction;
+    if (!isLightPair) {
+      const { tokenIn, tokenOut } = resolvePrimarySwapTokens(activeDirection);
+      const primarySpender = getPrimarySwapSpender();
+      const [tokenInMeta, tokenOutMeta, tokenInBalance, tokenInAllowance] = await Promise.all([
+        getTokenMeta(connectedProvider, tokenIn),
+        getTokenMeta(connectedProvider, tokenOut),
+        getTokenBalance(connectedProvider, tokenIn, wallet),
+        getTokenAllowance(connectedProvider, tokenIn, wallet, primarySpender),
+      ]);
+
+      setSwapTokenInAddress(tokenIn);
+      setSwapTokenOutAddress(tokenOut);
+      setSwapTokenInSymbol(tokenInMeta.symbol);
+      setSwapTokenOutSymbol(tokenOutMeta.symbol);
+      setSwapTokenInDecimals(tokenInMeta.decimals);
+      setSwapTokenOutDecimals(tokenOutMeta.decimals);
+      setSwapTokenInBalance(tokenInBalance);
+      setSwapTokenInAllowance(tokenInAllowance);
+      setSwapPoolFeeBps(Math.floor(PANCAKE_V3_PRIMARY_FEE_PPM / 100));
+      setSwapPoolImpactLimitBps(0);
+      setSwapSlippageBps(Math.max(50, Math.floor(PANCAKE_V3_PRIMARY_FEE_PPM / 100)));
+
+      if (!amountInput.trim() || Number(amountInput) <= 0) {
+        setSwapQuoteOut(0n);
+        setSwapQuoteFee(0n);
+        setSwapQuoteImpactBps(0);
+        return;
+      }
+
+      const amountInRaw = parseTokenAmount(amountInput, tokenInMeta.decimals);
+      const quote = await quotePrimarySwapExactIn(connectedProvider, activeDirection, amountInRaw);
+      setSwapQuoteOut(quote.amountOut);
+      setSwapQuoteFee(quote.fee);
+      setSwapQuoteImpactBps(quote.priceImpactBps);
+      return;
+    }
+
+    if (!SWAP_POOL_ADDRESS) return;
 
     const pool = await getSwapPool(connectedProvider, pairId);
     if (!pool.exists) {
@@ -903,6 +987,39 @@ const App = () => {
     if (balance !== undefined) setUsdtBalance(balance);
     if (allowanceCore !== undefined) setCoreAllowance(allowanceCore);
     if (allowanceOtc !== undefined) setOtcAllowance(allowanceOtc);
+
+    // 首页池面板数据（不依赖登录钱包，任意 provider 即可）
+    try {
+      const [poolsInfo, accBalances] = await Promise.all([
+        SWAP_POOL_ADDRESS ? getSwapPoolsInfo(connectedProvider) : null,
+        getPoolAccumulatedBalances(connectedProvider),
+      ]);
+      if (poolsInfo) {
+        // pairId 0: token0=USDT token1=ICO
+        setPrimaryPoolReserve({ usdt: poolsInfo.primaryPool.reserve0, ico: poolsInfo.primaryPool.reserve1 });
+        // pairId 1: token0=LIGHT token1=ICO
+        setLightPoolReserve({ light: poolsInfo.lightPool.reserve0, ico: poolsInfo.lightPool.reserve1 });
+      }
+      setSuperNodePoolBalance(accBalances.superNodePool);
+      setNodePoolBalance(accBalances.nodePool);
+      setPlatformPoolBalance(accBalances.platformPool);
+      setLeaderboardPoolBalance(accBalances.leaderboardPool);
+    } catch (e) {
+      console.error("Failed to fetch pool panel data", e);
+    }
+
+    // Fetch today's top 3 leaderboard
+    try {
+      const dayId = currentDayId();
+      const lbData = await fetchLeaderboardDay(connectedProvider, dayId);
+      setTop3Leaderboard(lbData.top10.slice(0, 3).map(e => ({
+        address: e.address,
+        volume: e.totalVolume,
+        rank: e.rank,
+      })));
+    } catch (e) {
+      console.error("Failed to fetch leaderboard top3", e);
+    }
 
     // 团队统计
     try {
@@ -1173,10 +1290,10 @@ const App = () => {
 
   const onSwitchNetwork = async () => {
     try {
-      await ensureSepoliaNetwork();
+      await ensureBscTestnetNetwork();
       await onRefreshWallet();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t.switchSepolia);
+      setStatus(error instanceof Error ? error.message : t.switchBscTestnet);
     }
   };
 
@@ -1194,7 +1311,7 @@ const App = () => {
 
     try {
       setAddingTokenSymbol(symbol);
-      await ensureSepoliaNetwork();
+      await ensureBscTestnetNetwork();
       await addProjectTokenToWallet(symbol);
       setStatus(`${symbol} ${t.tokenAdded}`);
     } catch (error) {
@@ -1223,7 +1340,7 @@ const App = () => {
         setStatus(t.connectFirst);
         return;
       }
-      await ensureSepoliaNetwork();
+      await ensureBscTestnetNetwork();
       await syncWalletState(existing.provider, existing.address, existing.chainId);
       setStatus(t.walletConnected);
     } catch (error) {
@@ -1236,8 +1353,8 @@ const App = () => {
       setStatus(t.connectFirst);
       return;
     }
-    if (!isOnSepolia(chainId)) {
-      setStatus(t.switchSepolia);
+    if (!isOnBscTestnet(chainId)) {
+      setStatus(t.switchBscTestnet);
       return;
     }
     try {
@@ -1439,10 +1556,13 @@ const App = () => {
   };
 
   const onApproveSwapToken = async () => guardedAction(async () => {
-    if (!SWAP_POOL_ADDRESS) throw new Error(t.missingSwapConfig);
     if (!swapTokenInAddress) throw new Error(t.refreshSwapFirst);
+    const swapSpender = activePairId === LIGHT_ICO_PAIR_ID
+      ? SWAP_POOL_ADDRESS
+      : getPrimarySwapSpender();
+    if (!swapSpender) throw new Error(t.missingSwapConfig);
     setStatus(`${t.approvingToken} ${swapTokenInSymbol}...`);
-    await approveToken(provider!, swapTokenInAddress, SWAP_POOL_ADDRESS, parseTokenAmount("1000000000", swapTokenInDecimals));
+    await approveToken(provider!, swapTokenInAddress, swapSpender, parseTokenAmount("1000000000", swapTokenInDecimals));
     await refreshSwapPanel(provider!, address);
     setStatus(`${swapTokenInSymbol} ${t.approveTokenSuccess}`);
   });
@@ -1450,8 +1570,11 @@ const App = () => {
   const onSwapExecute = async () => guardedAction(async () => {
     if (!swapTokenInAddress || !swapTokenOutAddress) throw new Error(t.refreshSwapFirst);
     if (swapQuoteOut <= 0n) throw new Error(t.getValidQuoteFirst);
-    if (!SWAP_POOL_ADDRESS) throw new Error(t.missingSwapConfig);
     const amountInRaw = parseTokenAmount(swapAmountIn, swapTokenInDecimals);
+    const swapSpender = activePairId === LIGHT_ICO_PAIR_ID
+      ? SWAP_POOL_ADDRESS
+      : getPrimarySwapSpender();
+    if (!swapSpender) throw new Error(t.missingSwapConfig);
     // Pre-flight: balance check
     if (swapTokenInBalance < amountInRaw) throw new Error(t.insufficientTokenBalance);
     // Pre-flight: price impact guard
@@ -1460,12 +1583,16 @@ const App = () => {
     }
     if (swapTokenInAllowance < amountInRaw) {
       setStatus(`${t.autoApproveThenPay} ${t.approvingToken} ${swapTokenInSymbol}...`);
-      await approveToken(provider!, swapTokenInAddress, SWAP_POOL_ADDRESS, parseTokenAmount("1000000000", swapTokenInDecimals));
+      await approveToken(provider!, swapTokenInAddress, swapSpender, parseTokenAmount("1000000000", swapTokenInDecimals));
       setStatus(`${swapTokenInSymbol} ${t.approveTokenSuccess}`);
     }
     const minOut = (swapQuoteOut * BigInt(10_000 - swapSlippageBps)) / 10_000n;
     setStatus(`${t.swapping} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}...`);
-    await swapExactIn(provider!, activePairId, swapTokenInAddress, amountInRaw, minOut, address);
+    if (activePairId === LIGHT_ICO_PAIR_ID) {
+      await swapExactIn(provider!, activePairId, swapTokenInAddress, amountInRaw, minOut, address);
+    } else {
+      await swapPrimaryExactIn(provider!, activeSwapDirection, amountInRaw, minOut, address);
+    }
     // Clear stale quote so user must refresh before swapping again
     setSwapQuoteOut(0n);
     setSwapQuoteFee(0n);
@@ -1565,6 +1692,83 @@ const App = () => {
                 )}
               />
             ) : null}
+          </Card>
+
+          {/* 奖金榜单卡片 */}
+          <Card
+            className="lb-card-prominent"
+            title={lang === "zh" ? "🏆 奖金排名" : "🏆 Bonus Rankings"}
+            onClick={() => setShowLeaderboard(true)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="ranking-card">
+              {top3Leaderboard.length === 0 ? (
+                <p className="ranking-empty">{lang === "zh" ? "暂无排名数据" : "No ranking data yet"}</p>
+              ) : (
+                <div className="ranking-list">
+                  {top3Leaderboard.map((entry) => (
+                    <div key={entry.rank} className={`ranking-row rank-${entry.rank}`}>
+                      <span className="ranking-medal">
+                        {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}
+                      </span>
+                      <span className="ranking-addr">{entry.address.slice(0, 10)}…</span>
+                      <span className="ranking-vol">{formatUsdt(entry.volume)} USDT</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="ranking-hint">
+                {lang === "zh" ? "点击查看完整榜单" : "Click to view full rankings"}
+              </p>
+            </div>
+          </Card>
+
+          {/* 平台资金池面板 */}
+          <Card title={t.poolPanelTitle} hint={t.poolPanelHint}>
+            <div className="pool-panel-grid">
+              <div className="pool-panel-cell">
+                <p className="pool-panel-label">{t.poolPrimary}</p>
+                <p className="pool-panel-value">{formatTokenAmount(primaryPoolReserve.ico, 18)} ICO</p>
+                <p className="pool-panel-value">{formatUsdt(primaryPoolReserve.usdt)} USDT</p>
+              </div>
+              <div className="pool-panel-cell">
+                <p className="pool-panel-label">{t.poolLight}</p>
+                <p className="pool-panel-value">{formatTokenAmount(lightPoolReserve.light, 18)} LIGHT</p>
+                <p className="pool-panel-value">{formatTokenAmount(lightPoolReserve.ico, 18)} ICO</p>
+              </div>
+              <div className="pool-panel-cell">
+                <p className="pool-panel-label">{t.poolSuperNode}</p>
+                <p className="pool-panel-value">{formatUsdt(superNodePoolBalance)} USDT</p>
+              </div>
+              <div className="pool-panel-cell">
+                <p className="pool-panel-label">{t.poolNode}</p>
+                <p className="pool-panel-value">{formatUsdt(nodePoolBalance)} USDT</p>
+              </div>
+              <div className="pool-panel-cell">
+                <p className="pool-panel-label">{t.poolPlatform}</p>
+                <p className="pool-panel-value">{formatUsdt(platformPoolBalance)} USDT</p>
+              </div>
+              <div className="pool-panel-cell">
+                <p className="pool-panel-label">{t.poolLeaderboard}</p>
+                <p className="pool-panel-value">{formatUsdt(leaderboardPoolBalance)} USDT</p>
+              </div>
+            </div>
+            <div className="actions" style={{ marginTop: "1rem" }}>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => setActiveTab("mine")}
+              >
+                {t.myWallet}
+              </button>
+              <button
+                className="primary-btn primary-btn--ghost"
+                type="button"
+                onClick={() => setActiveTab("otc")}
+              >
+                {t.buyNodeNow}
+              </button>
+            </div>
           </Card>
 
           {/* 绑定推荐人（非 Owner 且未绑定且非默认 Owner 来源时显示） */}
@@ -2103,6 +2307,15 @@ const App = () => {
       ) : null}
 
       {activeTab === "mine" ? (
+        historyToken && provider && address ? (
+          <TokenHistory
+            tokenType={historyToken}
+            userAddress={address}
+            provider={provider}
+            onBack={() => setHistoryToken(null)}
+            lang={lang}
+          />
+        ) : (
         <section className="grid-full">
           <Card title={t.assetsTitle} hint={t.assetsHint}>
             <div className="stats-grid">
@@ -2135,6 +2348,35 @@ const App = () => {
               <KVRow label={t.loadedRecentRewards} value={rewardRecords.length} />
             </div>
           </Card>
+
+          {/* 钱包流水入口 */}
+          {isConnected && address && provider && (
+            <Card title={lang === "zh" ? "钱包流水" : "Wallet History"}>
+              <div className="history-entry-btns">
+                <button
+                  className="history-entry-btn"
+                  type="button"
+                  onClick={() => setHistoryToken("ICO")}
+                >
+                  ICO{lang === "zh" ? "流水" : " History"}
+                </button>
+                <button
+                  className="history-entry-btn"
+                  type="button"
+                  onClick={() => setHistoryToken("LIGHT")}
+                >
+                  Light{lang === "zh" ? "流水" : " History"}
+                </button>
+                <button
+                  className="history-entry-btn"
+                  type="button"
+                  onClick={() => setHistoryToken("USDT")}
+                >
+                  USDT{lang === "zh" ? "流水" : " History"}
+                </button>
+              </div>
+            </Card>
+          )}
 
           <Card title={t.ordersTitle} hint={t.ordersHint}>
             {orders.length === 0 ? (
@@ -2174,12 +2416,24 @@ const App = () => {
             )}
           </Card>
         </section>
+        )
       ) : null}
 
       {activeTab === "admin" && isOwner ? (
         <Admin lang={lang} address={address} contractOwner={contractOwner} provider={provider} onRefresh={onRefreshWallet} onStatusChange={setStatus} />
       ) : null}
-    
+
+      {/* 奖金分配榜单 (全屏覆盖) */}
+      {showLeaderboard ? (
+        <div className="fullscreen-overlay">
+          <Leaderboard
+            provider={provider ?? new JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545") as unknown as BrowserProvider}
+            onBack={() => setShowLeaderboard(false)}
+            lang={lang}
+          />
+        </div>
+      ) : null}
+
       {/* 底部导航栏 */}
       <nav className="bottom-nav">
         {visibleMobileTabs.map((tab) => (

@@ -1,4 +1,4 @@
-# Appwrite + Sepolia 实施蓝图（修订版）
+# Appwrite + BSC Testnet 实施蓝图（修订版）
 
 ## 1. 最终架构边界（按你的最新要求）
 
@@ -6,7 +6,7 @@
 - 业务功能：全部链上实现与读取。
 - 结论：订单、身份、奖励、OTC、池子余额、排行榜等都不入 Appwrite。
 
-唯一可信业务数据源是 Sepolia 链上合约状态与事件。
+唯一可信业务数据源是 BSC Testnet 链上合约状态与事件。
 
 ---
 
@@ -18,7 +18,7 @@
 - 直接读取合约 view 与事件日志
 - 只从 Appwrite 读取公告列表
 
-2) 智能合约（Sepolia）
+2) 智能合约（BSC Testnet）
 - Core：矿机、节点、超级节点、分账与规则
 - Reward：奖励结算与领取（如适用）
 - OTC：身份 NFT 交易、手续费、价格约束
@@ -122,12 +122,12 @@
 
 ---
 
-## 8. Sepolia 部署与环境变量
+## 8. BSC Testnet 部署与环境变量
 
 必要变量：
-- SEPOLIA_RPC_URL
-- SEPOLIA_RPC_FALLBACK_URL（可选）
-- CHAIN_ID=11155111
+- BSC_TESTNET_RPC_URL
+- BSC_TESTNET_RPC_FALLBACK_URL（可选）
+- CHAIN_ID=97
 - CORE_CONTRACT_ADDRESS
 - REWARD_CONTRACT_ADDRESS
 - OTC_CONTRACT_ADDRESS

@@ -6,7 +6,7 @@
  * 3. approve → addLiquidity，为两个池注入初始流动性
  *
  * 用法：
- *   npx hardhat run scripts/init-swap-pools.ts --network sepolia
+ *   npx hardhat run scripts/init-swap-pools.ts --network bscTestnet
  */
 
 import { ethers } from "hardhat";

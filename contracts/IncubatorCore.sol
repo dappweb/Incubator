@@ -96,6 +96,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
     uint16[10] private rankShares;
 
+    // Internal pool accumulation: when poolConfig recipient == address(this),
+    // USDT stays in the contract and is tracked here for later settlement.
+    mapping(uint8 => uint256) public poolAccumulated;
+
     event MachinePurchased(
         address indexed user,
         uint256 indexed orderId,
@@ -131,6 +135,8 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     event ReferralBound(address indexed user, address indexed referrer);
     event RewardWeightUpdated(address indexed account, uint256 weight);
     event LeaderboardUpdated(uint256 indexed dayId, address indexed user, uint256 totalVolume);
+    event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT);
+    event PoolRewardSettled(uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT);
 
     constructor() {
         _disableInitializers();
@@ -433,6 +439,92 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         usdt.safeTransfer(to, amount);
     }
 
+    /// @notice Distribute accumulated leaderboard pool to the top-N users of a given day.
+    /// Caller must specify the day; on-chain rank data is used to determine recipients.
+    /// Only works when the Leaderboard pool recipient was set to address(this).
+    function settleLeaderboard(uint256 dayId) external onlyOwner {
+        uint256 total = poolAccumulated[uint8(PoolType.Leaderboard)];
+        require(total > 0, "no leaderboard balance");
+
+        LeaderboardState storage board = leaderboards[dayId];
+        require(board.topCount > 0, "no board data for day");
+
+        poolAccumulated[uint8(PoolType.Leaderboard)] = 0;
+
+        uint32 shareDenominator = 0;
+        for (uint8 i = 0; i < board.topCount; i++) {
+            shareDenominator += rankShares[i];
+        }
+        require(shareDenominator > 0, "zero share denominator");
+
+        uint256 distributed = 0;
+        for (uint8 i = 0; i < board.topCount; i++) {
+            address user = board.topUsers[i];
+            if (user == address(0)) continue;
+
+            uint256 amount;
+            if (i == board.topCount - 1) {
+                amount = total - distributed;
+            } else {
+                amount = (total * rankShares[i]) / shareDenominator;
+            }
+            if (amount > 0) {
+                usdt.safeTransfer(user, amount);
+                distributed += amount;
+                emit LeaderboardSettled(dayId, user, i, amount);
+            }
+        }
+    }
+
+    /// @notice Distribute accumulated node pool to the provided list of recipients.
+    /// `shares` must be in BPS and sum to 10 000.
+    /// Only works when the Node pool recipient was set to address(this).
+    function settleNodeRewards(address[] calldata recipients, uint16[] calldata shares) external onlyOwner {
+        _settleAccumulatedPool(PoolType.Node, recipients, shares);
+    }
+
+    /// @notice Distribute accumulated super-node pool to the provided list of recipients.
+    /// `shares` must be in BPS and sum to 10 000.
+    /// Only works when the SuperNode pool recipient was set to address(this).
+    function settleSuperNodeRewards(address[] calldata recipients, uint16[] calldata shares) external onlyOwner {
+        _settleAccumulatedPool(PoolType.SuperNode, recipients, shares);
+    }
+
+    function _settleAccumulatedPool(
+        PoolType poolType,
+        address[] calldata recipients,
+        uint16[] calldata shares
+    ) private {
+        require(recipients.length > 0 && recipients.length == shares.length, "length mismatch");
+
+        uint32 shareTotal = 0;
+        for (uint256 i = 0; i < shares.length; i++) {
+            shareTotal += shares[i];
+        }
+        require(shareTotal == BPS_DENOMINATOR, "shares must sum to 10000");
+
+        uint256 total = poolAccumulated[uint8(poolType)];
+        require(total > 0, "no pool balance");
+
+        poolAccumulated[uint8(poolType)] = 0;
+
+        uint256 distributed = 0;
+        for (uint256 i = 0; i < recipients.length; i++) {
+            require(recipients[i] != address(0), "invalid recipient");
+            uint256 amount;
+            if (i == recipients.length - 1) {
+                amount = total - distributed;
+            } else {
+                amount = (total * shares[i]) / BPS_DENOMINATOR;
+            }
+            if (amount > 0) {
+                usdt.safeTransfer(recipients[i], amount);
+                distributed += amount;
+                emit PoolRewardSettled(uint8(poolType), recipients[i], amount);
+            }
+        }
+    }
+
     function _allocateMachineOrder(uint256 orderId, uint256 totalAmount, address referrer) private {
         uint256 liquidityAmount = _poolAmount(totalAmount, uint8(PoolType.Liquidity));
         uint256 referralAmount = _poolAmount(totalAmount, uint8(PoolType.Referral));
@@ -554,7 +646,12 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         }
 
         require(recipient != address(0), "invalid recipient");
-        usdt.safeTransfer(recipient, amount);
+        if (recipient == address(this)) {
+            // Self-custody: funds stay in the contract for on-chain settlement.
+            poolAccumulated[uint8(poolType)] += amount;
+        } else {
+            usdt.safeTransfer(recipient, amount);
+        }
         emit PoolAllocated(orderId, uint8(poolType), recipient, address(usdt), amount);
     }
 

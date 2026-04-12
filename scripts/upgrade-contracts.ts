@@ -43,7 +43,10 @@ async function main() {
 
       console.log(`\n${index + 1}. Upgrading ${target.label}...`);
       const factory = await ethers.getContractFactory(target.contractName);
-      const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, { kind: "uups" });
+      const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, {
+        kind: "uups",
+        unsafeAllow: ["constructor"],
+      });
       await upgraded.waitForDeployment();
       const implementation = await upgrades.erc1967.getImplementationAddress(proxyAddress);
       summary.push({ label: target.label, proxy: proxyAddress, implementation });

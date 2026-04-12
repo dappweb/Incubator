@@ -1,5 +1,11 @@
 import { BrowserProvider, Contract } from "ethers";
-import { SWAP_POOL_ADDRESS } from "../config";
+import {
+    ICO_TOKEN_ADDRESS,
+    PANCAKE_V3_PRIMARY_FEE_PPM,
+    PANCAKE_V3_ROUTER_ADDRESS,
+    SWAP_POOL_ADDRESS,
+    USDT_CONTRACT_ADDRESS,
+} from "../config";
 
 const swapAbi = [
   "function getPool(uint8 pairId) view returns (address token0,address token1,uint256 reserve0,uint256 reserve1,uint16 feeBps,uint16 maxPriceImpactBps,bool exists)",
@@ -21,6 +27,11 @@ const swapAbi = [
   "function unpause() external",
 ];
 
+const pancakeRouterV2Abi = [
+  "function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts)",
+  "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts)",
+];
+
 export type SwapPool = {
   token0: string;
   token1: string;
@@ -36,6 +47,8 @@ export type SwapQuote = {
   fee: bigint;
   priceImpactBps: number;
 };
+
+export type PrimarySwapDirection = "forward" | "reverse";
 
 export type LightFeeConfig = {
   burnBps: number;
@@ -53,6 +66,74 @@ export function getSwapContract(provider: BrowserProvider) {
   }
 
   return new Contract(SWAP_POOL_ADDRESS, swapAbi, provider);
+}
+
+function getPancakeRouterContract(provider: BrowserProvider) {
+  if (!PANCAKE_V3_ROUTER_ADDRESS) {
+    throw new Error("缺少 VITE_PANCAKE_V2_ROUTER_ADDRESS 配置");
+  }
+
+  return new Contract(PANCAKE_V3_ROUTER_ADDRESS, pancakeRouterV2Abi, provider);
+}
+
+export function getPrimarySwapSpender() {
+  if (!PANCAKE_V3_ROUTER_ADDRESS) {
+    throw new Error("缺少 VITE_PANCAKE_V2_ROUTER_ADDRESS 配置");
+  }
+
+  return PANCAKE_V3_ROUTER_ADDRESS;
+}
+
+export function resolvePrimarySwapTokens(direction: PrimarySwapDirection) {
+  if (!USDT_CONTRACT_ADDRESS || !ICO_TOKEN_ADDRESS) {
+    throw new Error("缺少 VITE_USDT_CONTRACT_ADDRESS 或 VITE_ICO_TOKEN_ADDRESS 配置");
+  }
+
+  return direction === "forward"
+    ? { tokenIn: USDT_CONTRACT_ADDRESS, tokenOut: ICO_TOKEN_ADDRESS }
+    : { tokenIn: ICO_TOKEN_ADDRESS, tokenOut: USDT_CONTRACT_ADDRESS };
+}
+
+export async function quotePrimarySwapExactIn(
+  provider: BrowserProvider,
+  direction: PrimarySwapDirection,
+  amountIn: bigint,
+): Promise<SwapQuote> {
+  if (amountIn <= 0n) {
+    return { amountOut: 0n, fee: 0n, priceImpactBps: 0 };
+  }
+
+  const { tokenIn, tokenOut } = resolvePrimarySwapTokens(direction);
+  const router = getPancakeRouterContract(provider) as any;
+  const feePpm = Number.isFinite(PANCAKE_V3_PRIMARY_FEE_PPM) ? PANCAKE_V3_PRIMARY_FEE_PPM : 2500;
+  const path = [tokenIn, tokenOut];
+  const amounts = await router.getAmountsOut(amountIn, path);
+  const amountOut = Array.isArray(amounts)
+    ? amounts[amounts.length - 1]
+    : amounts?.[amounts.length - 1];
+  const estimatedFee = (amountIn * BigInt(feePpm)) / 1_000_000n;
+
+  return {
+    amountOut,
+    fee: estimatedFee,
+    priceImpactBps: 0,
+  };
+}
+
+export async function swapPrimaryExactIn(
+  provider: BrowserProvider,
+  direction: PrimarySwapDirection,
+  amountIn: bigint,
+  minOut: bigint,
+  recipient: string,
+) {
+  const { tokenIn, tokenOut } = resolvePrimarySwapTokens(direction);
+  const signer = await provider.getSigner();
+  const router = getPancakeRouterContract(provider).connect(signer) as any;
+  const path = [tokenIn, tokenOut];
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
+  const tx = await router.swapExactTokensForTokens(amountIn, minOut, path, recipient, deadline);
+  return tx.wait();
 }
 
 export async function getSwapPool(provider: BrowserProvider, pairId: number): Promise<SwapPool> {
@@ -171,4 +252,26 @@ export async function unpauseSwap(provider: BrowserProvider) {
   const contract = getSwapContract(provider).connect(signer) as any;
   const tx = await contract.unpause();
   return tx.wait();
+}
+
+/** 批量读取两个交易池的储备量，返回数据供首页展示 */
+export async function getSwapPoolsInfo(provider: BrowserProvider): Promise<{
+  primaryPool: SwapPool;   // pairId 0: USDT/ICO
+  lightPool: SwapPool;     // pairId 1: LIGHT/ICO
+}> {
+  const contract = getSwapContract(provider) as any;
+  const [r0, r1] = await Promise.all([
+    contract.getPool(0),
+    contract.getPool(1),
+  ]);
+  const parse = (r: any): SwapPool => ({
+    token0: r.token0,
+    token1: r.token1,
+    reserve0: r.reserve0,
+    reserve1: r.reserve1,
+    feeBps: Number(r.feeBps),
+    maxPriceImpactBps: Number(r.maxPriceImpactBps),
+    exists: Boolean(r.exists),
+  });
+  return { primaryPool: parse(r0), lightPool: parse(r1) };
 }

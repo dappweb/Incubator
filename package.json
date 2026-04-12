@@ -44,9 +44,12 @@
     "deploy:caddy": "bash deploy/caddy/deploy.sh",
     "diagnose:caddy": "bash scripts/diagnose-caddy-525.sh",
     "compile": "hardhat compile",
-    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-    "precheck:upgrade:sepolia": "hardhat run scripts/precheck-upgrade.ts --network sepolia",
-    "upgrade:sepolia": "hardhat run scripts/upgrade-contracts.ts --network sepolia",
+    "deploy:bscTestnet": "hardhat run scripts/deploy.ts --network bscTestnet",
+    "precheck:upgrade:bscTestnet": "hardhat run scripts/precheck-upgrade.ts --network bscTestnet",
+    "upgrade:bscTestnet": "hardhat run scripts/upgrade-contracts.ts --network bscTestnet",
+    "init:swap:bscTestnet": "hardhat run scripts/init-swap-pools.ts --network bscTestnet",
+    "pancake:pool:bscTestnet": "hardhat run scripts/create-pancake-pool.ts --network bscTestnet",
+    "pancake:v2:pool:bscTestnet": "hardhat run scripts/create-pancake-v2-pool.ts --network bscTestnet",
     "test:contracts": "hardhat run scripts/validate-contracts.ts"
   }
 }

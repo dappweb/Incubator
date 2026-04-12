@@ -1,4 +1,5 @@
 # Incubator
+
 Incubator
 
 ## 快速开始
@@ -19,24 +20,24 @@ npm install
 npm run dev
 ```
 
-### 4) 编译与部署合约（Sepolia）
+### 4) 编译与部署合约（BSC Testnet）
 
 ```bash
 npm run compile
-npm run deploy:sepolia
+npm run deploy:bscTestnet
 ```
 
 ### 5) 合约升级（UUPS）
 
 - 在 `.env` 中配置代理地址：
-	- `INCUBATOR_CORE_PROXY`
-	- `NODE_OTC_MARKET_PROXY`
-	- `SWAP_POOL_MANAGER_PROXY`
-	- `IDENTITY_NFT_PROXY`
+  - `INCUBATOR_CORE_PROXY`
+  - `NODE_OTC_MARKET_PROXY`
+  - `SWAP_POOL_MANAGER_PROXY`
+  - `IDENTITY_NFT_PROXY`
 
 ```bash
-npm run precheck:upgrade:sepolia
-npm run upgrade:sepolia
+npm run precheck:upgrade:bscTestnet
+npm run upgrade:bscTestnet
 ```
 
 > 注意：业务功能全部链上实现，Appwrite 仅用于公告模块。
@@ -56,6 +57,9 @@ npm run upgrade:sepolia
 - `VITE_CORE_CONTRACT_ADDRESS`
 - `VITE_OTC_CONTRACT_ADDRESS`
 - `VITE_SWAP_POOL_ADDRESS`
+- `VITE_PANCAKE_V3_ROUTER_ADDRESS`
+- `VITE_PANCAKE_V3_QUOTER_ADDRESS`
+- `VITE_PANCAKE_V3_PRIMARY_FEE_PPM`（示例：`2500`）
 - `VITE_APPWRITE_ENDPOINT`
 - `VITE_APPWRITE_PROJECT_ID`
 - `VITE_APPWRITE_DATABASE_ID`
@@ -65,11 +69,11 @@ npm run upgrade:sepolia
 
 - 项目已包含 `vercel.json`，用于 SPA 刷新回退到 `index.html`。
 
-## 部署到本机 Caddy（域名保持 t3.test2dapp.xyz）
+## 部署到本机 Caddy（域名保持 t2.test2dapp.xyz）
 
 ### 1) 服务器准备
 
-- 确保 DNS `t3.test2dapp.xyz` 已解析到当前服务器公网 IP
+- 确保 DNS `t2.test2dapp.xyz` 已解析到当前服务器公网 IP
 - 放行 80/443 端口
 - 安装 Caddy（systemd 服务名为 `caddy`）
 
@@ -109,7 +113,7 @@ npm run diagnose:caddy
 如需附带“绕过 Cloudflare 的源站直连检测”：
 
 ```bash
-bash scripts/diagnose-caddy-525.sh t3.test2dapp.xyz <服务器公网IP>
+bash scripts/diagnose-caddy-525.sh t2.test2dapp.xyz <服务器公网IP>
 ```
 
 ## 代码结构
@@ -127,6 +131,6 @@ bash scripts/diagnose-caddy-525.sh t3.test2dapp.xyz <服务器公网IP>
 ## Docs
 
 - [DApp UI 设计方案](docs/DAPP_UI_SPEC.md)
-- [Appwrite + Sepolia 实施蓝图](docs/APPWRITE_SEPOLIA_IMPLEMENTATION.md)
+- [Appwrite 实施蓝图](docs/APPWRITE_BSC_TESTNET_IMPLEMENTATION.md)
 - [生产就绪任务清单](docs/PRODUCTION_ROADMAP.md)
 - [当前实现状态（真相文档）](docs/CURRENT_IMPLEMENTATION_STATUS.md)

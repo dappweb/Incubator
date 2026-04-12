@@ -1,10 +1,10 @@
 import { BrowserProvider } from "ethers";
 import {
-  ICO_TOKEN_ADDRESS,
-  LIGHT_TOKEN_ADDRESS,
-  SEPOLIA_CHAIN_ID,
-  SEPOLIA_HEX_CHAIN_ID,
-  USDT_CONTRACT_ADDRESS,
+    BSC_TESTNET_CHAIN_ID,
+    BSC_TESTNET_HEX_CHAIN_ID,
+    ICO_TOKEN_ADDRESS,
+    LIGHT_TOKEN_ADDRESS,
+    USDT_CONTRACT_ADDRESS,
 } from "../config";
 
 type WalletWatchToken = {
@@ -90,7 +90,7 @@ export async function addProjectTokenToWallet(symbol: "ICO" | "LIGHT") {
 }
 
 export async function setupWalletAfterConnect(): Promise<WalletSetupResult> {
-  await ensureSepoliaNetwork();
+  await ensureBscTestnetNetwork();
 
   const validTokens = WATCHABLE_TOKENS.filter((token) => token.address);
   if (validTokens.length === 0) {
@@ -138,7 +138,7 @@ export function listenToWalletEvents(
   };
 }
 
-export async function ensureSepoliaNetwork() {
+export async function ensureBscTestnetNetwork() {
   if (!window.ethereum) {
     throw new Error("未检测到钱包插件");
   }
@@ -146,7 +146,7 @@ export async function ensureSepoliaNetwork() {
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: SEPOLIA_HEX_CHAIN_ID }],
+      params: [{ chainId: BSC_TESTNET_HEX_CHAIN_ID }],
     });
   } catch (error) {
     const err = error as { code?: number };
@@ -155,15 +155,15 @@ export async function ensureSepoliaNetwork() {
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: SEPOLIA_HEX_CHAIN_ID,
-            chainName: "Sepolia",
-            rpcUrls: ["https://rpc.sepolia.org"],
+            chainId: BSC_TESTNET_HEX_CHAIN_ID,
+            chainName: "BSC Testnet",
+            rpcUrls: ["https://data-seed-prebsc-1-s1.binance.org:8545"],
             nativeCurrency: {
-              name: "Sepolia ETH",
-              symbol: "SEP",
+              name: "tBNB",
+              symbol: "tBNB",
               decimals: 18,
             },
-            blockExplorerUrls: ["https://sepolia.etherscan.io"],
+            blockExplorerUrls: ["https://testnet.bscscan.com"],
           },
         ],
       });
@@ -173,6 +173,6 @@ export async function ensureSepoliaNetwork() {
   }
 }
 
-export function isOnSepolia(chainId: number) {
-  return chainId === SEPOLIA_CHAIN_ID;
+export function isOnBscTestnet(chainId: number) {
+  return chainId === BSC_TESTNET_CHAIN_ID;
 }

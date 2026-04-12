@@ -25,6 +25,7 @@ const coreAbi = [
   "function owner() view returns (address)",
   "function paused() view returns (bool)",
   "function getPoolConfig(uint8 poolType) view returns (address recipient, uint16 bps)",
+  "function poolAccumulated(uint8 poolType) view returns (uint256)",
   "function updateMachineUnitPrice(uint256 newPrice) external",
   "function updateNodePrice(uint256 newPrice) external",
   "function updateSuperNodePrice(uint256 newPrice) external",
@@ -34,6 +35,11 @@ const coreAbi = [
   "function unpause() external",
   "event RewardSettled(uint256 indexed orderId, uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT)",
   "event ReferralBound(address indexed user, address indexed referrer)",
+  "function getLeaderboard(uint256 dayId) view returns (address[10] topUsers, uint256[10] topVolumes, uint8 topCount, address[10] lastUsers, uint8 lastCount)",
+  "event MachinePurchased(address indexed user, uint256 indexed orderId, uint256 quantity, uint256 amountUSDT, address indexed referrer)",
+  "event LeaderboardUpdated(uint256 indexed dayId, address indexed user, uint256 totalVolume)",
+  "event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT)",
+  "event PoolRewardSettled(uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT)",
 ];
 
 export type CorePoolConfig = {
@@ -47,6 +53,23 @@ export function getCoreContract(provider: BrowserProvider) {
   }
 
   return new Contract(CORE_CONTRACT_ADDRESS, coreAbi, provider);
+}
+
+/** 读取 SuperNode池(2)、Node池(3)、Platform池(4，即USDT契约池)、Leaderboard池(5，即FOMO奖励) 的积累余额 */
+export async function getPoolAccumulatedBalances(provider: BrowserProvider): Promise<{
+  superNodePool: bigint;
+  nodePool: bigint;
+  platformPool: bigint;
+  leaderboardPool: bigint;
+}> {
+  const contract = getCoreContract(provider);
+  const [superNodePool, nodePool, platformPool, leaderboardPool] = await Promise.all([
+    contract.poolAccumulated(2) as Promise<bigint>,
+    contract.poolAccumulated(3) as Promise<bigint>,
+    contract.poolAccumulated(4) as Promise<bigint>,
+    contract.poolAccumulated(5) as Promise<bigint>,
+  ]);
+  return { superNodePool, nodePool, platformPool, leaderboardPool };
 }
 
 export async function getMachineUnitPrice(provider: BrowserProvider): Promise<bigint> {

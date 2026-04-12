@@ -40,7 +40,7 @@
 
 #### 前置条件
 - 用户本地安装了 MetaMask 或兼容的 EIP-1193 钱包
-- 用户网络已切换到 **Sepolia 测试网**（自动检查或手动切换）
+- 用户网络已切换到 **BSC Testnet 测试网**（自动检查或手动切换）
 - 钱包中有足够的 USDT（用于后续购买）
 
 #### 关键代码实现
@@ -55,10 +55,10 @@ if (isWalletConnected && !firstConnectGuideDone) {
 
 **钱包检查** - [src/lib/wallet.ts](src/lib/wallet.ts)
 ```typescript
-export async function isOnSepolia(): Promise<boolean> {
+export async function isOnBscTestnet(): Promise<boolean> {
   if (!window.ethereum) return false;
   const chainId = await window.ethereum.request({ method: "eth_chainId" });
-  return chainId === "0xaa36a7"; // Sepolia chain ID
+  return chainId === "0x61"; // BSC Testnet chain ID
 }
 ```
 
@@ -68,7 +68,7 @@ export async function isOnSepolia(): Promise<boolean> {
 3. 成功后获取：
    - 用户地址（钱包地址）
    - NetworkProvider（用于后续链上交互）
-4. 系统自动验证网络是否为 Sepolia；若不是，提示切换
+4. 系统自动验证网络是否为 BSC Testnet；若不是，提示切换
 
 #### 数据流
 ```
@@ -512,14 +512,14 @@ User A 的视角：
 | "already bound" | 已绑定过推荐人 | 无法修改，使用现有推荐人 |
 | "insufficient balance" | USDT 余额不足 | 充值更多 USDT |
 | "insufficient allowance" | USDT 授权不足 | 调用 `approveUsdt()` |
-| "wrong network" | 网络不是 Sepolia | 切换到 Sepolia 测试网 |
+| "wrong network" | 网络不是 BSC Testnet | 切换到 BSC Testnet 测试网 |
 | "wallet not connected" | 未连接钱包 | 连接 MetaMask 钱包 |
 
 ### 事务失败重试策略
 
 ```
 1. 检查网络连接
-   └─▶ 是否为 Sepolia? 否 → 切换网络
+   └─▶ 是否为 BSC Testnet? 否 → 切换网络
 
 2. 检查钱包
    └─▶ MetaMask 是否聚焦? 否 → 打开 MetaMask
@@ -559,10 +559,10 @@ User A 的视角：
 │
 │    是 ▼
 │ 2. 检查网络
-│    Sepolia? ─────┐
+│    BSC Testnet? ─────┐
 │                  │ 否
 │                  ▼
-│            切换到 Sepolia
+│            切换到 BSC Testnet
 │            │
 │            ▼
 │ 3. 显示首次连接引导
@@ -758,7 +758,7 @@ console.log(role);  // 0=None, 1=Node, 2=SuperNode
 2. **矿机购买前**
    - 确认钱包所有权
    - 确认 USDT 余额充足
-   - 确认网络为 Sepolia
+   - 确认网络为 BSC Testnet
 
 3. **授权管理**
    - 仅在必要时授权
@@ -806,7 +806,7 @@ console.log(role);  // 0=None, 1=Node, 2=SuperNode
 ```
 Step 1: 连接钱包
   ✓ MetaMask 已安装
-  ✓ 切换到 Sepolia
+  ✓ 切换到 BSC Testnet
   ✓ 钱包余额 >= 500 USDT
   
 Step 2: 绑定推荐人

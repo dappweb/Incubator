@@ -1,39 +1,39 @@
-import React, { useEffect, useMemo, useState } from "react";
 import { BrowserProvider, isAddress } from "ethers";
-import { Card, KVRow } from "./Common";
-import {
-  getContractOwner,
-  getCorePoolConfig,
-  getMachineUnitPrice,
-  getNodePrice,
-  getSuperNodePrice,
-  isCorePaused,
-  pauseCore,
-  unpauseCore,
-  updateCoreNodePrice,
-  updateCorePoolRecipient,
-  updateCorePoolShare,
-  updateCoreSuperNodePrice,
-  updateMachinePrice,
-} from "../lib/coreContract";
+import React, { useEffect, useMemo, useState } from "react";
+import { CORE_CONTRACT_ADDRESS, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS } from "../config";
 import type { CorePoolConfig } from "../lib/coreContract";
+import {
+    getContractOwner,
+    getCorePoolConfig,
+    getMachineUnitPrice,
+    getNodePrice,
+    getSuperNodePrice,
+    isCorePaused,
+    pauseCore,
+    unpauseCore,
+    updateCoreNodePrice,
+    updateCorePoolRecipient,
+    updateCorePoolShare,
+    updateCoreSuperNodePrice,
+    updateMachinePrice,
+} from "../lib/coreContract";
+import { parseContractError } from "../lib/errorParser";
 import { getOtcFeeConfig, updateOtcFeeConfig } from "../lib/otcContract";
 import {
-  getLightFeeConfig,
-  getSwapFeeVault,
-  getSwapPool,
-  isSwapPaused,
-  settleLightFees,
-  updateSwapLightFeeConfig,
-  updateSwapPoolConfig,
-  pauseSwap,
-  unpauseSwap,
-  type LightFeeConfig,
-  type SwapPool,
+    getLightFeeConfig,
+    getSwapFeeVault,
+    getSwapPool,
+    isSwapPaused,
+    pauseSwap,
+    settleLightFees,
+    unpauseSwap,
+    updateSwapLightFeeConfig,
+    updateSwapPoolConfig,
+    type LightFeeConfig,
+    type SwapPool,
 } from "../lib/swapContract";
-import { LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS, CORE_CONTRACT_ADDRESS } from "../config";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
-import { parseContractError } from "../lib/errorParser";
+import { Card, KVRow } from "./Common";
 
 interface AdminProps {
   lang: "zh" | "en";
@@ -70,9 +70,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     adminSummary: lang === "zh" ? "管理总览" : "Admin Summary",
     adminChecklist: lang === "zh" ? "执行前检查" : "Pre-Action Checklist",
     checklistHint: lang === "zh" ? "先确认以下条件，再执行链上管理操作。" : "Verify these conditions before any on-chain admin action.",
-    checklistNetwork: lang === "zh" ? "确认钱包地址与合约 Owner 一致，并已切换到 Sepolia。" : "Confirm the wallet matches the contract owner and is on Sepolia.",
+    checklistNetwork: lang === "zh" ? "确认钱包地址与合约 Owner 一致，并已切换到 BSC Testnet。" : "Confirm the wallet matches the contract owner and is on BSC Testnet.",
     checklistConfig: lang === "zh" ? "确认前端环境变量中的 Core / OTC / Swap 合约地址已配置。" : "Confirm Core / OTC / Swap contract addresses are configured in the frontend environment.",
-    checklistFunds: lang === "zh" ? "确认管理员钱包有足够测试 ETH 支付 Gas。" : "Confirm the admin wallet has enough test ETH for gas.",
+    checklistFunds: lang === "zh" ? "确认管理员钱包有足够测试 tBNB 支付 Gas。" : "Confirm the admin wallet has enough test tBNB for gas.",
     checklistRecords: lang === "zh" ? "执行高风险操作前，先记录当前价格、权限和订单状态。" : "Record current prices, permissions, and order state before high-risk operations.",
     loading: lang === "zh" ? "加载中..." : "Loading...",
     refresh: lang === "zh" ? "刷新后台数据" : "Refresh Admin Data",

@@ -2,1084 +2,40 @@
   "manifestVersion": "3.2",
   "proxies": [
     {
-      "address": "0x8A6a96c247f7C38B85457a3AE0448E59f628456c",
-      "txHash": "0x880304aae9073a58a866997f3f693c71de0bca51be8c2ba504af3b08a45c0d26",
+      "address": "0xfE20139dCFA053b819A3745E9ed801b9C6cc84aC",
+      "txHash": "0x1aa97e1f279e82024f577032206d0b7e256ec3c62943fc67efa626fa354dce20",
       "kind": "uups"
     },
     {
-      "address": "0x888466eee8e1B0b7b18cD31A77667Fbf433c54B9",
-      "txHash": "0xe2cdad8d5dcb84565ee202cdd04aee6a17bed927b5729fac31cbf17a13798d5a",
+      "address": "0x2d764DF04FE2A086780ab3F1Edfb4b39E44C0c1B",
+      "txHash": "0xe97bab0520b2e15c73b20a1889d27524f81f1a7e4e20188ddb58b255b7e5b41f",
       "kind": "uups"
     },
     {
-      "address": "0x564e34F1acB851cD3Ad3aba40403B6e35CC9CE49",
-      "txHash": "0x7aff9cebc8483a57019c5de4a83f6c724f881ce3a91ae002fc4e7a56b50f800a",
+      "address": "0x82505Fc018689254C0E49e548f1030712eaB35e6",
+      "txHash": "0xb246009d8f59a7359ccc0ff87bd809a0a47d8f4c92875ad43f7d6a414bfa0888",
       "kind": "uups"
     },
     {
-      "address": "0xa77B95fb51c6bCc3b94b61Df7eb010604182E728",
-      "txHash": "0x974066f51e7a998367a38df2114d4a569dbf32b118db65935ebd844ddd61165b",
+      "address": "0x0b77714033Dbd27a6838233Adec74dE4d90348fd",
+      "txHash": "0xe7ec8c0d7eded62dcff4c6cf6145f9e0149da713297bd8f9ed4c2eb886f11fa1",
       "kind": "uups"
     },
     {
-      "address": "0x9A245292A7F51005C7FB75cf903cFE85bBE68656",
-      "txHash": "0x2ac45cfd08a644bb3e7c243be810f33e0815df22c20415469b7580cc799fc888",
+      "address": "0x1a67a329Ed8b05961B0D20194B96c36452B8C2a5",
+      "txHash": "0xe53e9394f4bf1de940bc437379cfb0f4b77feec0d84cdbc41bcea1986f4012e0",
       "kind": "uups"
     },
     {
-      "address": "0x8057124d66B152939c149c17D728A78d8E84fB68",
-      "txHash": "0x713de6bb85391f54feb30aa251f7e994299047c84246f6736eb8615f7fad4834",
-      "kind": "uups"
-    },
-    {
-      "address": "0x7B25F19AB352234EAc0409F83150B1fA8DcE0D36",
-      "txHash": "0x90d6cf0eddc987c816df9e08d114f86a0f79297ab94e39589f9e4852a518460f",
-      "kind": "uups"
-    },
-    {
-      "address": "0x7588fb00c6b97D7ee7f9F7d1c04c3b91684E7054",
-      "txHash": "0xf2b4e11cc9f39047c05c76f450b7e2679fda57d7a44dbb5a87cc4b5f9c277b9e",
-      "kind": "uups"
-    },
-    {
-      "address": "0xAa2d764F6ee4B91375a2ea769f7f9d0a09Da3195",
-      "txHash": "0x5e2e911c3c9f32bfdf1fd5527a0dec68c5544c35a8f153d66e2dfae730021b7c",
-      "kind": "uups"
-    },
-    {
-      "address": "0x974eEF92FD5aeFa82A8B3ece694210eFBf1C1837",
-      "txHash": "0x0e560c3800d2d27ed7d34f5035ed586566491f844772a32ddeefff1cd5f44ee8",
-      "kind": "uups"
-    },
-    {
-      "address": "0x11b0CDF835dF08BD64F8C9B3F2579Aa11d686bB9",
-      "txHash": "0xe7eb458daa0aa9473bf75c0bc4a2f69da0daaef440785f5ac4841396c71ee0ae",
-      "kind": "uups"
-    },
-    {
-      "address": "0xC3Eb89b28d39Bb2C198A5a7aB52B9543dBc6ed71",
-      "txHash": "0xa343a0864c8f4b76fc9b3702fca5b471344366e8918eabc3d00b1d25fc53cc1a",
-      "kind": "uups"
-    },
-    {
-      "address": "0xA0700eC306CD3C2e5d2f7A8D3050C8E338E19C0f",
-      "txHash": "0x47ee4e9bb5971417d469ae99c5ce5ecd830d5287db050a7f45ab39efb7e546a9",
-      "kind": "uups"
-    },
-    {
-      "address": "0xE947e94EFbEA2512d680EA67FeF6aC659b06596D",
-      "txHash": "0xa4a8bba1b20e8bced44861054302263952e770abd44d85ef0cab44033fb758f0",
-      "kind": "uups"
-    },
-    {
-      "address": "0x8dd1c8982fF3374C0bF43346b6Ac0E75F1b365b2",
-      "txHash": "0xf0cf67d5a5a297ae749d8e2335f6766f83ed2f7af5d4be2aa833397c6a053165",
-      "kind": "uups"
-    },
-    {
-      "address": "0xA53470E4Ad693de30Ee1f74b5A7eabb48FB32bfa",
-      "txHash": "0xce19bb7524227b0bfc4bff75c614203113eb2c1d51e06b20ca3cbba1078f441c",
-      "kind": "uups"
-    },
-    {
-      "address": "0xba2a74f97331fF80E53907C1B45aff4736339673",
-      "txHash": "0xe57566087731303501fc747e4ee590c15b816965a1deeb947550d7864bebfdc6",
-      "kind": "uups"
-    },
-    {
-      "address": "0xf9818157C00C830FFC3C509bB63e555669A11586",
-      "txHash": "0xf90ac70421164e81aec04709122ddce879a68b78d334d571257011e02826bece",
-      "kind": "uups"
-    },
-    {
-      "address": "0xF67AB04Bb738988bb93c15F46d7e62d31C1Fed12",
-      "txHash": "0xf063fba2eb0571e6a587ff2eaf4c16c0a65ec8d618b102869b90a9a5ed5968f9",
-      "kind": "uups"
-    },
-    {
-      "address": "0x39c54208ecE0725aD6732051760A1d2e6513dDd7",
-      "txHash": "0xb343769a3cec60de28f87398a25e3b8e7396caa4e5d772c20c6de1a241886a9d",
+      "address": "0xDada894158F040568a3eC6fF9D2b5C3c8dD3E389",
+      "txHash": "0x2142e3a3b9c137752d58f5f460a7691a1dabed6bc06fe36746093e38c4e45f79",
       "kind": "uups"
     }
   ],
   "impls": {
-    "d43732aba043d43f0e6f03e295839c7d504d4b8feef1141944ab649d4c8c7513": {
-      "address": "0xd7f6E3EAA981106c824eba490c2D9bC96cFBefA3",
-      "txHash": "0xf455981021c2f55ce31809be695c5f1e6d85cdd719a0c5497ab9952f2e0b661f",
-      "layout": {
-        "solcVersion": "0.8.26",
-        "storage": [
-          {
-            "label": "usdt",
-            "offset": 0,
-            "slot": "0",
-            "type": "t_contract(IERC20)1341",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:57"
-          },
-          {
-            "label": "machineUnitPrice",
-            "offset": 0,
-            "slot": "1",
-            "type": "t_uint256",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:61"
-          },
-          {
-            "label": "nodePrice",
-            "offset": 0,
-            "slot": "2",
-            "type": "t_uint256",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:67"
-          },
-          {
-            "label": "superNodePrice",
-            "offset": 0,
-            "slot": "3",
-            "type": "t_uint256",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:68"
-          },
-          {
-            "label": "nextIdentityId",
-            "offset": 0,
-            "slot": "4",
-            "type": "t_uint256",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:70"
-          },
-          {
-            "label": "identityMarket",
-            "offset": 0,
-            "slot": "5",
-            "type": "t_address",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:71"
-          },
-          {
-            "label": "identities",
-            "offset": 0,
-            "slot": "6",
-            "type": "t_mapping(t_uint256,t_struct(IdentityAccount)2677_storage)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:72"
-          },
-          {
-            "label": "ownedIdentityId",
-            "offset": 0,
-            "slot": "7",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:73"
-          },
-          {
-            "label": "identityOperatorApproval",
-            "offset": 0,
-            "slot": "8",
-            "type": "t_mapping(t_uint256,t_mapping(t_address,t_bool))",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:74"
-          },
-          {
-            "label": "machineOrders",
-            "offset": 0,
-            "slot": "9",
-            "type": "t_mapping(t_uint256,t_struct(MachineOrder)2662_storage)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:76"
-          },
-          {
-            "label": "userOrderIds",
-            "offset": 0,
-            "slot": "10",
-            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:77"
-          },
-          {
-            "label": "poolConfigs",
-            "offset": 0,
-            "slot": "11",
-            "type": "t_array(t_struct(PoolConfig)2667_storage)6_storage",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:78"
-          },
-          {
-            "label": "nextMachineOrderId",
-            "offset": 0,
-            "slot": "17",
-            "type": "t_uint256",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:79"
-          },
-          {
-            "label": "referralOf",
-            "offset": 0,
-            "slot": "18",
-            "type": "t_mapping(t_address,t_address)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:81"
-          },
-          {
-            "label": "personalPower",
-            "offset": 0,
-            "slot": "19",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:82"
-          },
-          {
-            "label": "rewardWeight",
-            "offset": 0,
-            "slot": "20",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:83"
-          },
-          {
-            "label": "directReferralCount",
-            "offset": 0,
-            "slot": "21",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:86"
-          },
-          {
-            "label": "teamTotalMemberCount",
-            "offset": 0,
-            "slot": "22",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:87"
-          },
-          {
-            "label": "directReferralVolume",
-            "offset": 0,
-            "slot": "23",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:88"
-          },
-          {
-            "label": "teamTotalVolume",
-            "offset": 0,
-            "slot": "24",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:89"
-          },
-          {
-            "label": "rewardParticipants",
-            "offset": 0,
-            "slot": "25",
-            "type": "t_array(t_address)dyn_storage",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:91"
-          },
-          {
-            "label": "isRewardParticipant",
-            "offset": 0,
-            "slot": "26",
-            "type": "t_mapping(t_address,t_bool)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:92"
-          },
-          {
-            "label": "leaderboards",
-            "offset": 0,
-            "slot": "27",
-            "type": "t_mapping(t_uint256,t_struct(LeaderboardState)2694_storage)",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:94"
-          },
-          {
-            "label": "dailyVolume",
-            "offset": 0,
-            "slot": "28",
-            "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:95"
-          },
-          {
-            "label": "rankShares",
-            "offset": 0,
-            "slot": "29",
-            "type": "t_array(t_uint16)10_storage",
-            "contract": "IncubatorCore",
-            "src": "contracts/IncubatorCore.sol:97"
-          }
-        ],
-        "types": {
-          "t_address": {
-            "label": "address",
-            "numberOfBytes": "20"
-          },
-          "t_bool": {
-            "label": "bool",
-            "numberOfBytes": "1"
-          },
-          "t_struct(InitializableStorage)365_storage": {
-            "label": "struct Initializable.InitializableStorage",
-            "members": [
-              {
-                "label": "_initialized",
-                "type": "t_uint64",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "_initializing",
-                "type": "t_bool",
-                "offset": 8,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_struct(OwnableStorage)13_storage": {
-            "label": "struct OwnableUpgradeable.OwnableStorage",
-            "members": [
-              {
-                "label": "_owner",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_struct(PausableStorage)111_storage": {
-            "label": "struct PausableUpgradeable.PausableStorage",
-            "members": [
-              {
-                "label": "_paused",
-                "type": "t_bool",
-                "offset": 0,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_uint64": {
-            "label": "uint64",
-            "numberOfBytes": "8"
-          },
-          "t_array(t_address)10_storage": {
-            "label": "address[10]",
-            "numberOfBytes": "320"
-          },
-          "t_array(t_address)dyn_storage": {
-            "label": "address[]",
-            "numberOfBytes": "32"
-          },
-          "t_array(t_struct(PoolConfig)2667_storage)6_storage": {
-            "label": "struct IncubatorCore.PoolConfig[6]",
-            "numberOfBytes": "192"
-          },
-          "t_array(t_uint16)10_storage": {
-            "label": "uint16[10]",
-            "numberOfBytes": "32"
-          },
-          "t_array(t_uint256)10_storage": {
-            "label": "uint256[10]",
-            "numberOfBytes": "320"
-          },
-          "t_array(t_uint256)dyn_storage": {
-            "label": "uint256[]",
-            "numberOfBytes": "32"
-          },
-          "t_contract(IERC20)1341": {
-            "label": "contract IERC20",
-            "numberOfBytes": "20"
-          },
-          "t_enum(Role)2642": {
-            "label": "enum IncubatorCore.Role",
-            "members": [
-              "None",
-              "Node",
-              "SuperNode"
-            ],
-            "numberOfBytes": "1"
-          },
-          "t_mapping(t_address,t_address)": {
-            "label": "mapping(address => address)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
-            "label": "mapping(address => uint256[])",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_address,t_bool)": {
-            "label": "mapping(address => bool)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_address,t_uint256)": {
-            "label": "mapping(address => uint256)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint256,t_mapping(t_address,t_bool))": {
-            "label": "mapping(uint256 => mapping(address => bool))",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
-            "label": "mapping(uint256 => mapping(address => uint256))",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint256,t_struct(IdentityAccount)2677_storage)": {
-            "label": "mapping(uint256 => struct IncubatorCore.IdentityAccount)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint256,t_struct(LeaderboardState)2694_storage)": {
-            "label": "mapping(uint256 => struct IncubatorCore.LeaderboardState)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint256,t_struct(MachineOrder)2662_storage)": {
-            "label": "mapping(uint256 => struct IncubatorCore.MachineOrder)",
-            "numberOfBytes": "32"
-          },
-          "t_struct(IdentityAccount)2677_storage": {
-            "label": "struct IncubatorCore.IdentityAccount",
-            "members": [
-              {
-                "label": "id",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "owner",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "1"
-              },
-              {
-                "label": "role",
-                "type": "t_enum(Role)2642",
-                "offset": 20,
-                "slot": "1"
-              },
-              {
-                "label": "updatedAt",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "2"
-              }
-            ],
-            "numberOfBytes": "96"
-          },
-          "t_struct(LeaderboardState)2694_storage": {
-            "label": "struct IncubatorCore.LeaderboardState",
-            "members": [
-              {
-                "label": "topUsers",
-                "type": "t_array(t_address)10_storage",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "topVolumes",
-                "type": "t_array(t_uint256)10_storage",
-                "offset": 0,
-                "slot": "10"
-              },
-              {
-                "label": "topCount",
-                "type": "t_uint8",
-                "offset": 0,
-                "slot": "20"
-              },
-              {
-                "label": "lastUsers",
-                "type": "t_array(t_address)10_storage",
-                "offset": 0,
-                "slot": "21"
-              },
-              {
-                "label": "lastCount",
-                "type": "t_uint8",
-                "offset": 0,
-                "slot": "31"
-              }
-            ],
-            "numberOfBytes": "1024"
-          },
-          "t_struct(MachineOrder)2662_storage": {
-            "label": "struct IncubatorCore.MachineOrder",
-            "members": [
-              {
-                "label": "id",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "user",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "1"
-              },
-              {
-                "label": "quantity",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "2"
-              },
-              {
-                "label": "amountUSDT",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "3"
-              },
-              {
-                "label": "referrer",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "4"
-              },
-              {
-                "label": "createdAt",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "5"
-              }
-            ],
-            "numberOfBytes": "192"
-          },
-          "t_struct(PoolConfig)2667_storage": {
-            "label": "struct IncubatorCore.PoolConfig",
-            "members": [
-              {
-                "label": "recipient",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "bps",
-                "type": "t_uint16",
-                "offset": 20,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_uint16": {
-            "label": "uint16",
-            "numberOfBytes": "2"
-          },
-          "t_uint256": {
-            "label": "uint256",
-            "numberOfBytes": "32"
-          },
-          "t_uint8": {
-            "label": "uint8",
-            "numberOfBytes": "1"
-          }
-        },
-        "namespaces": {
-          "erc7201:openzeppelin.storage.Pausable": [
-            {
-              "contract": "PausableUpgradeable",
-              "label": "_paused",
-              "type": "t_bool",
-              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
-              "offset": 0,
-              "slot": "0"
-            }
-          ],
-          "erc7201:openzeppelin.storage.Ownable": [
-            {
-              "contract": "OwnableUpgradeable",
-              "label": "_owner",
-              "type": "t_address",
-              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
-              "offset": 0,
-              "slot": "0"
-            }
-          ],
-          "erc7201:openzeppelin.storage.Initializable": [
-            {
-              "contract": "Initializable",
-              "label": "_initialized",
-              "type": "t_uint64",
-              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
-              "offset": 0,
-              "slot": "0"
-            },
-            {
-              "contract": "Initializable",
-              "label": "_initializing",
-              "type": "t_bool",
-              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
-              "offset": 8,
-              "slot": "0"
-            }
-          ]
-        }
-      }
-    },
-    "872e67d11e62c573f7e0b5abe46752dcd6aabe1f93039f63e572c367e9f77c49": {
-      "address": "0x6B6BFAfc425C1D3b3E0061d27337e2F28Af8bb79",
-      "txHash": "0x1fa1c7b603a8fe8e48a9033b37cd5707abc6eef87a094839473c88b78e4cff48",
-      "layout": {
-        "solcVersion": "0.8.26",
-        "storage": [
-          {
-            "label": "usdt",
-            "offset": 0,
-            "slot": "0",
-            "type": "t_contract(IERC20)1341",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:31"
-          },
-          {
-            "label": "coreIdentity",
-            "offset": 0,
-            "slot": "1",
-            "type": "t_contract(IIncubatorCoreIdentity)5613",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:32"
-          },
-          {
-            "label": "feeRecipient",
-            "offset": 0,
-            "slot": "2",
-            "type": "t_address",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:33"
-          },
-          {
-            "label": "feeBps",
-            "offset": 0,
-            "slot": "3",
-            "type": "t_uint256",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:34"
-          },
-          {
-            "label": "nextOrderId",
-            "offset": 0,
-            "slot": "4",
-            "type": "t_uint256",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:36"
-          },
-          {
-            "label": "orders",
-            "offset": 0,
-            "slot": "5",
-            "type": "t_mapping(t_uint256,t_struct(Order)5630_storage)",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:37"
-          },
-          {
-            "label": "lastTradePriceByRole",
-            "offset": 0,
-            "slot": "6",
-            "type": "t_mapping(t_uint8,t_uint256)",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:38"
-          },
-          {
-            "label": "activeOrderByIdentity",
-            "offset": 0,
-            "slot": "7",
-            "type": "t_mapping(t_uint256,t_uint256)",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:39"
-          },
-          {
-            "label": "activeOrderPositions",
-            "offset": 0,
-            "slot": "8",
-            "type": "t_mapping(t_uint256,t_uint256)",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:40"
-          },
-          {
-            "label": "activeOrderIds",
-            "offset": 0,
-            "slot": "9",
-            "type": "t_array(t_uint256)dyn_storage",
-            "contract": "NodeOTCMarket",
-            "src": "contracts/NodeOTCMarket.sol:41"
-          }
-        ],
-        "types": {
-          "t_address": {
-            "label": "address",
-            "numberOfBytes": "20"
-          },
-          "t_bool": {
-            "label": "bool",
-            "numberOfBytes": "1"
-          },
-          "t_struct(InitializableStorage)365_storage": {
-            "label": "struct Initializable.InitializableStorage",
-            "members": [
-              {
-                "label": "_initialized",
-                "type": "t_uint64",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "_initializing",
-                "type": "t_bool",
-                "offset": 8,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_struct(OwnableStorage)13_storage": {
-            "label": "struct OwnableUpgradeable.OwnableStorage",
-            "members": [
-              {
-                "label": "_owner",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_uint64": {
-            "label": "uint64",
-            "numberOfBytes": "8"
-          },
-          "t_array(t_uint256)dyn_storage": {
-            "label": "uint256[]",
-            "numberOfBytes": "32"
-          },
-          "t_contract(IERC20)1341": {
-            "label": "contract IERC20",
-            "numberOfBytes": "20"
-          },
-          "t_contract(IIncubatorCoreIdentity)5613": {
-            "label": "contract IIncubatorCoreIdentity",
-            "numberOfBytes": "20"
-          },
-          "t_mapping(t_uint256,t_struct(Order)5630_storage)": {
-            "label": "mapping(uint256 => struct NodeOTCMarket.Order)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint256,t_uint256)": {
-            "label": "mapping(uint256 => uint256)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint8,t_uint256)": {
-            "label": "mapping(uint8 => uint256)",
-            "numberOfBytes": "32"
-          },
-          "t_struct(Order)5630_storage": {
-            "label": "struct NodeOTCMarket.Order",
-            "members": [
-              {
-                "label": "id",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "identityId",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "1"
-              },
-              {
-                "label": "role",
-                "type": "t_uint8",
-                "offset": 0,
-                "slot": "2"
-              },
-              {
-                "label": "seller",
-                "type": "t_address",
-                "offset": 1,
-                "slot": "2"
-              },
-              {
-                "label": "priceUSDT",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "3"
-              },
-              {
-                "label": "active",
-                "type": "t_bool",
-                "offset": 0,
-                "slot": "4"
-              }
-            ],
-            "numberOfBytes": "160"
-          },
-          "t_uint256": {
-            "label": "uint256",
-            "numberOfBytes": "32"
-          },
-          "t_uint8": {
-            "label": "uint8",
-            "numberOfBytes": "1"
-          }
-        },
-        "namespaces": {
-          "erc7201:openzeppelin.storage.Ownable": [
-            {
-              "contract": "OwnableUpgradeable",
-              "label": "_owner",
-              "type": "t_address",
-              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
-              "offset": 0,
-              "slot": "0"
-            }
-          ],
-          "erc7201:openzeppelin.storage.Initializable": [
-            {
-              "contract": "Initializable",
-              "label": "_initialized",
-              "type": "t_uint64",
-              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
-              "offset": 0,
-              "slot": "0"
-            },
-            {
-              "contract": "Initializable",
-              "label": "_initializing",
-              "type": "t_bool",
-              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
-              "offset": 8,
-              "slot": "0"
-            }
-          ]
-        }
-      }
-    },
-    "71df858887dc47b6c4dc3f533251709cfe43a95e09cf2cf708bc267bd8fd2186": {
-      "address": "0x0191Ef2a3d1839FF0a1a9E44B47d0685e1A798e0",
-      "txHash": "0x4040418403b868018069a0c2248e61a75483248996533ec418088797c30a3b79",
-      "layout": {
-        "solcVersion": "0.8.26",
-        "storage": [
-          {
-            "label": "usdt",
-            "offset": 0,
-            "slot": "0",
-            "type": "t_contract(IERC20)1341",
-            "contract": "SwapPoolManager",
-            "src": "contracts/SwapPoolManager.sol:49"
-          },
-          {
-            "label": "ico",
-            "offset": 0,
-            "slot": "1",
-            "type": "t_contract(IERC20)1341",
-            "contract": "SwapPoolManager",
-            "src": "contracts/SwapPoolManager.sol:50"
-          },
-          {
-            "label": "light",
-            "offset": 0,
-            "slot": "2",
-            "type": "t_contract(IERC20)1341",
-            "contract": "SwapPoolManager",
-            "src": "contracts/SwapPoolManager.sol:51"
-          },
-          {
-            "label": "pools",
-            "offset": 0,
-            "slot": "3",
-            "type": "t_mapping(t_uint8,t_struct(Pool)6497_storage)",
-            "contract": "SwapPoolManager",
-            "src": "contracts/SwapPoolManager.sol:53"
-          },
-          {
-            "label": "feeVault",
-            "offset": 0,
-            "slot": "4",
-            "type": "t_mapping(t_uint8,t_mapping(t_address,t_uint256))",
-            "contract": "SwapPoolManager",
-            "src": "contracts/SwapPoolManager.sol:54"
-          }
-        ],
-        "types": {
-          "t_address": {
-            "label": "address",
-            "numberOfBytes": "20"
-          },
-          "t_bool": {
-            "label": "bool",
-            "numberOfBytes": "1"
-          },
-          "t_struct(InitializableStorage)365_storage": {
-            "label": "struct Initializable.InitializableStorage",
-            "members": [
-              {
-                "label": "_initialized",
-                "type": "t_uint64",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "_initializing",
-                "type": "t_bool",
-                "offset": 8,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_struct(OwnableStorage)13_storage": {
-            "label": "struct OwnableUpgradeable.OwnableStorage",
-            "members": [
-              {
-                "label": "_owner",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_struct(PausableStorage)111_storage": {
-            "label": "struct PausableUpgradeable.PausableStorage",
-            "members": [
-              {
-                "label": "_paused",
-                "type": "t_bool",
-                "offset": 0,
-                "slot": "0"
-              }
-            ],
-            "numberOfBytes": "32"
-          },
-          "t_uint64": {
-            "label": "uint64",
-            "numberOfBytes": "8"
-          },
-          "t_contract(IERC20)1341": {
-            "label": "contract IERC20",
-            "numberOfBytes": "20"
-          },
-          "t_mapping(t_address,t_uint256)": {
-            "label": "mapping(address => uint256)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint8,t_mapping(t_address,t_uint256))": {
-            "label": "mapping(uint8 => mapping(address => uint256))",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_uint8,t_struct(Pool)6497_storage)": {
-            "label": "mapping(uint8 => struct SwapPoolManager.Pool)",
-            "numberOfBytes": "32"
-          },
-          "t_struct(Pool)6497_storage": {
-            "label": "struct SwapPoolManager.Pool",
-            "members": [
-              {
-                "label": "token0",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "token1",
-                "type": "t_address",
-                "offset": 0,
-                "slot": "1"
-              },
-              {
-                "label": "reserve0",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "2"
-              },
-              {
-                "label": "reserve1",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "3"
-              },
-              {
-                "label": "feeBps",
-                "type": "t_uint16",
-                "offset": 0,
-                "slot": "4"
-              },
-              {
-                "label": "maxPriceImpactBps",
-                "type": "t_uint16",
-                "offset": 2,
-                "slot": "4"
-              },
-              {
-                "label": "exists",
-                "type": "t_bool",
-                "offset": 4,
-                "slot": "4"
-              }
-            ],
-            "numberOfBytes": "160"
-          },
-          "t_uint16": {
-            "label": "uint16",
-            "numberOfBytes": "2"
-          },
-          "t_uint256": {
-            "label": "uint256",
-            "numberOfBytes": "32"
-          },
-          "t_uint8": {
-            "label": "uint8",
-            "numberOfBytes": "1"
-          }
-        },
-        "namespaces": {
-          "erc7201:openzeppelin.storage.Pausable": [
-            {
-              "contract": "PausableUpgradeable",
-              "label": "_paused",
-              "type": "t_bool",
-              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
-              "offset": 0,
-              "slot": "0"
-            }
-          ],
-          "erc7201:openzeppelin.storage.Ownable": [
-            {
-              "contract": "OwnableUpgradeable",
-              "label": "_owner",
-              "type": "t_address",
-              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
-              "offset": 0,
-              "slot": "0"
-            }
-          ],
-          "erc7201:openzeppelin.storage.Initializable": [
-            {
-              "contract": "Initializable",
-              "label": "_initialized",
-              "type": "t_uint64",
-              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
-              "offset": 0,
-              "slot": "0"
-            },
-            {
-              "contract": "Initializable",
-              "label": "_initializing",
-              "type": "t_bool",
-              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
-              "offset": 8,
-              "slot": "0"
-            }
-          ]
-        }
-      }
-    },
     "c70a70e5b81a2f5e8bec9934231b11797ff84411381506a6341e3e077ae99561": {
-      "address": "0x4dd93732367Fd0F97567bE243D8Ff25FE4f2064F",
-      "txHash": "0x541f01d34435bab25bf8af4c4148636e28baccbe0b49ee16de8ee8fed66f83fe",
+      "address": "0xb6f2F925C1ADb4B17493F2A338766D566AC04fbb",
+      "txHash": "0xd623dde8aada3bb8eb668beb7a18514c4b3f50c2329db8c3722c4991a719a449",
       "layout": {
         "solcVersion": "0.8.26",
         "storage": [
@@ -1594,8 +550,8 @@
       }
     },
     "b4194c3d0d81a967eb1654585f9286a79118eed22cf3822aa97825c9050408a2": {
-      "address": "0x833fb3FF1a77C4BD9894350903405c93eE47C76E",
-      "txHash": "0xe7462dfd3b1a6876b541f78e40a43defe44db8f3aaedef85e57d89746a257be1",
+      "address": "0x8BA3072F4F43434862120116d49787B96A0A3bcc",
+      "txHash": "0x6d7822db8c35d538a9a6477a388dbd15661c7b430591c6e3b27afabc9ddd148f",
       "layout": {
         "solcVersion": "0.8.26",
         "storage": [
@@ -1831,8 +787,8 @@
       }
     },
     "8559a8aa58acedb1bf26237009c040db989fa08b80e2f17cc7f236b4e148c5a6": {
-      "address": "0xe06AEFB90C1b44e2Cb5aa91089C7FAa5858E76ad",
-      "txHash": "0xdbd761d72916b5998751bb575366e0832c51b0376e5e7c7bf10b06460f198cf1",
+      "address": "0x46f7729e2158Dd005DC6bdD28FaD457d6f036219",
+      "txHash": "0x4f613dff4fe5bf2854a6a30eeebdced937556acfe3f396f09019e93013112305",
       "layout": {
         "solcVersion": "0.8.26",
         "storage": [
@@ -2051,6 +1007,534 @@
               }
             ],
             "numberOfBytes": "160"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "678e0c7dbec8778106c516abefcb47eb7bec957f46f9f401f8c0a0c76932170a": {
+      "address": "0xFc926BBf4dd6a28493669081614A519558c8b983",
+      "txHash": "0x22df2e332cb62b6632d7fbb585fe9027a974ab59de8eb1945ad621219c48719c",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "usdt",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IERC20)1341",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:57"
+          },
+          {
+            "label": "machineUnitPrice",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:61"
+          },
+          {
+            "label": "nodePrice",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:67"
+          },
+          {
+            "label": "superNodePrice",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:68"
+          },
+          {
+            "label": "nextIdentityId",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:70"
+          },
+          {
+            "label": "identityMarket",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:71"
+          },
+          {
+            "label": "identities",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(IdentityAccount)2564_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:72"
+          },
+          {
+            "label": "ownedIdentityId",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:73"
+          },
+          {
+            "label": "identityOperatorApproval",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_bool))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:74"
+          },
+          {
+            "label": "machineOrders",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_uint256,t_struct(MachineOrder)2549_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:76"
+          },
+          {
+            "label": "userOrderIds",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:77"
+          },
+          {
+            "label": "poolConfigs",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_array(t_struct(PoolConfig)2554_storage)6_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:78"
+          },
+          {
+            "label": "nextMachineOrderId",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:79"
+          },
+          {
+            "label": "referralOf",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:81"
+          },
+          {
+            "label": "personalPower",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:82"
+          },
+          {
+            "label": "rewardWeight",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:83"
+          },
+          {
+            "label": "directReferralCount",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:86"
+          },
+          {
+            "label": "teamTotalMemberCount",
+            "offset": 0,
+            "slot": "22",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:87"
+          },
+          {
+            "label": "directReferralVolume",
+            "offset": 0,
+            "slot": "23",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:88"
+          },
+          {
+            "label": "teamTotalVolume",
+            "offset": 0,
+            "slot": "24",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:89"
+          },
+          {
+            "label": "rewardParticipants",
+            "offset": 0,
+            "slot": "25",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:91"
+          },
+          {
+            "label": "isRewardParticipant",
+            "offset": 0,
+            "slot": "26",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:92"
+          },
+          {
+            "label": "leaderboards",
+            "offset": 0,
+            "slot": "27",
+            "type": "t_mapping(t_uint256,t_struct(LeaderboardState)2581_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:94"
+          },
+          {
+            "label": "dailyVolume",
+            "offset": 0,
+            "slot": "28",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:95"
+          },
+          {
+            "label": "rankShares",
+            "offset": 0,
+            "slot": "29",
+            "type": "t_array(t_uint16)10_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:97"
+          },
+          {
+            "label": "poolAccumulated",
+            "offset": 0,
+            "slot": "30",
+            "type": "t_mapping(t_uint8,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:101"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)365_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)111_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_array(t_address)10_storage": {
+            "label": "address[10]",
+            "numberOfBytes": "320"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(PoolConfig)2554_storage)6_storage": {
+            "label": "struct IncubatorCore.PoolConfig[6]",
+            "numberOfBytes": "192"
+          },
+          "t_array(t_uint16)10_storage": {
+            "label": "uint16[10]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)10_storage": {
+            "label": "uint256[10]",
+            "numberOfBytes": "320"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)1341": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_enum(Role)2529": {
+            "label": "enum IncubatorCore.Role",
+            "members": [
+              "None",
+              "Node",
+              "SuperNode"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+            "label": "mapping(address => uint256[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_bool))": {
+            "label": "mapping(uint256 => mapping(address => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(uint256 => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(IdentityAccount)2564_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.IdentityAccount)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(LeaderboardState)2581_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.LeaderboardState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MachineOrder)2549_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.MachineOrder)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint8,t_uint256)": {
+            "label": "mapping(uint8 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(IdentityAccount)2564_storage": {
+            "label": "struct IncubatorCore.IdentityAccount",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "role",
+                "type": "t_enum(Role)2529",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "updatedAt",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(LeaderboardState)2581_storage": {
+            "label": "struct IncubatorCore.LeaderboardState",
+            "members": [
+              {
+                "label": "topUsers",
+                "type": "t_array(t_address)10_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "topVolumes",
+                "type": "t_array(t_uint256)10_storage",
+                "offset": 0,
+                "slot": "10"
+              },
+              {
+                "label": "topCount",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "20"
+              },
+              {
+                "label": "lastUsers",
+                "type": "t_array(t_address)10_storage",
+                "offset": 0,
+                "slot": "21"
+              },
+              {
+                "label": "lastCount",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "31"
+              }
+            ],
+            "numberOfBytes": "1024"
+          },
+          "t_struct(MachineOrder)2549_storage": {
+            "label": "struct IncubatorCore.MachineOrder",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "user",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "quantity",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "amountUSDT",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "referrer",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "createdAt",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(PoolConfig)2554_storage": {
+            "label": "struct IncubatorCore.PoolConfig",
+            "members": [
+              {
+                "label": "recipient",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "bps",
+                "type": "t_uint16",
+                "offset": 20,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
           },
           "t_uint16": {
             "label": "uint16",
