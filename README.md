@@ -20,11 +20,11 @@ npm install
 npm run dev
 ```
 
-### 4) 编译与部署合约（BSC Testnet）
+### 4) 编译与部署合约（CNC Mainnet）
 
 ```bash
 npm run compile
-npm run deploy:bscTestnet
+npm run deploy:cncMainnet
 ```
 
 ### 5) 合约升级（UUPS）
@@ -36,8 +36,8 @@ npm run deploy:bscTestnet
   - `IDENTITY_NFT_PROXY`
 
 ```bash
-npm run precheck:upgrade:bscTestnet
-npm run upgrade:bscTestnet
+npm run precheck:upgrade:cncMainnet
+npm run upgrade:cncMainnet
 ```
 
 > 注意：业务功能全部链上实现，Appwrite 仅用于公告模块。
@@ -131,6 +131,7 @@ bash scripts/diagnose-caddy-525.sh t2.test2dapp.xyz <服务器公网IP>
 ## Docs
 
 - [DApp UI 设计方案](docs/DAPP_UI_SPEC.md)
-- [Appwrite 实施蓝图](docs/APPWRITE_BSC_TESTNET_IMPLEMENTATION.md)
+- [Appwrite 实施蓝图](docs/APPWRITE_CNC_MAINNET_IMPLEMENTATION.md)
 - [生产就绪任务清单](docs/PRODUCTION_ROADMAP.md)
 - [当前实现状态（真相文档）](docs/CURRENT_IMPLEMENTATION_STATUS.md)
+# Incubator
