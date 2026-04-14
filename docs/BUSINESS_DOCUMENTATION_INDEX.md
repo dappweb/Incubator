@@ -88,7 +88,7 @@ contracts/
 ```
 第 1 步：连接钱包
 ├─ 需要: MetaMask 钱包
-├─ 需要: 切换到 BSC Testnet 网络
+├─ 需要: 切换到 CNC Mainnet 网络
 └─ 结果: 获得 provider 和 userAddress
 
     ↓

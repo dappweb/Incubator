@@ -142,12 +142,12 @@ event SuperNodePurchased(
 **文件**: `.env.local` 或 `vite.config.ts`
 
 ```typescript
-# 智能合约地址（BSC Testnet）
+# 智能合约地址（CNC Mainnet）
 VITE_CORE_CONTRACT_ADDRESS=0x...
 VITE_OTC_CONTRACT_ADDRESS=0x...
 VITE_SWAP_POOL_ADDRESS=0x...
 
-# Token 地址（BSC Testnet）
+# Token 地址（CNC Mainnet）
 VITE_USDT_CONTRACT_ADDRESS=0x...
 VITE_ICO_TOKEN_ADDRESS=0x...
 VITE_LIGHT_TOKEN_ADDRESS=0x...
@@ -349,17 +349,17 @@ type RewardRecord = {
 ### 网络配置
 
 ```javascript
-// BSC Testnet 参数
-const BSC_TESTNET_CONFIG = {
+// CNC Mainnet 参数
+const CNC_MAINNET_CONFIG = {
   chainId: 97,
-  chainName: "BSC Testnet",
-  chainIdHex: "0x61",
+  chainName: "CNC Mainnet",
+  chainIdHex: "0xc61c",
   rpcUrls: [
-    "https://data-seed-prebsc-1-s1.binance.org:8545",
-    "https://rpc.ankr.com/bsc_testnet_chapel",
-    "https://data-seed-prebsc-1-s1.binance.org:8545",
+    "https://rpc.cncchainpro.com",
+    "https://rpc.cncchainpro.com",
+    "https://rpc.cncchainpro.com",
   ],
-  blockExplorerUrls: ["https://testnet.bscscan.com"],
+  blockExplorerUrls: ["https://cncchainpro.com"],
   nativeCurrency: {
     name: "Testnet BNB",
     symbol: "BNB",
@@ -496,12 +496,25 @@ const canPurchase = useMemo(() => {
 
 ```typescript
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { bscTestnet } from "viem/chains";
+import { defineChain } from "viem";
+
+const cncMainnet = defineChain({
+  id: 50716,
+  name: "CNC Mainnet",
+  nativeCurrency: { name: "CNC", symbol: "CNC", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://rpc.cncchainpro.com"] },
+    public: { http: ["https://rpc.cncchainpro.com"] },
+  },
+  blockExplorers: {
+    default: { name: "CNC Explorer", url: "https://cncchainpro.com" },
+  },
+});
 
 export const config = getDefaultConfig({
   appName: "Incubator",
   projectId: "YOUR_WALLETCONNECT_PROJECT_ID",
-  chains: [bscTestnet],
+  chains: [cncMainnet],
   ssr: false,
 });
 ```
@@ -736,7 +749,7 @@ const debouncedRefresh = useDebounce(() => {
 ## 十、测试检查清单
 
 - [ ] 连接 MetaMask 成功
-- [ ] 切换到 BSC Testnet 网络成功
+- [ ] 切换到 CNC Mainnet 网络成功
 - [ ] 推荐人自动检测（URL/链上/Owner）
 - [ ] 推荐人绑定成功且不可修改
 - [ ] USDT 授权流程正常

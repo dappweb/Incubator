@@ -12,7 +12,7 @@ import { useEthersProvider, useEthersSigner } from "./lib/ethersAdapter";`;
 content = content.replace('import React, { useEffect, useMemo, useState } from "react";', `import React, { useEffect, useMemo, useState } from "react";\n${wagmiImports}`);
 
 // 2. Remove wallet lib imports
-content = content.replace(/import \{.*?checkConnection.*?\} from "\.\/lib\/wallet";/s, `import { isOnBscTestnet } from "./lib/wallet";`);
+content = content.replace(/import \{.*?checkConnection.*?\} from "\.\/lib\/wallet";/s, `import { isOnCncMainnet } from "./lib/wallet";`);
 
 // 3. Replace state definitions
 content = content.replace(/const \[address, setAddress\] = useState\(""\);\n\s*const \[chainId, setChainId\] = useState\(0\);\n\s*const \[provider, setProvider\] = useState<BrowserProvider \| null>\(null\);/, `const { address: wagmiAddress, isConnected } = useAccount();

@@ -26,6 +26,14 @@ sudo rsync -a --delete "${DIST_DIR}/" "${WEB_ROOT}/"
 echo "==> Installing Caddyfile..."
 sudo cp "$CADDY_SOURCE" "$CADDY_TARGET"
 sudo caddy fmt --overwrite "$CADDY_TARGET"
+
+if [[ -d "/etc/caddy/sites-enabled" ]]; then
+	echo "==> Disabling legacy /etc/caddy/sites-enabled/*.caddy snippets to avoid host conflicts..."
+	while IFS= read -r -d '' snippet; do
+		sudo mv "$snippet" "${snippet}.disabled"
+	done < <(sudo find /etc/caddy/sites-enabled -maxdepth 1 -type f -name "*.caddy" -print0)
+fi
+
 sudo caddy validate --config "$CADDY_TARGET"
 
 if systemctl is-active --quiet nginx; then

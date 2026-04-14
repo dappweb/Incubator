@@ -15,7 +15,7 @@ export interface TxRecord {
 
 const TRANSFER_TOPIC = keccak256id("Transfer(address,address,uint256)");
 
-// BSC Testnet public RPC limits getLogs to ~5000 blocks per request
+// Public CNC RPC can time out on large getLogs windows, so keep requests chunked.
 const CHUNK = 5000;
 
 function padAddr(addr: string): string {

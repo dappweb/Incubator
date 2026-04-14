@@ -5,10 +5,12 @@ interface CardProps {
   hint?: string;
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
+  style?: React.CSSProperties;
 }
 
-export const Card = ({ title, hint, children, className = "" }: CardProps) => (
-  <article className={`card ${className}`}>
+export const Card = ({ title, hint, children, className = "", onClick, style }: CardProps) => (
+  <article className={`card ${className}`} onClick={onClick} style={style}>
     <h2>{title}</h2>
     {hint && <p className="hint">{hint}</p>}
     {children}

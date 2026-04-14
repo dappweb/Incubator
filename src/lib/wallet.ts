@@ -1,11 +1,16 @@
 import { BrowserProvider } from "ethers";
 import {
-    BSC_TESTNET_CHAIN_ID,
-    BSC_TESTNET_HEX_CHAIN_ID,
+    CNC_MAINNET_BLOCK_EXPLORER_URL,
+    CNC_MAINNET_CHAIN_ID,
+    CNC_MAINNET_CHAIN_NAME,
+    CNC_MAINNET_HEX_CHAIN_ID,
+    CNC_MAINNET_NATIVE_CURRENCY,
+    CNC_MAINNET_RPC_URLS,
     ICO_TOKEN_ADDRESS,
     LIGHT_TOKEN_ADDRESS,
     USDT_CONTRACT_ADDRESS,
 } from "../config";
+import { USDT_DECIMALS } from "./usdtContract";
 
 type WalletWatchToken = {
   address: string;
@@ -19,7 +24,7 @@ type WalletSetupResult = {
 };
 
 const WATCHABLE_TOKENS: WalletWatchToken[] = [
-  { address: USDT_CONTRACT_ADDRESS, symbol: "USDT", decimals: 6 },
+  { address: USDT_CONTRACT_ADDRESS, symbol: "USDT", decimals: USDT_DECIMALS },
   { address: ICO_TOKEN_ADDRESS, symbol: "ICO", decimals: 18 },
   { address: LIGHT_TOKEN_ADDRESS, symbol: "LIGHT", decimals: 18 },
 ];
@@ -90,7 +95,7 @@ export async function addProjectTokenToWallet(symbol: "ICO" | "LIGHT") {
 }
 
 export async function setupWalletAfterConnect(): Promise<WalletSetupResult> {
-  await ensureBscTestnetNetwork();
+  await ensureCncMainnetNetwork();
 
   const validTokens = WATCHABLE_TOKENS.filter((token) => token.address);
   if (validTokens.length === 0) {
@@ -138,7 +143,7 @@ export function listenToWalletEvents(
   };
 }
 
-export async function ensureBscTestnetNetwork() {
+export async function ensureCncMainnetNetwork() {
   if (!window.ethereum) {
     throw new Error("未检测到钱包插件");
   }
@@ -146,7 +151,7 @@ export async function ensureBscTestnetNetwork() {
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: BSC_TESTNET_HEX_CHAIN_ID }],
+      params: [{ chainId: CNC_MAINNET_HEX_CHAIN_ID }],
     });
   } catch (error) {
     const err = error as { code?: number };
@@ -155,15 +160,11 @@ export async function ensureBscTestnetNetwork() {
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: BSC_TESTNET_HEX_CHAIN_ID,
-            chainName: "BSC Testnet",
-            rpcUrls: ["https://data-seed-prebsc-1-s1.binance.org:8545"],
-            nativeCurrency: {
-              name: "tBNB",
-              symbol: "tBNB",
-              decimals: 18,
-            },
-            blockExplorerUrls: ["https://testnet.bscscan.com"],
+            chainId: CNC_MAINNET_HEX_CHAIN_ID,
+            chainName: CNC_MAINNET_CHAIN_NAME,
+            rpcUrls: CNC_MAINNET_RPC_URLS,
+            nativeCurrency: CNC_MAINNET_NATIVE_CURRENCY,
+            blockExplorerUrls: [CNC_MAINNET_BLOCK_EXPLORER_URL],
           },
         ],
       });
@@ -173,6 +174,6 @@ export async function ensureBscTestnetNetwork() {
   }
 }
 
-export function isOnBscTestnet(chainId: number) {
-  return chainId === BSC_TESTNET_CHAIN_ID;
+export function isOnCncMainnet(chainId: number) {
+  return chainId === CNC_MAINNET_CHAIN_ID;
 }

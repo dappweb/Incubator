@@ -5,6 +5,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeable {
@@ -56,13 +57,11 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
     IERC20 public usdt;
 
-    uint256 public constant USDT_DECIMALS = 1e6;
     uint16 public constant BPS_DENOMINATOR = 10_000;
+    uint16 public constant LEADERBOARD_TOP_SHARE_BPS = 7_500;
+    uint16 public constant LEADERBOARD_LAST_SHARE_BPS = 2_500;
     uint256 public machineUnitPrice;
     uint256 public constant MAX_MACHINE_PER_ORDER = 10;
-    uint256 public constant MAX_MACHINE_UNIT_PRICE = 10_000 * USDT_DECIMALS;
-    uint256 public constant MAX_NODE_PRICE = 100_000 * USDT_DECIMALS;
-    uint256 public constant MAX_SUPER_NODE_PRICE = 300_000 * USDT_DECIMALS;
 
     uint256 public nodePrice;
     uint256 public superNodePrice;
@@ -100,6 +99,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     // USDT stays in the contract and is tracked here for later settlement.
     mapping(uint8 => uint256) public poolAccumulated;
 
+    // Stored USDT decimals for price scaling. Value 0 means legacy default (6).
+    uint8 public usdtTokenDecimals;
+    bool public usdtScaleMigrated;
+
     event MachinePurchased(
         address indexed user,
         uint256 indexed orderId,
@@ -136,7 +139,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     event RewardWeightUpdated(address indexed account, uint256 weight);
     event LeaderboardUpdated(uint256 indexed dayId, address indexed user, uint256 totalVolume);
     event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT);
+    event LeaderboardLuckySettled(uint256 indexed dayId, address indexed user, uint8 luckyRank, uint256 amountUSDT);
     event PoolRewardSettled(uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT);
+    event UsdtDecimalsSynced(uint8 decimals);
+    event PriceScaleMigrated(uint8 fromDecimals, uint8 toDecimals, uint256 machineUnitPrice, uint256 nodePrice, uint256 superNodePrice);
 
     constructor() {
         _disableInitializers();
@@ -152,9 +158,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         __Pausable_init();
 
         usdt = IERC20(usdtAddress);
-        machineUnitPrice = 100 * USDT_DECIMALS;
-        nodePrice = 1000 * USDT_DECIMALS;
-        superNodePrice = 3000 * USDT_DECIMALS;
+        usdtTokenDecimals = IERC20Metadata(usdtAddress).decimals();
+        machineUnitPrice = 100 * _usdtUnit();
+        nodePrice = 1000 * _usdtUnit();
+        superNodePrice = 3000 * _usdtUnit();
         nextIdentityId = 1;
         nextMachineOrderId = 1;
         rankShares = [4000, 2000, 500, 500, 500, 500, 500, 500, 500, 500];
@@ -391,24 +398,84 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     }
 
     function updateMachineUnitPrice(uint256 newPrice) external onlyOwner {
-        require(newPrice > 0 && newPrice <= MAX_MACHINE_UNIT_PRICE, "invalid price");
+        require(newPrice > 0 && newPrice <= _maxMachineUnitPrice(), "invalid price");
         uint256 old = machineUnitPrice;
         machineUnitPrice = newPrice;
         emit PriceUpdated("MACHINE", old, newPrice);
     }
 
     function updateNodePrice(uint256 newPrice) external onlyOwner {
-        require(newPrice > 0 && newPrice <= MAX_NODE_PRICE, "invalid price");
+        require(newPrice > 0 && newPrice <= _maxNodePrice(), "invalid price");
         uint256 old = nodePrice;
         nodePrice = newPrice;
         emit PriceUpdated("NODE", old, newPrice);
     }
 
     function updateSuperNodePrice(uint256 newPrice) external onlyOwner {
-        require(newPrice > 0 && newPrice <= MAX_SUPER_NODE_PRICE, "invalid price");
+        require(newPrice > 0 && newPrice <= _maxSuperNodePrice(), "invalid price");
         uint256 old = superNodePrice;
         superNodePrice = newPrice;
         emit PriceUpdated("SUPER_NODE", old, newPrice);
+    }
+
+    /// @notice Refresh cached token decimals from the USDT contract.
+    function syncUsdtTokenDecimals() external onlyOwner {
+        uint8 decimals = IERC20Metadata(address(usdt)).decimals();
+        usdtTokenDecimals = decimals;
+        emit UsdtDecimalsSynced(decimals);
+    }
+
+    /// @notice One-time migration: rescale prices from `oldDecimals` to token decimals.
+    function migratePriceScaleToTokenDecimals(uint8 oldDecimals) external onlyOwner {
+        require(!usdtScaleMigrated, "already migrated");
+
+        uint8 targetDecimals = IERC20Metadata(address(usdt)).decimals();
+        usdtTokenDecimals = targetDecimals;
+
+        if (targetDecimals > oldDecimals) {
+            uint256 factorUp = _pow10(targetDecimals - oldDecimals);
+            machineUnitPrice = machineUnitPrice * factorUp;
+            nodePrice = nodePrice * factorUp;
+            superNodePrice = superNodePrice * factorUp;
+        } else if (targetDecimals < oldDecimals) {
+            uint256 factorDown = _pow10(oldDecimals - targetDecimals);
+            machineUnitPrice = machineUnitPrice / factorDown;
+            nodePrice = nodePrice / factorDown;
+            superNodePrice = superNodePrice / factorDown;
+        }
+
+        require(machineUnitPrice <= _maxMachineUnitPrice(), "machine price overflow");
+        require(nodePrice <= _maxNodePrice(), "node price overflow");
+        require(superNodePrice <= _maxSuperNodePrice(), "super price overflow");
+
+        usdtScaleMigrated = true;
+        emit PriceScaleMigrated(oldDecimals, targetDecimals, machineUnitPrice, nodePrice, superNodePrice);
+    }
+
+    function _effectiveUsdtDecimals() internal view returns (uint8) {
+        // Legacy proxies used 6-decimal scaling before this variable existed.
+        return usdtTokenDecimals == 0 ? 6 : usdtTokenDecimals;
+    }
+
+    function _pow10(uint8 exponent) internal pure returns (uint256) {
+        require(exponent <= 77, "decimals too large");
+        return 10 ** uint256(exponent);
+    }
+
+    function _usdtUnit() internal view returns (uint256) {
+        return _pow10(_effectiveUsdtDecimals());
+    }
+
+    function _maxMachineUnitPrice() internal view returns (uint256) {
+        return 10_000 * _usdtUnit();
+    }
+
+    function _maxNodePrice() internal view returns (uint256) {
+        return 100_000 * _usdtUnit();
+    }
+
+    function _maxSuperNodePrice() internal view returns (uint256) {
+        return 300_000 * _usdtUnit();
     }
 
     function updatePoolRecipient(uint8 poolType, address newRecipient) external onlyOwner {
@@ -439,18 +506,39 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         usdt.safeTransfer(to, amount);
     }
 
-    /// @notice Distribute accumulated leaderboard pool to the top-N users of a given day.
-    /// Caller must specify the day; on-chain rank data is used to determine recipients.
+    /// @notice Distribute accumulated leaderboard pool to top and lucky rankings of a given day.
+    /// 2% leaderboard pool is split as: 1.5% (top ranking) + 0.5% (lucky ranking).
     /// Only works when the Leaderboard pool recipient was set to address(this).
     function settleLeaderboard(uint256 dayId) external onlyOwner {
         uint256 total = poolAccumulated[uint8(PoolType.Leaderboard)];
         require(total > 0, "no leaderboard balance");
 
         LeaderboardState storage board = leaderboards[dayId];
-        require(board.topCount > 0, "no board data for day");
+        require(board.topCount > 0 || board.lastCount > 0, "no board data for day");
 
         poolAccumulated[uint8(PoolType.Leaderboard)] = 0;
 
+        uint256 topAmount;
+        uint256 luckyAmount;
+
+        if (board.topCount == 0) {
+            luckyAmount = total;
+        } else if (board.lastCount == 0) {
+            topAmount = total;
+        } else {
+            topAmount = (total * LEADERBOARD_TOP_SHARE_BPS) / BPS_DENOMINATOR;
+            luckyAmount = total - topAmount;
+        }
+
+        if (topAmount > 0) {
+            _settleLeaderboardTop(dayId, board, topAmount);
+        }
+        if (luckyAmount > 0) {
+            _settleLeaderboardLucky(dayId, board, luckyAmount);
+        }
+    }
+
+    function _settleLeaderboardTop(uint256 dayId, LeaderboardState storage board, uint256 total) private {
         uint32 shareDenominator = 0;
         for (uint8 i = 0; i < board.topCount; i++) {
             shareDenominator += rankShares[i];
@@ -473,6 +561,38 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
                 distributed += amount;
                 emit LeaderboardSettled(dayId, user, i, amount);
             }
+        }
+    }
+
+    function _settleLeaderboardLucky(uint256 dayId, LeaderboardState storage board, uint256 total) private {
+        uint8 validCount = 0;
+        for (uint8 i = 0; i < board.lastCount; i++) {
+            if (board.lastUsers[i] != address(0)) {
+                validCount += 1;
+            }
+        }
+        require(validCount > 0, "no lucky board data");
+
+        uint256 perRecipient = total / validCount;
+        uint256 distributed = 0;
+        uint8 paid = 0;
+
+        for (uint8 i = 0; i < board.lastCount; i++) {
+            address user = board.lastUsers[i];
+            if (user == address(0)) continue;
+
+            uint256 amount;
+            if (paid == validCount - 1) {
+                amount = total - distributed;
+            } else {
+                amount = perRecipient;
+            }
+            if (amount > 0) {
+                usdt.safeTransfer(user, amount);
+                distributed += amount;
+                emit LeaderboardLuckySettled(dayId, user, paid, amount);
+            }
+            paid += 1;
         }
     }
 

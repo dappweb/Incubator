@@ -1,9 +1,19 @@
-export const BSC_TESTNET_CHAIN_ID = 97;
-export const BSC_TESTNET_HEX_CHAIN_ID = "0x61";
+export const CNC_MAINNET_CHAIN_ID = 50716;
+export const CNC_MAINNET_HEX_CHAIN_ID = "0xc61c";
+export const CNC_MAINNET_CHAIN_NAME = "CNC Mainnet";
+export const CNC_MAINNET_NATIVE_CURRENCY = {
+  name: "CNC",
+  symbol: "CNC",
+  decimals: 18,
+} as const;
+
+const DEFAULT_CNC_MAINNET_RPC_URLS = [
+  "https://rpc.cncchainpro.com",
+];
 
 type ViteEnvSource = Record<string, string | boolean | undefined>;
-
-const env = import.meta.env as unknown as ViteEnvSource;
+const env: ViteEnvSource =
+  (typeof import.meta !== "undefined" && (import.meta as { env?: ViteEnvSource }).env) || {};
 
 function readEnv(primaryKey: string, ...fallbackKeys: string[]): string {
   for (const key of [primaryKey, ...fallbackKeys]) {
@@ -15,6 +25,35 @@ function readEnv(primaryKey: string, ...fallbackKeys: string[]): string {
 
   return "";
 }
+
+function parseRpcUrls(raw: string): string[] {
+  if (!raw) return [];
+
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => /^https?:\/\//.test(item));
+}
+
+function uniqueUrls(urls: string[]): string[] {
+  return Array.from(new Set(urls));
+}
+
+export const CNC_MAINNET_RPC_URLS = uniqueUrls([
+  ...parseRpcUrls(readEnv("VITE_CNC_MAINNET_RPC_URLS", "VITE_CNC_MAINNET_RPCS", "CNC_MAINNET_RPC_URLS")),
+  readEnv("VITE_CNC_MAINNET_RPC_URL", "VITE_CNC_MAINNET_RPC", "CNC_MAINNET_RPC_URL"),
+  ...DEFAULT_CNC_MAINNET_RPC_URLS,
+].filter(Boolean));
+
+export const CNC_MAINNET_RPC_URL =
+  CNC_MAINNET_RPC_URLS[0] || "https://rpc.cncchainpro.com";
+
+export const CNC_MAINNET_BLOCK_EXPLORER_URL = readEnv(
+  "VITE_CNC_MAINNET_BLOCK_EXPLORER_URL",
+  "VITE_CNC_BLOCK_EXPLORER_URL",
+  "CNC_MAINNET_BLOCK_EXPLORER_URL",
+  "CNC_BLOCK_EXPLORER_URL",
+) || "https://cncchainpro.com";
 
 export const USDT_CONTRACT_ADDRESS = readEnv(
   "VITE_USDT_CONTRACT_ADDRESS",

@@ -5,6 +5,11 @@ import type { HardhatUserConfig } from "hardhat/config";
 
 dotenv.config({ path: ".env" });
 
+const cncMainnetRpcUrl = process.env.CNC_MAINNET_RPC_URL || "https://rpc.cncchainpro.com";
+const deployerAccounts = process.env.DEPLOYER_PRIVATE_KEY
+  ? [process.env.DEPLOYER_PRIVATE_KEY]
+  : [];
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.26",
@@ -13,7 +18,7 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 200,
       },
-      evmVersion: "cancun",
+      evmVersion: "paris",
       viaIR: true,
     },
   },
@@ -24,12 +29,10 @@ const config: HardhatUserConfig = {
     artifacts: "./artifacts",
   },
   networks: {
-    bscTestnet: {
-      url: process.env.BSC_TESTNET_RPC_URL || "https://data-seed-prebsc-1-s1.binance.org:8545",
-      accounts: process.env.DEPLOYER_PRIVATE_KEY
-        ? [process.env.DEPLOYER_PRIVATE_KEY]
-        : [],
-      chainId: 97,
+    cncMainnet: {
+      url: cncMainnetRpcUrl,
+      accounts: deployerAccounts,
+      chainId: 50716,
     },
   },
 };

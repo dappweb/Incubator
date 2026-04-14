@@ -1,5 +1,5 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { BrowserProvider, isAddress, JsonRpcProvider } from "ethers";
+import { BrowserProvider, FallbackProvider, isAddress, JsonRpcProvider } from "ethers";
 import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import Admin from "./components/Admin";
@@ -7,12 +7,16 @@ import { Card, KVRow } from "./components/Common";
 import { Leaderboard } from "./components/Leaderboard";
 import { TokenHistory, type TokenType } from "./components/TokenHistory";
 import {
+    CNC_MAINNET_CHAIN_ID,
+    CNC_MAINNET_CHAIN_NAME,
+    CNC_MAINNET_RPC_URLS,
     CORE_CONTRACT_ADDRESS,
     ICO_TOKEN_ADDRESS,
     LIGHT_TOKEN_ADDRESS,
     OTC_CONTRACT_ADDRESS,
     PANCAKE_V3_PRIMARY_FEE_PPM,
     SWAP_POOL_ADDRESS,
+    USDT_CONTRACT_ADDRESS,
 } from "./config";
 import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
 import {
@@ -60,21 +64,22 @@ import {
     swapPrimaryExactIn,
 } from "./lib/swapContract";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
+import { fetchTokenHistory, type TxRecord } from "./lib/tokenHistory";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "./lib/usdtContract";
 import {
-    addProjectTokenToWallet,
     checkConnection,
-    ensureBscTestnetNetwork, isOnBscTestnet, listenToWalletEvents,
+    ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
     setupWalletAfterConnect
 } from "./lib/wallet";
 
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
 type SwapSubTab = "primary" | "light";
 type SwapDirection = "forward" | "reverse";
-type TeamSubTab = "myReferrer" | "myDirects";
 
 const LIGHT_ICO_PAIR_ID = 1;
 const FIRST_CONNECT_GUIDE_DONE_KEY = "incubator:first-connect-guide-done";
+const INOUT_LOOKBACK_DAYS = 7;
+const INOUT_PREVIEW_LIMIT = 12;
 
 const toSafeBigInt = (value: unknown): bigint => {
   if (typeof value === "bigint") {
@@ -120,7 +125,6 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [lang, setLang] = useState<"zh" | "en">("zh");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const langRef = React.useRef(lang);
   langRef.current = lang;
 
@@ -144,7 +148,7 @@ const App = () => {
     headerBalance: lang === "zh" ? "钱包余额" : "Wallet Balance",
     headerRole: lang === "zh" ? "账户身份" : "Account Role",
     tab_overview: lang === "zh" ? "首页" : "Home",
-    tab_machine: lang === "zh" ? "矿机" : "Machines",
+    tab_machine: lang === "zh" ? "算力" : "Machines",
     tab_team: lang === "zh" ? "团队" : "Team",
     tab_otc: lang === "zh" ? "市场" : "Market",
     tab_swap: lang === "zh" ? "兑换" : "Swap",
@@ -170,11 +174,11 @@ const App = () => {
     pricesTitle: lang === "zh" ? "立即参与" : "Join Now",
     pricesHint: lang === "zh" ? "以下价格实时读取合约，提交交易前请再次确认。" : "Prices below are read live from the contract. Review them before confirming any transaction.",
     pricesGuideTitle: lang === "zh" ? "按当前价格直接购买身份" : "Buy access at live pricing",
-    pricesGuideHint: lang === "zh" ? "想快速成交，可从这里直接进入购买矿机、购买节点或购买超级节点流程。" : "Use these shortcuts to jump straight into buying a miner, node, or super node.",
-    payMachineNow: lang === "zh" ? "立即购买矿机" : "Buy Miner Now",
+    pricesGuideHint: lang === "zh" ? "想快速成交，可从这里直接进入购买算力、购买节点或购买超级节点流程。" : "Use these shortcuts to jump straight into buying a miner, node, or super node.",
+    payMachineNow: lang === "zh" ? "立即购买算力" : "Buy Miner Now",
     payNodeNow: lang === "zh" ? "立即购买节点" : "Buy Node Now",
     paySuperNow: lang === "zh" ? "立即购买超级节点" : "Buy Super Node Now",
-    machineUnitPrice: lang === "zh" ? "矿机单价" : "Machine Price",
+    machineUnitPrice: lang === "zh" ? "算力单价" : "Machine Price",
     nodePrice: lang === "zh" ? "节点价格" : "Node Price",
     superNodePrice: lang === "zh" ? "超级节点价格" : "Super Node Price",
     approvalsTitle: lang === "zh" ? "授权状态" : "Approvals",
@@ -194,19 +198,19 @@ const App = () => {
     poolLeaderboard: lang === "zh" ? "FOMO奖励" : "FOMO Rewards",
     myWallet: lang === "zh" ? "我的钱包" : "My Wallet",
     buyNodeNow: lang === "zh" ? "抢购节点" : "Buy Node",
-    addTokenTitle: lang === "zh" ? "添加代币到钱包" : "Add Tokens to Wallet",
-    addTokenHint: lang === "zh" ? "把项目两种核心代币快速加入钱包，方便直接查看余额与发起兑换。" : "Add the project's two core tokens to your wallet for quick balance checks and swaps.",
-    addIcoToken: lang === "zh" ? "添加 ICO" : "Add ICO",
-    addLightToken: lang === "zh" ? "添加 LIGHT" : "Add LIGHT",
-    tokenAdded: lang === "zh" ? "已添加到钱包" : "Added to wallet",
-    tokenAddFailed: lang === "zh" ? "添加代币失败" : "Failed to add token",
+    addTokenTitle: lang === "zh" ? "复制代币地址" : "Copy Token Addresses",
+    addTokenHint: lang === "zh" ? "快速复制项目代币合约地址，便于粘贴到钱包或区块浏览器中查看。" : "Quickly copy the project token contract addresses for wallet import or block explorer lookup.",
+    addIcoToken: lang === "zh" ? "复制 ICO 地址" : "Copy ICO Address",
+    addLightToken: lang === "zh" ? "复制 LIGHT 地址" : "Copy LIGHT Address",
+    tokenAdded: lang === "zh" ? "地址已复制" : "Address copied",
+    tokenAddFailed: lang === "zh" ? "复制地址失败" : "Failed to copy address",
     tokenConfigMissing: lang === "zh" ? "代币地址未配置" : "Token address is not configured",
-    machineTitle: lang === "zh" ? "购买矿机" : "Buy Mining Machines",
+    machineTitle: lang === "zh" ? "购买算力" : "Buy Mining Machines",
     machineBadge: lang === "zh" ? "MINER ENTRY" : "MINER ENTRY",
     machineHint: lang === "zh" ? "适合希望快速参与生态的用户，可按需灵活购买数量。" : "Designed for users who want fast access to the ecosystem with flexible quantity selection.",
-    machineBusinessHint: lang === "zh" ? "矿机订单按 60% LP 底池、5% 直推、5% 超级节点池、8% 节点池、20% 平台、2% 排行榜池入账。" : "Machine orders flow into the 60% LP base pool, 5% referral, 5% super-node pool, 8% node pool, 20% platform, and 2% leaderboard pool.",
-    machineHeroTitle: lang === "zh" ? "轻量入场，快速建立矿机仓位" : "Start light, build your miner position fast",
-    machineHeroDesc: lang === "zh" ? "矿机购买已整合到首页，适合新用户直接完成授权、下单与首笔生态配置。" : "Machine purchase now lives on the home page so new users can approve, place orders and complete their first allocation in one flow.",
+    machineBusinessHint: lang === "zh" ? "算力订单按 60% LP 底池、5% 直推、5% 超级节点池、8% 节点池、20% 平台、2% 排行榜池入账（其中日榜 1.5%，幸运榜 0.5%）。" : "Machine orders flow into the 60% LP base pool, 5% referral, 5% super-node pool, 8% node pool, 20% platform, and 2% leaderboard pool (1.5% daily top ranking + 0.5% lucky ranking).",
+    machineHeroTitle: lang === "zh" ? "轻量入场，快速建立算力仓位" : "Start light, build your miner position fast",
+    machineHeroDesc: lang === "zh" ? "算力购买已整合到首页，适合新用户直接完成授权、下单与首笔生态配置。" : "Machine purchase now lives on the home page so new users can approve, place orders and complete their first allocation in one flow.",
     machineFeatureA: lang === "zh" ? "支持 1-10 台灵活购买" : "Flexible orders from 1 to 10 units",
     machineFeatureB: lang === "zh" ? "授权完成后可连续下单" : "Repeat orders once allowance is ready",
     machineFeatureC: lang === "zh" ? "适合作为节点升级前置仓位" : "Useful as a pre-node accumulation position",
@@ -215,7 +219,7 @@ const App = () => {
     machineGapLabel: lang === "zh" ? "仍需授权" : "Allowance gap",
     machineAllowanceReady: lang === "zh" ? "授权已满足当前下单" : "Allowance already covers this order",
     referrerCardTitle: lang === "zh" ? "绑定推荐人" : "Bind Referrer",
-    referrerCardHint: lang === "zh" ? "购买矿机 / 节点 / 超级节点前，必须先绑定推荐人。默认推荐人为合约 Owner，绑定后不可更改。" : "You must bind a referrer before purchasing. Default referrer is the contract owner. Cannot be changed once bound.",
+    referrerCardHint: lang === "zh" ? "购买算力 / 节点 / 超级节点前，必须先绑定推荐人。默认推荐人为合约 Owner，绑定后不可更改。" : "You must bind a referrer before purchasing. Default referrer is the contract owner. Cannot be changed once bound.",
     referrerInputLabel: lang === "zh" ? "推荐人地址" : "Referrer Address",
     referrerInputTip: lang === "zh" ? "默认推荐人为合约 Owner，如有其他推荐人可手动修改。绑定后写入链上，不可更改。" : "Default referrer is the contract owner. You may change it manually. Once bound, it is stored on-chain and cannot be changed.",
     referrerFromLink: lang === "zh" ? "来源：邀请链接" : "Source: invite link",
@@ -230,11 +234,11 @@ const App = () => {
     submitMachine: lang === "zh" ? "确认购买" : "Buy Now",
     insufficientApproval: lang === "zh" ? "若授权不足，系统会在支付流程中自动补齐。" : "If allowance is insufficient, it will be completed automatically in the payment flow.",
     nodeTitle: lang === "zh" ? "购买节点" : "Buy Node",
-    nodeDesc: lang === "zh" ? "无需门槛，可直接购买节点资格；矿机侧 8% 节点奖池先入池，节点身份也可进入 OTC 市场流转。" : "No entry requirement. Buy node access directly; the 8% node pool accrues first and the identity can later circulate in the OTC market.",
+    nodeDesc: lang === "zh" ? "无需门槛，可直接购买节点资格；算力侧 8% 节点奖池先入池，节点身份也可进入 OTC 市场流转。" : "No entry requirement. Buy node access directly; the 8% node pool accrues first and the identity can later circulate in the OTC market.",
     buyNode: lang === "zh" ? "立即购买节点" : "Buy Node",
     buyNodeLocked: lang === "zh" ? "已拥有节点身份" : "Node Already Owned",
     superNodeTitle: lang === "zh" ? "购买超级节点" : "Buy Super Node",
-    superNodeDesc: lang === "zh" ? "可直接购买超级节点资格；矿机侧 5% 超级节点奖池先入池，超级节点身份同样支持 OTC 流转。" : "Buy super-node access directly; the 5% super-node pool accrues first and the identity can also circulate through OTC.",
+    superNodeDesc: lang === "zh" ? "可直接购买超级节点资格；算力侧 5% 超级节点奖池先入池，超级节点身份同样支持 OTC 流转。" : "Buy super-node access directly; the 5% super-node pool accrues first and the identity can also circulate through OTC.",
     buySuperNode: lang === "zh" ? "立即购买超级节点" : "Buy Super Node",
     buySuperNodeLocked: lang === "zh" ? "已拥有超级节点身份" : "Already a Super Node",
     alreadySuperNode: lang === "zh" ? "已拥有超级节点身份" : "Already a Super Node",
@@ -243,13 +247,14 @@ const App = () => {
     stepConnect: lang === "zh" ? "连接钱包" : "Connect Wallet",
     stepReferrer: lang === "zh" ? "确认推荐人" : "Confirm Referrer",
     bindReferrer: lang === "zh" ? "绑定推荐人" : "Bind Referrer",
+    bindDefaultReferrer: lang === "zh" ? "绑定默认推荐人" : "Bind Default Referrer",
     bindReferrerDone: lang === "zh" ? "已绑定推荐人" : "Referrer Bound",
     stepApprove: lang === "zh" ? "USDT 授权就绪" : "USDT Allowance Ready",
     stepPurchase: lang === "zh" ? "提交购买" : "Submit Purchase",
     accountSnapshot: lang === "zh" ? "账户快照" : "Account Snapshot",
     accountHint: lang === "zh" ? "关键状态一屏可见，减少来回切换。" : "Keep key states visible to reduce context switching.",
     needConnectToBuy: lang === "zh" ? "请先连接钱包" : "Connect wallet first",
-    needBscTestnetToBuy: lang === "zh" ? "请先切换到 BSC Testnet" : "Switch to BSC Testnet first",
+    needCncMainnetToBuy: lang === "zh" ? "请先切换到 CNC Mainnet" : "Switch to CNC Mainnet first",
     needReferrerToBuy: lang === "zh" ? "请先绑定推荐人" : "Bind a referrer first",
     roleMismatchForNode: lang === "zh" ? "当前身份不可重复购买节点" : "Current role cannot buy node again",
     roleMismatchForSuper: lang === "zh" ? "" : "",
@@ -353,12 +358,20 @@ const App = () => {
     swapping: lang === "zh" ? "正在执行兑换" : "Executing swap",
     swapSuccess: lang === "zh" ? "兑换成功" : "Swap completed",
     ordersTitle: lang === "zh" ? "出入金记录" : "In/Out Records",
-    ordersHint: lang === "zh" ? "这里汇总你的链上出入金相关记录（当前优先展示矿机订单流水）。" : "This section summarizes your on-chain in/out records (currently focused on machine order flows).",
+    ordersHint: lang === "zh" ? "这里按 ICO / USDT / LIGHT 分开展示近期链上出入金记录。" : "This section groups recent in/out records by ICO / USDT / LIGHT.",
     noOrders: lang === "zh" ? "暂无出入金记录。" : "No in/out records yet.",
+    noTokenOrders: lang === "zh" ? "当前代币暂无出入金记录。" : "No in/out records for this token yet.",
+    loadingTokenOrders: lang === "zh" ? "正在加载代币出入金记录..." : "Loading token in/out records...",
+    tokenOrdersWindow: lang === "zh" ? `统计窗口：最近 ${INOUT_LOOKBACK_DAYS} 天` : `Window: last ${INOUT_LOOKBACK_DAYS} days`,
+    tokenOrderType: lang === "zh" ? "类型" : "Type",
+    tokenOrderCounterparty: lang === "zh" ? "对手方" : "Counterparty",
+    tokenOrderTime: lang === "zh" ? "时间" : "Time",
+    machineOrdersTitle: lang === "zh" ? "算力订单记录" : "Computing Order Records",
+    machineOrdersHint: lang === "zh" ? "该区块仅展示算力购买订单。" : "This section only shows computing purchase orders.",
     assetsTitle: lang === "zh" ? "我的资产视图" : "My Assets",
     assetsHint: lang === "zh" ? "汇总当前钱包的身份、余额、授权与订单奖励概览。" : "Overview of wallet role, balances, allowances, orders, and rewards.",
-    totalMachineOrders: lang === "zh" ? "矿机订单总数" : "Total Machine Orders",
-    recentMachineUnits: lang === "zh" ? "最近订单矿机数" : "Recent Machine Units",
+    totalMachineOrders: lang === "zh" ? "算力订单总数" : "Total Machine Orders",
+    recentMachineUnits: lang === "zh" ? "最近订单算力数" : "Recent Machine Units",
     recentMachineAmount: lang === "zh" ? "最近订单金额" : "Recent Order Amount",
     recentRewardCount: lang === "zh" ? "最近奖励笔数" : "Recent Reward Count",
     recentRewardAmount: lang === "zh" ? "最近奖励金额" : "Recent Reward Amount",
@@ -384,7 +397,7 @@ const App = () => {
     walletDisconnected: lang === "zh" ? "钱包已断开连接。" : "Wallet disconnected.",
     walletConnectFailed: lang === "zh" ? "连接钱包失败" : "Failed to connect wallet",
     connectFirst: lang === "zh" ? "请先连接钱包。" : "Please connect your wallet first.",
-    switchBscTestnet: lang === "zh" ? "请先切换到 BSC Testnet 网络。" : "Please switch to BSC Testnet first.",
+    switchCncMainnet: lang === "zh" ? "请先切换到 CNC Mainnet 网络。" : "Please switch to CNC Mainnet first.",
     txFailed: lang === "zh" ? "交易执行失败" : "Transaction failed",
     missingCoreConfig: lang === "zh" ? "缺少 VITE_CORE_CONTRACT_ADDRESS 配置" : "Missing VITE_CORE_CONTRACT_ADDRESS",
     approvingUsdtCore: lang === "zh" ? "正在提交 Core 的 USDT 授权..." : "Submitting Core USDT approval...",
@@ -393,15 +406,15 @@ const App = () => {
     missingOtcConfig: lang === "zh" ? "缺少 VITE_OTC_CONTRACT_ADDRESS 配置" : "Missing VITE_OTC_CONTRACT_ADDRESS",
     approvingUsdtOtc: lang === "zh" ? "正在提交 OTC 的 USDT 授权..." : "Submitting OTC USDT approval...",
     approvedOtcSuccess: lang === "zh" ? "市场 USDT 授权已完成。" : "Market USDT approval confirmed.",
-    invalidMachineQty: lang === "zh" ? "矿机购买数量需在 1 到 10 之间。" : "Machine quantity must be between 1 and 10.",
+    invalidMachineQty: lang === "zh" ? "算力购买数量需在 1 到 10 之间。" : "Machine quantity must be between 1 and 10.",
     invalidReferrer: lang === "zh" ? "推荐人地址格式不正确。" : "Invalid referrer address.",
     invalidSelfReferrer: lang === "zh" ? "推荐人不能是当前钱包地址，且当前无法回退到合约 Owner。" : "Referrer cannot be your own wallet address and no contract-owner fallback is available.",
     selfReferrerFallback: lang === "zh" ? "检测到自邀请，提交时会自动回退为合约 Owner。" : "Self-referral detected. Submission will fall back to the contract owner.",
     referrerAlreadyBound: lang === "zh" ? "推荐人已绑定，无需重复操作。" : "Referrer already bound.",
     bindingReferrer: lang === "zh" ? "正在绑定推荐人..." : "Binding referrer...",
     bindReferrerSuccess: lang === "zh" ? "推荐人绑定成功。" : "Referrer bound successfully.",
-    buyingMachine: lang === "zh" ? "正在提交矿机购买交易..." : "Submitting machine purchase...",
-    buyMachineSuccess: lang === "zh" ? "矿机购买成功。" : "Machine purchase completed.",
+    buyingMachine: lang === "zh" ? "正在提交算力购买交易..." : "Submitting machine purchase...",
+    buyMachineSuccess: lang === "zh" ? "算力购买成功。" : "Machine purchase completed.",
     buyingNode: lang === "zh" ? "正在提交节点购买交易..." : "Submitting node purchase...",
     buyNodeSuccess: lang === "zh" ? "节点购买成功。" : "Node purchase completed.",
     buyingSuperNode: lang === "zh" ? "正在提交超级节点购买交易..." : "Submitting super node purchase...",
@@ -430,10 +443,11 @@ const App = () => {
     statusReady: lang === "zh" ? "系统就绪" : "System Ready",
     loading: lang === "zh" ? "加载中..." : "Loading...",
     firstGuideTitle: lang === "zh" ? "新钱包快速引导" : "New Wallet Quick Setup",
-    firstGuideHint: lang === "zh" ? "一键完成基础配置：网络 → 代币 → 数据刷新。" : "Complete base setup in one click: network → tokens → data refresh.",
-    firstGuideStepNetwork: lang === "zh" ? "1. 切换并确认 BSC Testnet 网络" : "1. Switch and confirm BSC Testnet network",
+    firstGuideHint: lang === "zh" ? "一键完成基础配置：网络 → 代币 → 推荐人 → 数据刷新。" : "Complete base setup in one click: network → tokens → referrer → data refresh.",
+    firstGuideStepNetwork: lang === "zh" ? "1. 切换并确认 CNC Mainnet 网络" : "1. Switch and confirm CNC Mainnet network",
     firstGuideStepToken: lang === "zh" ? "2. 添加 USDT / ICO / LIGHT 到钱包" : "2. Add USDT / ICO / LIGHT to wallet",
-    firstGuideStepRefresh: lang === "zh" ? "3. 刷新链上数据与权限状态" : "3. Refresh on-chain data and allowances",
+    firstGuideStepReferrer: lang === "zh" ? "3. 绑定推荐人（若需要可跳过）" : "3. Bind a referrer (optional, can skip)",
+    firstGuideStepRefresh: lang === "zh" ? "4. 刷新链上数据与权限状态" : "4. Refresh on-chain data and allowances",
     firstGuideRun: lang === "zh" ? "一键完成" : "Run One-Click Setup",
     firstGuideLater: lang === "zh" ? "稍后" : "Later",
     firstGuideRunning: lang === "zh" ? "引导执行中..." : "Running setup...",
@@ -444,7 +458,7 @@ const App = () => {
   const [chainId, setChainId] = useState(0);
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [status, setStatus] = useState("");
+  const [_status, setStatus] = useState("");
   const [contractOwner, setContractOwner] = useState("");
   const [showFirstConnectGuide, setShowFirstConnectGuide] = useState(false);
   const [firstConnectGuideRunning, setFirstConnectGuideRunning] = useState(false);
@@ -463,7 +477,37 @@ const App = () => {
 
   // 首页面板：交易池储备 & 奖励池积累
   const [historyToken, setHistoryToken] = useState<TokenType | null>(null);
+  const [ordersTokenTab, setOrdersTokenTab] = useState<TokenType>("ICO");
+  const [tokenInOutRecords, setTokenInOutRecords] = useState<Record<TokenType, TxRecord[]>>({
+    ICO: [],
+    LIGHT: [],
+    USDT: [],
+  });
+  const [loadingTokenInOutRecords, setLoadingTokenInOutRecords] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  const readonlyProvider = useMemo(
+    () => new FallbackProvider(
+      CNC_MAINNET_RPC_URLS.map((url, index) => ({
+        provider: new JsonRpcProvider(url, CNC_MAINNET_CHAIN_ID, {
+          staticNetwork: true,
+          batchMaxCount: 1,
+          polling: true,
+          pollingInterval: 4_000,
+        }),
+        priority: index + 1,
+        stallTimeout: 800,
+        weight: 1,
+      })),
+      CNC_MAINNET_CHAIN_ID,
+      {
+        quorum: 1,
+        eventQuorum: 1,
+        eventWorkers: 1,
+      },
+    ),
+    [],
+  );
   const [top3Leaderboard, setTop3Leaderboard] = useState<{ address: string; volume: bigint; rank: number }[]>([]);
   const [primaryPoolReserve, setPrimaryPoolReserve] = useState<{ ico: bigint; usdt: bigint }>({ ico: 0n, usdt: 0n });
   const [lightPoolReserve, setLightPoolReserve] = useState<{ light: bigint; ico: bigint }>({ light: 0n, ico: 0n });
@@ -480,7 +524,6 @@ const App = () => {
     directVolume: 0n,
     teamVolume: 0n,
   });
-  const [teamSubTab, setTeamSubTab] = useState<TeamSubTab>("myReferrer");
   const [myReferrer, setMyReferrer] = useState("");
   const [directReferrals, setDirectReferrals] = useState<string[]>([]);
 
@@ -492,7 +535,6 @@ const App = () => {
   const [lastNodeTradePrice, setLastNodeTradePrice] = useState<bigint>(0n);
   const [lastSuperTradePrice, setLastSuperTradePrice] = useState<bigint>(0n);
 
-  const [swapPairId, setSwapPairId] = useState(0);
   const [swapDirection, setSwapDirection] = useState<SwapDirection>("forward");
   const [swapSubTab, setSwapSubTab] = useState<SwapSubTab>("primary");
 
@@ -568,13 +610,6 @@ const App = () => {
     setUsdtBalance(0n);
     setCoreAllowance(0n);
     setOtcAllowance(0n);
-    setPrimaryPoolReserve({ ico: 0n, usdt: 0n });
-    setLightPoolReserve({ light: 0n, ico: 0n });
-    setSuperNodePoolBalance(0n);
-    setNodePoolBalance(0n);
-    setPlatformPoolBalance(0n);
-    setLeaderboardPoolBalance(0n);
-    setTop3Leaderboard([]);
     setMachineOrderCount(0);
     setOrders([]);
     setRewardRecords([]);
@@ -592,24 +627,71 @@ const App = () => {
     setSwapQuoteOut(0n);
     setSwapQuoteFee(0n);
     setSwapQuoteImpactBps(0);
+    setTokenInOutRecords({ ICO: [], LIGHT: [], USDT: [] });
+    setLoadingTokenInOutRecords(false);
     setReferrerSource("none");
-    setContractOwner("");
+  };
+
+  const refreshPublicData = async () => {
+    // Reuse existing read helpers with a read-only JSON-RPC provider.
+    const readProvider = readonlyProvider as unknown as BrowserProvider;
+
+    try {
+      const [nextMachinePrice, nextNodePrice, nextSuperPrice] = await Promise.all([
+        getMachineUnitPrice(readProvider),
+        getNodePrice(readProvider),
+        getSuperNodePrice(readProvider),
+      ]);
+      setMachinePrice(nextMachinePrice);
+      setNodePrice(nextNodePrice);
+      setSuperPrice(nextSuperPrice);
+    } catch (e) {
+      console.error("Failed to fetch public price data", e);
+    }
+
+    try {
+      const [poolsInfo, accBalances] = await Promise.all([
+        SWAP_POOL_ADDRESS ? getSwapPoolsInfo(readProvider) : null,
+        getPoolAccumulatedBalances(readProvider),
+      ]);
+      if (poolsInfo) {
+        setPrimaryPoolReserve({ usdt: poolsInfo.primaryPool.reserve0, ico: poolsInfo.primaryPool.reserve1 });
+        setLightPoolReserve({ light: poolsInfo.lightPool.reserve0, ico: poolsInfo.lightPool.reserve1 });
+      }
+      setSuperNodePoolBalance(accBalances.superNodePool);
+      setNodePoolBalance(accBalances.nodePool);
+      setPlatformPoolBalance(accBalances.platformPool);
+      setLeaderboardPoolBalance(accBalances.leaderboardPool);
+    } catch (e) {
+      console.error("Failed to fetch public pool data", e);
+    }
+
+    try {
+      const dayId = currentDayId();
+      const lbData = await fetchLeaderboardDay(readProvider, dayId);
+      setTop3Leaderboard(lbData.top10.slice(0, 3).map((entry) => ({
+        address: entry.address,
+        volume: entry.totalVolume,
+        rank: entry.rank,
+      })));
+    } catch (e) {
+      console.error("Failed to fetch public leaderboard", e);
+    }
+
+    try {
+      const owner = await getContractOwner(readProvider);
+      setContractOwner(owner);
+    } catch (e) {
+      console.error("Failed to fetch contract owner", e);
+    }
   };
 
   const networkLabel = useMemo(() => {
     if (!chainId) return t.notConnected;
-    return isOnBscTestnet(chainId) ? "BSC Testnet" : `${t.wrongNetwork} (chainId=${chainId})`;
+    return isOnCncMainnet(chainId) ? CNC_MAINNET_CHAIN_NAME : `${t.wrongNetwork} (chainId=${chainId})`;
   }, [chainId, t.notConnected, t.wrongNetwork]);
 
-  const maskedAddress = useMemo(() => {
-    if (!address) return "-";
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  }, [address]);
-  const isWrongNetwork = useMemo(() => Boolean(chainId) && !isOnBscTestnet(chainId), [chainId]);
-  const headerNetworkBadgeLabel = useMemo(() => {
-    if (!chainId) return t.notConnected;
-    return isWrongNetwork ? t.wrongNetwork : t.networkReady;
-  }, [chainId, isWrongNetwork, t.networkReady, t.notConnected, t.wrongNetwork]);
+  const isWrongNetwork = useMemo(() => Boolean(chainId) && !isOnCncMainnet(chainId), [chainId]);
 
   const isConnected = Boolean(address && provider);
 
@@ -631,10 +713,8 @@ const App = () => {
   }, [isConnected]);
 
   const machineTotal = useMemo(() => machinePrice * BigInt(machineQty || 0), [machinePrice, machineQty]);
-  const machineApprovalGap = useMemo(() => (machineTotal > coreAllowance ? machineTotal - coreAllowance : 0n), [coreAllowance, machineTotal]);
   const roleLabel = useMemo(() => (role === 2 ? t.roleSuperNode : role === 1 ? t.roleNode : t.roleUser), [role, t.roleNode, t.roleSuperNode, t.roleUser]);
   const trimmedMachineReferrer = useMemo(() => machineReferrer.trim(), [machineReferrer]);
-  const hasValidReferrer = useMemo(() => Boolean(trimmedMachineReferrer && isAddress(trimmedMachineReferrer)), [trimmedMachineReferrer]);
   const hasInvalidManualReferrer = useMemo(
     () => Boolean(trimmedMachineReferrer && !isAddress(trimmedMachineReferrer)),
     [trimmedMachineReferrer],
@@ -661,7 +741,13 @@ const App = () => {
 
     return "";
   }, [address, contractOwner, trimmedMachineReferrer]);
-  const isRootNode = useMemo(() => role > 0, [role]);
+  const defaultReferrerCandidate = useMemo(() => {
+    if (!address) return "";
+    if (contractOwner && isAddress(contractOwner) && contractOwner.toLowerCase() !== address.toLowerCase()) {
+      return contractOwner;
+    }
+    return "";
+  }, [address, contractOwner]);
   const hasEffectiveReferrer = useMemo(
     () => (hasBoundReferrer || Boolean(referrerCandidate)),
     [hasBoundReferrer, referrerCandidate],
@@ -675,29 +761,37 @@ const App = () => {
   }, [referrerSource, t.referrerFromChain, t.referrerFromLink, t.referrerFromManual, t.referrerFromOwner]);
   const machineDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
-    if (isWrongNetwork) return t.needBscTestnetToBuy;
-    if (!hasEffectiveReferrer) return t.needReferrerToBuy;
+    if (isWrongNetwork) return t.needCncMainnetToBuy;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, t.needBscTestnetToBuy, t.needConnectToBuy, t.needReferrerToBuy]);
+  }, [isConnected, isWrongNetwork, t.needCncMainnetToBuy, t.needConnectToBuy]);
+  const machineActionHint = useMemo(() => {
+    if (machineDisabledReason) {
+      return machineDisabledReason;
+    }
+    if (!hasEffectiveReferrer) {
+      return t.needReferrerToBuy;
+    }
+    return "";
+  }, [hasEffectiveReferrer, machineDisabledReason, t.needReferrerToBuy]);
   const nodeDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
-    if (isWrongNetwork) return t.needBscTestnetToBuy;
+    if (isWrongNetwork) return t.needCncMainnetToBuy;
     if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role !== 0) return t.roleMismatchForNode;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needBscTestnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.roleMismatchForNode]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needCncMainnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.roleMismatchForNode]);
   const superDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
-    if (isWrongNetwork) return t.needBscTestnetToBuy;
+    if (isWrongNetwork) return t.needCncMainnetToBuy;
     if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role === 2) return t.alreadySuperNode;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needBscTestnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.alreadySuperNode]);
+  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needCncMainnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.alreadySuperNode]);
   const bindReferrerDisabledReason = useMemo(() => {
     if (!isConnected) return t.connectFirst;
-    if (isWrongNetwork) return t.switchBscTestnet;
+    if (isWrongNetwork) return t.switchCncMainnet;
     return "";
-  }, [isConnected, isWrongNetwork, t.connectFirst, t.switchBscTestnet]);
+  }, [isConnected, isWrongNetwork, t.connectFirst, t.switchCncMainnet]);
   const bindReferrerHint = useMemo(() => {
     if (bindReferrerDisabledReason) return bindReferrerDisabledReason;
     if (hasInvalidManualReferrer) return t.invalidReferrer;
@@ -771,22 +865,9 @@ const App = () => {
     }
   }, [isOwner]);
 
-  const isLightRecoveryPool = useMemo(() => activePairId === LIGHT_ICO_PAIR_ID, [activePairId]);
   const effectiveSwapDirection = useMemo<SwapDirection>(
     () => activeSwapDirection,
     [activeSwapDirection],
-  );
-  const swapPoolModeLabel = useMemo(
-    () => (isLightRecoveryPool ? t.swapLightMode : t.swapPrimaryMode),
-    [isLightRecoveryPool, t.swapLightMode, t.swapPrimaryMode],
-  );
-  const swapPoolDescription = useMemo(
-    () => (isLightRecoveryPool ? t.swapPoolLightDesc : t.swapPoolPrimaryDesc),
-    [isLightRecoveryPool, t.swapPoolLightDesc, t.swapPoolPrimaryDesc],
-  );
-  const swapDistributionText = useMemo(
-    () => (isLightRecoveryPool ? t.swapLightDistribution : "-"),
-    [isLightRecoveryPool, t.swapLightDistribution],
   );
   const swapApprovalStatus = useMemo(() => {
     if (swapAmountRaw === null || swapAmountRaw === 0n) return t.quoteNeedAmount;
@@ -848,6 +929,22 @@ const App = () => {
     () => rewardRecords.reduce((sum, row) => sum + toSafeBigInt(row.amountUSDT), 0n),
     [rewardRecords],
   );
+  const selectedTokenOrders = useMemo(
+    () => (tokenInOutRecords[ordersTokenTab] ?? []).slice(0, INOUT_PREVIEW_LIMIT),
+    [ordersTokenTab, tokenInOutRecords],
+  );
+  const formatTokenInOutAmount = (record: TxRecord) => {
+    if (record.token === "USDT") {
+      return formatUsdt(record.amount);
+    }
+    return formatTokenAmount(record.amount, 18);
+  };
+  const formatTokenInOutTime = (timestamp: number) => {
+    if (!timestamp) {
+      return "-";
+    }
+    return new Date(timestamp * 1000).toLocaleString(lang === "zh" ? "zh-CN" : "en-US");
+  };
 
   useEffect(() => {
     if (activePairId === LIGHT_ICO_PAIR_ID && swapDirection !== "forward") {
@@ -1069,7 +1166,7 @@ const App = () => {
       console.error("Failed to fetch owner / referrer", e);
     }
 
-    // 矿机订单
+    // 算力订单
     try {
       const orderIds = await getUserMachineOrderIds(connectedProvider, wallet);
       setMachineOrderCount(orderIds.length);
@@ -1084,6 +1181,58 @@ const App = () => {
       );
     } catch (e) {
       console.error("Failed to fetch machine orders", e);
+    }
+
+    // 代币出入金记录（按 ICO/LIGHT/USDT 分组）
+    try {
+      setLoadingTokenInOutRecords(true);
+      const latestBlock = await connectedProvider.getBlockNumber();
+      const lookbackBlocks = Math.ceil((INOUT_LOOKBACK_DAYS * 24 * 60 * 60) / 3);
+      const fromBlock = Math.max(0, latestBlock - lookbackBlocks);
+      const refs = {
+        core: (CORE_CONTRACT_ADDRESS || "").toLowerCase(),
+        swap: (SWAP_POOL_ADDRESS || "").toLowerCase(),
+        otc: (OTC_CONTRACT_ADDRESS || "").toLowerCase(),
+      };
+
+      const tokenConfigs: Array<{ token: TokenType; address?: string }> = [
+        { token: "ICO", address: ICO_TOKEN_ADDRESS },
+        { token: "LIGHT", address: LIGHT_TOKEN_ADDRESS },
+        { token: "USDT", address: USDT_CONTRACT_ADDRESS },
+      ];
+
+      const grouped = await Promise.all(
+        tokenConfigs.map(async ({ token, address }) => {
+          if (!address) {
+            return { token, records: [] as TxRecord[] };
+          }
+          const records = await fetchTokenHistory(
+            connectedProvider,
+            address,
+            wallet,
+            token,
+            refs,
+            fromBlock,
+            latestBlock,
+          );
+          return { token, records };
+        }),
+      );
+
+      const nextTokenRecords: Record<TokenType, TxRecord[]> = {
+        ICO: [],
+        LIGHT: [],
+        USDT: [],
+      };
+      grouped.forEach(({ token, records }) => {
+        nextTokenRecords[token] = records;
+      });
+      setTokenInOutRecords(nextTokenRecords);
+    } catch (e) {
+      console.error("Failed to fetch token in/out records", e);
+      setTokenInOutRecords({ ICO: [], LIGHT: [], USDT: [] });
+    } finally {
+      setLoadingTokenInOutRecords(false);
     }
 
     // 奖励记录
@@ -1212,6 +1361,32 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    let disposed = false;
+
+    const runRefresh = async () => {
+      try {
+        await refreshPublicData();
+      } catch {
+        // individual fetch segments already handle and log their own failures
+      }
+    };
+
+    void runRefresh();
+
+    const timer = window.setInterval(() => {
+      if (!disposed) {
+        void runRefresh();
+      }
+    }, 30_000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readonlyProvider]);
+
+  useEffect(() => {
     if (!isSwapTab || !provider || !address) {
       return;
     }
@@ -1247,33 +1422,41 @@ const App = () => {
       setStatus(t.firstGuideRunning);
 
       const setupResult = await setupWalletAfterConnect();
+      
+      // Try to bind default referrer if not already bound and not an owner
+      let bindResult = { success: false, message: "" };
+      if (!isOwner && !hasBoundReferrer && defaultReferrerCandidate) {
+        try {
+          await bindReferrer(provider, defaultReferrerCandidate);
+          setMachineReferrer(defaultReferrerCandidate);
+          setReferrerSource("onchain");
+          bindResult.success = true;
+          bindResult.message = langRef.current === "zh" ? "已绑定默认推荐人。" : "Default referrer bound.";
+        } catch (bindError) {
+          // Referrer binding is optional in first guide, so we don't fail the setup
+          bindResult.message = bindError instanceof Error ? bindError.message : (langRef.current === "zh" ? "推荐人绑定失败，请稍后重试。" : "Referrer binding failed, please retry later.");
+        }
+      }
+      
       const existing = await checkConnection();
       if (existing) {
         await syncWalletState(existing.provider, existing.address, existing.chainId);
       }
 
       if (langRef.current === "zh") {
-        setStatus(`首次引导完成：已配置 ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} 个代币。`);
+        const messages = [`首次引导完成：已配置 ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} 个代币。`];
+        if (bindResult.message) messages.push(bindResult.message);
+        setStatus(messages.join(" "));
       } else {
-        setStatus(
-          `First-time setup completed: ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} tokens configured.`,
-        );
+        const messages = [`First-time setup completed: ${setupResult.addedTokenCount}/${setupResult.attemptedTokenCount} tokens configured.`];
+        if (bindResult.message) messages.push(bindResult.message);
+        setStatus(messages.join(" "));
       }
       markFirstConnectGuideDone();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : t.walletConnectFailed);
     } finally {
       setFirstConnectGuideRunning(false);
-    }
-  };
-
-  const onCopyAddress = async () => {
-    if (!address) return;
-    try {
-      await navigator.clipboard.writeText(address);
-      setStatus(t.copied);
-    } catch {
-      setStatus(address);
     }
   };
 
@@ -1288,15 +1471,6 @@ const App = () => {
     }
   };
 
-  const onSwitchNetwork = async () => {
-    try {
-      await ensureBscTestnetNetwork();
-      await onRefreshWallet();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : t.switchBscTestnet);
-    }
-  };
-
   const onAddProjectToken = async (symbol: "ICO" | "LIGHT") => {
     const tokenAddress = symbol === "ICO" ? ICO_TOKEN_ADDRESS : LIGHT_TOKEN_ADDRESS;
     if (!tokenAddress) {
@@ -1304,15 +1478,9 @@ const App = () => {
       return;
     }
 
-    if (!window.ethereum) {
-      setStatus(t.walletConnectFailed);
-      return;
-    }
-
     try {
       setAddingTokenSymbol(symbol);
-      await ensureBscTestnetNetwork();
-      await addProjectTokenToWallet(symbol);
+      await navigator.clipboard.writeText(tokenAddress);
       setStatus(`${symbol} ${t.tokenAdded}`);
     } catch (error) {
       const fallback = error instanceof Error ? error.message : `${symbol} ${t.tokenAddFailed}`;
@@ -1327,7 +1495,7 @@ const App = () => {
   };
 
   const onReverseSwapDirection = () => {
-    if (swapPairId === LIGHT_ICO_PAIR_ID || swapSubTab === "light") {
+    if (activePairId === LIGHT_ICO_PAIR_ID || swapSubTab === "light") {
       return;
     }
     setSwapDirection((current) => (current === "forward" ? "reverse" : "forward"));
@@ -1340,7 +1508,7 @@ const App = () => {
         setStatus(t.connectFirst);
         return;
       }
-      await ensureBscTestnetNetwork();
+      await ensureCncMainnetNetwork();
       await syncWalletState(existing.provider, existing.address, existing.chainId);
       setStatus(t.walletConnected);
     } catch (error) {
@@ -1353,8 +1521,8 @@ const App = () => {
       setStatus(t.connectFirst);
       return;
     }
-    if (!isOnBscTestnet(chainId)) {
-      setStatus(t.switchBscTestnet);
+    if (!isOnCncMainnet(chainId)) {
+      setStatus(t.switchCncMainnet);
       return;
     }
     try {
@@ -1422,20 +1590,6 @@ const App = () => {
     setStatus(t.bindReferrerSuccess);
   };
 
-  const onApproveCore = async () => guardedAction(async () => {
-    if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
-    setStatus(t.approvingUsdtCore);
-    await approveUsdt(provider!, CORE_CONTRACT_ADDRESS, parseUsdt("1000000000"));
-    setStatus(t.approvedCoreSuccess);
-  });
-
-  const onApproveOtc = async () => guardedAction(async () => {
-    if (!OTC_CONTRACT_ADDRESS) throw new Error(t.missingOtcConfig);
-    setStatus(t.approvingUsdtOtc);
-    await approveUsdt(provider!, OTC_CONTRACT_ADDRESS, parseUsdt("1000000000"));
-    setStatus(t.approvedOtcSuccess);
-  });
-
   const onBuyMachine = async () => guardedAction(async () => {
     if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
     await ensureReferrerReady();
@@ -1477,6 +1631,23 @@ const App = () => {
     setStatus(t.bindReferrerSuccess);
   });
 
+  const onBindDefaultReferrer = async () => guardedAction(async () => {
+    if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+
+    if (hasBoundReferrer) {
+      setStatus(t.referrerAlreadyBound);
+      return;
+    }
+
+    if (!defaultReferrerCandidate) throw new Error(t.needReferrerToBuy);
+
+    setStatus(t.bindingReferrer);
+    await bindReferrer(provider!, defaultReferrerCandidate);
+    setMachineReferrer(defaultReferrerCandidate);
+    setReferrerSource("onchain");
+    setStatus(t.bindReferrerSuccess);
+  });
+
   const onBuyNode = async () => guardedAction(async () => {
     await ensureReferrerReady();
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
@@ -1497,13 +1668,6 @@ const App = () => {
     setStatus(t.buySuperNodeSuccess);
   });
 
-  const onApproveIdentity = async () => guardedAction(async () => {
-    if (!identityId) throw new Error(t.noIdentity);
-    if (!OTC_CONTRACT_ADDRESS) throw new Error(t.missingOtcConfig);
-    setStatus(t.approvingIdentity);
-    await approveIdentityForOtc(provider!, identityId, OTC_CONTRACT_ADDRESS);
-    setStatus(t.approvedIdentitySuccess);
-  });
 
   const onCreateOtcOrder = async () => guardedAction(async () => {
     if (!identityId) throw new Error(t.noIdentity);
@@ -1613,6 +1777,7 @@ const App = () => {
           <ol className="guide-steps">
             <li>{t.firstGuideStepNetwork}</li>
             <li>{t.firstGuideStepToken}</li>
+            <li>{t.firstGuideStepReferrer}</li>
             <li>{t.firstGuideStepRefresh}</li>
           </ol>
           <div className="actions">
@@ -1640,12 +1805,6 @@ const App = () => {
         <span className="brand-name">Incubator</span>
         {activeTabLabel && <span className="page-title-sep">·</span>}
         <h1 className="page-title">{activeTabLabel}</h1>
-        <div className="status-bar" aria-live="polite">
-          <span className={isConnected && !isWrongNetwork ? "status-dot status-online" : "status-dot status-offline"} />
-          <span className="status-text">
-            {status || `${maskedAddress} · ${headerNetworkBadgeLabel}`}
-          </span>
-        </div>
       </div>
 
       <div className="topbar-actions">
@@ -1719,6 +1878,9 @@ const App = () => {
               )}
               <p className="ranking-hint">
                 {lang === "zh" ? "点击查看完整榜单" : "Click to view full rankings"}
+              </p>
+              <p className="ranking-note">
+                {lang === "zh" ? "今日为实时排名，奖励以昨日结算页为准" : "Today is real-time; rewards are finalized on yesterday settlement."}
               </p>
             </div>
           </Card>
@@ -1796,6 +1958,13 @@ const App = () => {
                 >
                   {loading ? t.loading : t.bindReferrer}
                 </button>
+                <button
+                  className="primary-btn primary-btn--ghost"
+                  onClick={onBindDefaultReferrer}
+                  disabled={loading || !defaultReferrerCandidate || Boolean(bindReferrerDisabledReason)}
+                >
+                  {loading ? t.loading : t.bindDefaultReferrer}
+                </button>
               </div>
               {bindReferrerHint ? <p className="action-hint">{bindReferrerHint}</p> : null}
             </Card>
@@ -1833,7 +2002,7 @@ const App = () => {
             </div>
           </Card>
 
-          {/* 矿机购买卡 */}
+          {/* 算力购买卡 */}
           <Card title={t.machineTitle} className="machine-card">
             <div className="machine-orb machine-orb--one"></div>
             <div className="machine-orb machine-orb--two"></div>
@@ -1859,7 +2028,7 @@ const App = () => {
                   {loading ? t.loading : t.submitMachine}
                 </button>
               </div>
-              {machineDisabledReason ? <p className="action-hint">{machineDisabledReason}</p> : null}
+              {machineActionHint ? <p className="action-hint">{machineActionHint}</p> : null}
             </div>
             <p className="hint">{t.machineAutoApproveHint}</p>
             <p className="hint">{t.machineBusinessHint}</p>
@@ -1931,57 +2100,47 @@ const App = () => {
                 <strong>{formatUsdt(teamStats.teamVolume)} USDT</strong>
               </div>
             </div>
-            <div className="swap-sub-tabs">
-              <button
-                className={teamSubTab === "myReferrer" ? "tab-btn tab-active" : "tab-btn"}
-                onClick={() => setTeamSubTab("myReferrer")}
-                type="button"
-              >
-                {t.myReferrerTab}
-              </button>
-              <button
-                className={teamSubTab === "myDirects" ? "tab-btn tab-active" : "tab-btn"}
-                onClick={() => setTeamSubTab("myDirects")}
-                type="button"
-              >
-                {t.myDirectsTab}
-              </button>
-            </div>
 
-            {teamSubTab === "myReferrer" ? (
-              myReferrer ? (
-                <ul className="list">
-                  <li className="list-item">
-                    <div className="list-head">
-                      <strong>{t.myReferrerTitle}</strong>
-                      <span>{`${myReferrer.slice(0, 6)}...${myReferrer.slice(-4)}`}</span>
-                    </div>
-                    <p>{myReferrer}</p>
-                  </li>
-                </ul>
-              ) : (
-                <p className="hint">{t.noReferrerBound}</p>
-              )
-            ) : (
-              directReferrals.length === 0 ? (
-                <p className="hint">{t.noDirectReferrals}</p>
-              ) : (
-                <>
-                  <KVRow label={t.directReferralCountLabel} value={directReferrals.length} />
+            <div className="referral-lists-container">
+              <div className="referral-section">
+                <h4 className="section-title">{t.myReferrerTab}</h4>
+                {myReferrer ? (
                   <ul className="list">
-                    {directReferrals.map((ref, index) => (
-                      <li className="list-item" key={ref}>
-                        <div className="list-head">
-                          <strong>{`#${index + 1}`}</strong>
-                          <span>{`${ref.slice(0, 6)}...${ref.slice(-4)}`}</span>
-                        </div>
-                        <p>{ref}</p>
-                      </li>
-                    ))}
+                    <li className="list-item">
+                      <div className="list-head">
+                        <strong>{t.myReferrerTitle}</strong>
+                        <span>{`${myReferrer.slice(0, 6)}...${myReferrer.slice(-4)}`}</span>
+                      </div>
+                      <p>{myReferrer}</p>
+                    </li>
                   </ul>
-                </>
-              )
-            )}
+                ) : (
+                  <p className="hint">{t.noReferrerBound}</p>
+                )}
+              </div>
+
+              <div className="referral-section">
+                <h4 className="section-title">{t.myDirectsTab}</h4>
+                {directReferrals.length === 0 ? (
+                  <p className="hint">{t.noDirectReferrals}</p>
+                ) : (
+                  <>
+                    <KVRow label={t.directReferralCountLabel} value={directReferrals.length} />
+                    <ul className="list">
+                      {directReferrals.map((ref, index) => (
+                        <li className="list-item" key={ref}>
+                          <div className="list-head">
+                            <strong>{`#${index + 1}`}</strong>
+                            <span>{`${ref.slice(0, 6)}...${ref.slice(-4)}`}</span>
+                          </div>
+                          <p>{ref}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
           </Card>
 
           <Card title={t.inviteTitle} hint={t.inviteHint}>
@@ -2379,6 +2538,52 @@ const App = () => {
           )}
 
           <Card title={t.ordersTitle} hint={t.ordersHint}>
+            <div className="history-entry-btns">
+              <button
+                className={`history-entry-btn ${ordersTokenTab === "ICO" ? "active" : ""}`}
+                type="button"
+                onClick={() => setOrdersTokenTab("ICO")}
+              >
+                ICO
+              </button>
+              <button
+                className={`history-entry-btn ${ordersTokenTab === "LIGHT" ? "active" : ""}`}
+                type="button"
+                onClick={() => setOrdersTokenTab("LIGHT")}
+              >
+                LIGHT
+              </button>
+              <button
+                className={`history-entry-btn ${ordersTokenTab === "USDT" ? "active" : ""}`}
+                type="button"
+                onClick={() => setOrdersTokenTab("USDT")}
+              >
+                USDT
+              </button>
+            </div>
+            <p className="hint">{t.tokenOrdersWindow}</p>
+            {loadingTokenInOutRecords ? (
+              <p className="hint">{t.loadingTokenOrders}</p>
+            ) : selectedTokenOrders.length === 0 ? (
+              <p className="hint">{t.noTokenOrders}</p>
+            ) : (
+              <ul className="list">
+                {selectedTokenOrders.map((record) => (
+                  <li key={`${record.txHash}-${record.token}-${record.direction}-${record.blockNumber}`} className="list-item">
+                    <div className="list-head">
+                      <strong>{`${record.token} ${record.direction === "in" ? "+" : "-"}${formatTokenInOutAmount(record)}`}</strong>
+                      <span>{record.orderType}</span>
+                    </div>
+                    <p>{t.tokenOrderType}：{record.direction === "in" ? "IN" : "OUT"}</p>
+                    <p>{t.tokenOrderCounterparty}：{`${record.counterparty.slice(0, 8)}...${record.counterparty.slice(-6)}`}</p>
+                    <p>{t.tokenOrderTime}：{formatTokenInOutTime(record.timestamp)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card title={t.machineOrdersTitle} hint={t.machineOrdersHint}>
             {orders.length === 0 ? (
               <p className="hint">{t.noOrders}</p>
             ) : (
@@ -2427,7 +2632,7 @@ const App = () => {
       {showLeaderboard ? (
         <div className="fullscreen-overlay">
           <Leaderboard
-            provider={provider ?? new JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545") as unknown as BrowserProvider}
+            provider={provider ?? readonlyProvider as unknown as BrowserProvider}
             onBack={() => setShowLeaderboard(false)}
             lang={lang}
           />

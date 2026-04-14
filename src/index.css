@@ -9,22 +9,22 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --bg-primary: #080e2e;
-  --bg-secondary: #0d1445;
-  --card-bg: rgba(15, 22, 60, 0.65);
-  --border-color: rgba(107, 127, 212, 0.18);
+  --bg-primary: #060b23;
+  --bg-secondary: #0a1038;
+  --card-bg: rgba(12, 18, 50, 0.72);
+  --border-color: rgba(95, 216, 127, 0.12);
 
-  --text-primary: #f0f4ff;
-  --text-secondary: #7e8fc4;
+  --text-primary: #f5f9ff;
+  --text-secondary: #8a9ab8;
 
-  --brand-green: #86c232;
-  --brand-green-light: #a8e040;
-  --brand-blue: #6b7fd4;
-  --brand-blue-light: #8a99e8;
+  --brand-green: #5fd87f;
+  --brand-green-light: #7ce496;
+  --brand-blue: #4f9cfe;
+  --brand-blue-light: #6bb3ff;
 
   --gradient-neon: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-blue) 100%);
   --gradient-text: linear-gradient(to right, var(--brand-green), var(--brand-blue-light));
-  --gradient-btn: linear-gradient(135deg, var(--brand-green) 0%, #5a9020 100%);
+  --gradient-btn: linear-gradient(135deg, var(--brand-green) 0%, #3fa868 100%);
 }
 
 * {
@@ -36,9 +36,9 @@ body {
   color: var(--text-primary);
   background-color: var(--bg-primary);
   background-image:
-    radial-gradient(ellipse at 15% 25%, rgba(107, 127, 212, 0.18) 0%, transparent 45%),
-    radial-gradient(ellipse at 85% 75%, rgba(134, 194, 50, 0.10) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 0%, rgba(107, 127, 212, 0.10) 0%, transparent 55%);
+    radial-gradient(ellipse at 15% 25%, rgba(95, 216, 127, 0.10) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 75%, rgba(79, 156, 254, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 0%, rgba(95, 216, 127, 0.06) 0%, transparent 55%);
   background-attachment: fixed;
   background-repeat: no-repeat;
   min-height: 100vh;
@@ -63,4 +63,196 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.2); 
+}
+
+/* ═══════════════════════════════════════════
+   Admin 布局与底部 Tab 导航
+═══════════════════════════════════════════ */
+.admin-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-card, rgba(255,255,255,0.04));
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-topbar-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.admin-topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-status-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.admin-status-badge.running {
+  background: rgba(95, 216, 127, 0.15);
+  color: #5fd87f;
+  border: 1px solid rgba(95, 216, 127, 0.3);
+}
+.admin-status-badge.paused {
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff6060;
+  border: 1px solid rgba(255, 80, 80, 0.3);
+}
+
+.admin-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 4px 8px;
+}
+
+/* 底部 Tab 导航 */
+.admin-bottom-nav {
+  display: flex;
+  border-top: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  background: var(--bg-card, rgba(255,255,255,0.04));
+  padding: 4px 0 max(4px, env(safe-area-inset-bottom));
+}
+.admin-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-muted, #888);
+  transition: color 0.15s;
+  min-width: 0;
+}
+.admin-nav-item:hover {
+  color: var(--color-text, #e0e0e0);
+}
+.admin-nav-item.active {
+  color: var(--color-accent, #5fd87f);
+}
+.admin-nav-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.admin-nav-label {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* 价格回显区块 */
+.admin-price-echo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
+}
+@media (max-width: 600px) {
+  .admin-price-echo { grid-template-columns: 1fr 1fr; }
+}
+.admin-price-echo-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-price-echo-item span {
+  font-size: 0.78rem;
+  color: var(--color-muted, #888);
+}
+.admin-price-echo-val {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-accent, #5fd87f);
+}
+
+/* 资金池回显 */
+.admin-pool-echo {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+/* 参数表格 */
+.admin-param-table-wrap {
+  overflow-x: auto;
+}
+.admin-param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.admin-param-table th,
+.admin-param-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.admin-param-table th {
+  font-weight: 600;
+  color: var(--color-muted, #888);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-param-input {
+  width: 120px;
+  background: var(--bg-input, rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: inherit;
+  font-size: 0.9rem;
+}
+.admin-param-input:focus {
+  outline: none;
+  border-color: var(--color-accent, #5fd87f);
+}
+.admin-current-val {
+  color: var(--color-accent, #5fd87f);
+  font-weight: 500;
+}
+.admin-param-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* 操作按钮紧凑版 */
+.admin-actions-tight {
+  margin-top: 4px !important;
+  flex-wrap: wrap;
+}
+
+/* LIGHT 表单栅格 */
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 500px) {
+  .admin-form-grid { grid-template-columns: 1fr; }
 }

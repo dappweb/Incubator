@@ -1,14 +1,14 @@
 /**
  * create-pancake-pool.ts
  * ------------------------------------------------------------------
- * 在 Pancake V3 (BSC Testnet) 上为 USDT/ICO 创建并初始化交易对，
+ * 在 CNC Mainnet 上为 USDT/ICO 创建并初始化外部 DEX 交易对，
  * 然后通过 NonfungiblePositionManager 注入初始流动性。
  *
  * 初始价格: 1 USDT = 100 ICO  (ICO ≈ 0.01 USDT)
  * 如果 ICO / LIGHT 代币未部署，脚本会自动部署并更新 .env 文件。
  *
  * 用法:
- *   npx hardhat run scripts/create-pancake-pool.ts --network bscTestnet
+ *   npx hardhat run scripts/create-pancake-pool.ts --network cncMainnet
  * ------------------------------------------------------------------
  */
 
@@ -16,9 +16,9 @@ import * as fs from "fs";
 import { ethers } from "hardhat";
 import * as path from "path";
 
-/* ─── Pancake V3 BSC Testnet 合约地址 ─── */
-const FACTORY_ADDR = "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865";
-const NPM_ADDR     = "0x427bF5b37357632377eCbEC9de3626C71A5396c1"; // NonfungiblePositionManager
+/* ─── CNC Mainnet 上的外部 DEX 地址（必须显式配置） ─── */
+const FACTORY_ADDR = process.env.PANCAKE_V3_FACTORY_ADDRESS || process.env.VITE_PANCAKE_V3_FACTORY_ADDRESS || "";
+const NPM_ADDR = process.env.PANCAKE_V3_POSITION_MANAGER_ADDRESS || process.env.VITE_PANCAKE_V3_POSITION_MANAGER_ADDRESS || "";
 
 /* ─── 项目代币地址（从 .env 读取）─── */
 const USDT_ADDR = process.env.USDT_TOKEN_ADDRESS!;
@@ -150,6 +150,9 @@ function updateEnvVar(envPath: string, key: string, value: string) {
 async function main() {
   if (!USDT_ADDR) {
     throw new Error("请在 .env 中设置 USDT_TOKEN_ADDRESS");
+  }
+  if (!FACTORY_ADDR || !NPM_ADDR) {
+    throw new Error("缺少 CNC 上的 Pancake V3 FACTORY / POSITION_MANAGER 地址配置");
   }
 
   const envPath = path.resolve(__dirname, "../.env");

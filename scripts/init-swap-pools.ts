@@ -2,14 +2,16 @@
  * init-swap-pools.ts
  * ---
  * 1. 检查两个 Swap 池是否已创建（如未创建则调用 createDefaultPools）
- * 2. 给 deployer mint 足够的 USDT / ICO / LIGHT（MockToken 均支持 owner mint）
+ * 2. 检查 deployer 是否有足够的 USDT / ICO / LIGHT；仅在代币支持时尝试 mint
  * 3. approve → addLiquidity，为两个池注入初始流动性
  *
  * 用法：
- *   npx hardhat run scripts/init-swap-pools.ts --network bscTestnet
+ *   npx hardhat run scripts/init-swap-pools.ts --network cncMainnet
  */
 
 import { ethers } from "hardhat";
+
+const USDT_DECIMALS = Number(process.env.VITE_USDT_DECIMALS || "18");
 
 /* ─── 配置 ─── */
 const SWAP_ADDRESS = process.env.VITE_SWAP_POOL_ADDRESS!;
@@ -18,17 +20,39 @@ const ICO_ADDRESS  = process.env.VITE_ICO_TOKEN_ADDRESS!;
 const LIGHT_ADDRESS = process.env.VITE_LIGHT_TOKEN_ADDRESS!;
 
 // Pool 0: USDT/ICO  — 10 000 USDT : 100 000 ICO  →  1 ICO ≈ 0.1 USDT
-const USDT_LIQ  = process.env.SWAP_USDT_ICO_USDT_LIQ  || "10000000000";                // 10 000 × 10^6
-const ICO_LIQ_0 = process.env.SWAP_USDT_ICO_ICO_LIQ   || "100000000000000000000000";    // 100 000 × 10^18
+const USDT_LIQ = process.env.SWAP_USDT_ICO_USDT_LIQ || ethers.parseUnits("10000", USDT_DECIMALS).toString();
+const ICO_LIQ_0 = process.env.SWAP_USDT_ICO_ICO_LIQ || ethers.parseUnits("100000", 18).toString();
 
 // Pool 1: LIGHT/ICO — 200 000 LIGHT : 100 000 ICO  →  1 LIGHT ≈ 0.5 ICO
-const LIGHT_LIQ   = process.env.SWAP_LIGHT_ICO_LIGHT_LIQ || "200000000000000000000000";  // 200 000 × 10^18
-const ICO_LIQ_1   = process.env.SWAP_LIGHT_ICO_ICO_LIQ   || "100000000000000000000000";  // 100 000 × 10^18
+const LIGHT_LIQ = process.env.SWAP_LIGHT_ICO_LIGHT_LIQ || ethers.parseUnits("200000", 18).toString();
+const ICO_LIQ_1 = process.env.SWAP_LIGHT_ICO_ICO_LIQ || ethers.parseUnits("100000", 18).toString();
 
 // createDefaultPools 参数（仅在池子尚未创建时使用）
 const FEE_USDT_ICO  = 50;   // 0.5 %
 const FEE_LIGHT_ICO = 200;  // 2 %
 const MAX_IMPACT    = 3000;  // 30 %
+
+const ERC20_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function mint(address to, uint256 amount)",
+  "function owner() view returns (address)",
+];
+
+async function tryMint(token: any, deployerAddress: string, amount: bigint, symbol: string) {
+  try {
+    const owner = await token.owner();
+    if (String(owner).toLowerCase() !== deployerAddress.toLowerCase()) {
+      return false;
+    }
+
+    await (await token.mint(deployerAddress, amount)).wait();
+    console.log(`Mint ${symbol} to deployer:`, amount.toString());
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -40,10 +64,10 @@ async function main() {
   console.log("─".repeat(60));
 
   /* ─── 获取合约实例 ─── */
-  const swap  = await ethers.getContractAt("SwapPoolManager", SWAP_ADDRESS);
-  const usdt  = await ethers.getContractAt("MockUSDT", USDT_ADDRESS);
-  const ico   = await ethers.getContractAt("IncubatorToken", ICO_ADDRESS);
-  const light = await ethers.getContractAt("MockToken", LIGHT_ADDRESS);
+  const swap = await ethers.getContractAt("SwapPoolManager", SWAP_ADDRESS);
+  const usdt = new ethers.Contract(USDT_ADDRESS, ERC20_ABI, deployer);
+  const ico = new ethers.Contract(ICO_ADDRESS, ERC20_ABI, deployer);
+  const light = new ethers.Contract(LIGHT_ADDRESS, ERC20_ABI, deployer);
 
   /* ─── Step 1 : 检查 / 创建池子 ─── */
   const pool0 = await swap.getPool(0);
@@ -78,24 +102,30 @@ async function main() {
     const usdtBal = await usdt.balanceOf(deployer.address);
     if (usdtBal < BigInt(USDT_LIQ)) {
       const deficit = BigInt(USDT_LIQ) - usdtBal;
-      console.log("Mint USDT to deployer:", deficit.toString());
-      await (await usdt.mint(deployer.address, deficit)).wait();
+      const minted = await tryMint(usdt, deployer.address, deficit, "USDT");
+      if (!minted) {
+        throw new Error("USDT 余额不足，且当前 CNC USDT 不支持由部署钱包 mint，请先手动准备流动性。");
+      }
     }
   }
 
   const icoBal = await ico.balanceOf(deployer.address);
   if (icoBal < totalIcoNeeded) {
     const deficit = totalIcoNeeded - icoBal;
-    console.log("Mint ICO to deployer:", deficit.toString());
-    await (await ico.mint(deployer.address, deficit)).wait();
+    const minted = await tryMint(ico, deployer.address, deficit, "ICO");
+    if (!minted) {
+      throw new Error("ICO 余额不足，且当前 ICO 合约不支持由部署钱包 mint。");
+    }
   }
 
   if (needLiq1) {
     const lightBal = await light.balanceOf(deployer.address);
     if (lightBal < BigInt(LIGHT_LIQ)) {
       const deficit = BigInt(LIGHT_LIQ) - lightBal;
-      console.log("Mint LIGHT to deployer:", deficit.toString());
-      await (await light.mint(deployer.address, deficit)).wait();
+      const minted = await tryMint(light, deployer.address, deficit, "LIGHT");
+      if (!minted) {
+        throw new Error("LIGHT 余额不足，且当前 LIGHT 合约不支持由部署钱包 mint。");
+      }
     }
   }
 
