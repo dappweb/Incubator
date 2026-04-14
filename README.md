@@ -71,6 +71,82 @@ npm run upgrade:cncMainnet
 
 ## 部署到本机 Caddy（域名保持 t2.test2dapp.xyz）
 
+### 完整简洁部署步骤（生产）
+
+#### 1) 服务器初始化
+
+- 安装 Node.js 20+、npm、git、rsync、caddy
+- 开放 80/443 端口
+- 将业务域名 A 记录指向服务器公网 IP
+
+#### 2) 拉取项目并安装依赖
+
+```bash
+cd /home/ubuntu
+git clone git@github.com:dappweb/Incubator.git
+cd /home/ubuntu/Incubator
+npm install
+```
+
+#### 3) 配置生产环境变量
+
+```bash
+cp .env.example .env
+```
+
+至少确认以下变量已正确填写：
+
+- `DEPLOYER_PRIVATE_KEY`
+- `CNC_MAINNET_RPC_URL`
+- `USDT_TOKEN_ADDRESS`
+- `LP_POOL_ADDRESS`、`REFERRAL_POOL_ADDRESS`、`SUPER_NODE_POOL_ADDRESS`、`NODE_POOL_ADDRESS`、`PLATFORM_POOL_ADDRESS`、`LEADERBOARD_POOL_ADDRESS`
+- `VITE_USDT_CONTRACT_ADDRESS`、`VITE_ICO_TOKEN_ADDRESS`、`VITE_LIGHT_TOKEN_ADDRESS`
+- `VITE_CORE_CONTRACT_ADDRESS`、`VITE_OTC_CONTRACT_ADDRESS`、`VITE_SWAP_POOL_ADDRESS`
+- `VITE_PANCAKE_V2_ROUTER_ADDRESS`、`VITE_PANCAKE_V2_FACTORY_ADDRESS`、`VITE_PANCAKE_V2_PRIMARY_FEE_PPM`
+
+#### 4) 执行一键生产部署
+
+```bash
+npm run deploy:prod
+```
+
+该命令会自动执行：
+
+- 校验关键环境变量
+- 编译并部署 CNC 主网合约
+- 回写最新地址到 `.env`
+- 生成部署地址快照 `deploy/output/latest-addresses.env`
+- 构建前端并通过 Caddy 发布
+
+#### 5) 可选分步部署
+
+```bash
+# 仅发布前端（跳过链上）
+npm run deploy:prod -- --skip-chain
+
+# 仅部署链上（跳过前端）
+npm run deploy:prod -- --skip-web
+```
+
+#### 6) 上线验收
+
+```bash
+curl -I https://t3.test2dapp.xyz
+```
+
+返回 `HTTP/2 200` 或 `HTTP/2 304` 即表示正常。
+
+如遇证书或回源问题：
+
+```bash
+npm run diagnose:caddy
+```
+
+#### 7) 快速回滚建议
+
+- 前端回滚：恢复上一版 `dist` 到 `/var/www/incubator/dist` 并重启 caddy
+- 合约回滚：通过 UUPS 升级回上一实现版本（先执行 precheck）
+
 ### 一键生产部署（推荐）
 
 ```bash
