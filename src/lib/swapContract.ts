@@ -20,9 +20,12 @@ const swapAbi = [
   "function lightNodeRecipient() view returns (address)",
   "function lightSuperNodeRecipient() view returns (address)",
   "function feeVault(uint8 pairId, address token) view returns (uint256)",
+  "function usdt() view returns (address)",
   "function settleLightFees() external",
   "function updateLightFeeConfig(uint16 burnBps, uint16 bootstrapBps, uint16 nodeBps, uint16 superNodeBps, address bootstrapRecipient, address nodeRecipient, address superNodeRecipient) external",
   "function updatePoolConfig(uint8 pairId, uint16 feeBps, uint16 maxPriceImpactBps) external",
+  "function setUsdtAddress(address newUsdtAddress) external",
+  "function setPairTokens(uint8 pairId, address token0, address token1) external",
   "function pause() external",
   "function unpause() external",
 ];
@@ -274,4 +277,23 @@ export async function getSwapPoolsInfo(provider: BrowserProvider): Promise<{
     exists: Boolean(r.exists),
   });
   return { primaryPool: parse(r0), lightPool: parse(r1) };
+}
+
+export async function getUsdtAddress(provider: BrowserProvider): Promise<string> {
+  const contract = getSwapContract(provider) as any;
+  return contract.usdt();
+}
+
+export async function setUsdtAddress(provider: BrowserProvider, newUsdtAddress: string) {
+  const signer = await provider.getSigner();
+  const contract = getSwapContract(provider).connect(signer) as any;
+  const tx = await contract.setUsdtAddress(newUsdtAddress);
+  return tx.wait();
+}
+
+export async function setPairTokens(provider: BrowserProvider, pairId: number, token0: string, token1: string) {
+  const signer = await provider.getSigner();
+  const contract = getSwapContract(provider).connect(signer) as any;
+  const tx = await contract.setPairTokens(pairId, token0, token1);
+  return tx.wait();
 }

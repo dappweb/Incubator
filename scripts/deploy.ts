@@ -153,13 +153,24 @@ async function trySeedSwapLiquidity(
 
 function buildPoolRecipients(fallbackRecipient: string) {
   return [
-    process.env.LP_POOL_ADDRESS || fallbackRecipient,
-    process.env.REFERRAL_POOL_ADDRESS || fallbackRecipient,
-    process.env.SUPER_NODE_POOL_ADDRESS || fallbackRecipient,
-    process.env.NODE_POOL_ADDRESS || fallbackRecipient,
-    process.env.PLATFORM_POOL_ADDRESS || fallbackRecipient,
-    process.env.LEADERBOARD_POOL_ADDRESS || fallbackRecipient,
+    pickEnv("LP_POOL_ADDRESS", "POOL_LIQUIDITY_RECIPIENT") || fallbackRecipient,
+    pickEnv("REFERRAL_POOL_ADDRESS", "POOL_REFERRAL_RECIPIENT") || fallbackRecipient,
+    pickEnv("SUPER_NODE_POOL_ADDRESS", "POOL_SUPER_NODE_RECIPIENT") || fallbackRecipient,
+    pickEnv("NODE_POOL_ADDRESS", "POOL_NODE_RECIPIENT") || fallbackRecipient,
+    pickEnv("PLATFORM_POOL_ADDRESS", "POOL_PLATFORM_RECIPIENT") || fallbackRecipient,
+    pickEnv("LEADERBOARD_POOL_ADDRESS", "POOL_LEADERBOARD_RECIPIENT") || fallbackRecipient,
   ] as [string, string, string, string, string, string];
+}
+
+function pickEnv(...keys: string[]) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
 }
 
 function splitEnvList(value?: string) {

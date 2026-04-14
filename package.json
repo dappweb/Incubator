@@ -41,6 +41,7 @@
     "dev": "vite",
     "build": "vite build && hardhat compile",
     "build:web": "vite build",
+    "deploy:prod": "bash scripts/deploy-production.sh",
     "deploy:caddy": "bash deploy/caddy/deploy.sh",
     "diagnose:caddy": "bash scripts/diagnose-caddy-525.sh",
     "compile": "hardhat compile",

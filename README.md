@@ -71,6 +71,33 @@ npm run upgrade:cncMainnet
 
 ## 部署到本机 Caddy（域名保持 t2.test2dapp.xyz）
 
+### 一键生产部署（推荐）
+
+```bash
+cd /home/ubuntu/Incubator
+cp .env.example .env  # 首次部署时执行
+npm install
+npm run deploy:prod
+```
+
+该命令会自动执行：
+
+- 校验 `.env` 关键参数
+- 编译并部署 CNC 主网合约
+- 自动提取新地址并回写到 `.env`
+- 同步生成 `deploy/output/latest-addresses.env`
+- 构建前端并通过 Caddy 发布
+
+可选参数：
+
+```bash
+# 仅发布前端（跳过链上部署）
+npm run deploy:prod -- --skip-chain
+
+# 仅部署合约（跳过前端发布）
+npm run deploy:prod -- --skip-web
+```
+
 ### 1) 服务器准备
 
 - 确保 DNS `t2.test2dapp.xyz` 已解析到当前服务器公网 IP
@@ -134,4 +161,5 @@ bash scripts/diagnose-caddy-525.sh t2.test2dapp.xyz <服务器公网IP>
 - [Appwrite 实施蓝图](docs/APPWRITE_CNC_MAINNET_IMPLEMENTATION.md)
 - [生产就绪任务清单](docs/PRODUCTION_ROADMAP.md)
 - [当前实现状态（真相文档）](docs/CURRENT_IMPLEMENTATION_STATUS.md)
+
 # Incubator

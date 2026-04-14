@@ -326,6 +326,19 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         emit PoolConfigUpdated(pairId, feeBps, maxPriceImpactBps);
     }
 
+    function setUsdtAddress(address newUsdtAddress) external onlyOwner {
+        require(newUsdtAddress != address(0), "invalid usdt address");
+        usdt = IERC20(newUsdtAddress);
+    }
+
+    function setPairTokens(uint8 pairId, address token0, address token1) external onlyOwner {
+        require(token0 != address(0) && token1 != address(0), "invalid token addresses");
+        require(token0 != token1, "tokens must be different");
+        Pool storage pool = _getPoolStorage(pairId);
+        pool.token0 = token0;
+        pool.token1 = token1;
+    }
+
     function getPool(uint8 pairId)
         external
         view

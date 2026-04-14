@@ -24,6 +24,7 @@ import {
     getLightFeeConfig,
     getSwapFeeVault,
     getSwapPool,
+    getUsdtAddress,
     isSwapPaused,
     pauseSwap,
     settleLightFees,
@@ -31,7 +32,7 @@ import {
     updateSwapLightFeeConfig,
     updateSwapPoolConfig,
     type LightFeeConfig,
-    type SwapPool,
+    type SwapPool
 } from "../lib/swapContract";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
@@ -146,6 +147,15 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     contractAddressHint: lang === "zh" ? "当前前端配置的所有合约地址。" : "All contract addresses configured in the frontend.",
     usdtAddress: lang === "zh" ? "USDT 地址" : "USDT Address",
 
+    // 地址设置
+    addressSettingsTitle: lang === "zh" ? "链上地址管理" : "On-Chain Address Settings",
+    addressSettingsHint: lang === "zh" ? "设置 Swap 合约中的 USDT 地址和交易池 Token 对。" : "Set USDT address and token pairs in Swap contract.",
+    pairLabel: lang === "zh" ? "交易池" : "Trading Pair",
+    token0Address: lang === "zh" ? "Token 0 地址" : "Token 0 Address",
+    token1Address: lang === "zh" ? "Token 1 地址" : "Token 1 Address",
+    saveUsdtAddress: lang === "zh" ? "保存 USDT 地址" : "Save USDT Address",
+    savePairTokens: lang === "zh" ? "保存交易池" : "Save Pair",
+
     // 多管理员
     multiAdminTitle: lang === "zh" ? "多管理员管理" : "Admin Management",
     multiAdminHint: lang === "zh" ? "添加可查看管理后台的子管理员地址（仅 Owner 可修改，链上写操作仍需 Owner 钱包）。" : "Add sub-admin addresses that can view the admin panel. Only the owner can modify this list; on-chain writes still require the owner wallet.",
@@ -209,6 +219,12 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     superNodeRecipient: "",
   });
 
+  // 地址设置
+  const [usdtAddress, setUsdtAddress] = useState("");
+  const [usdtAddressInput, setUsdtAddressInput] = useState("");
+  const [pairTokens, setPairTokensState] = useState<Array<{ token0: string; token1: string }>>([]);
+  const [pairTokensInputs, setPairTokensInputs] = useState<Array<{ token0Input: string; token1Input: string }>>([]);
+
   // 底部 Tab 状态
   const [adminTab, setAdminTab] = useState<AdminTabKey>("overview");
 
@@ -237,7 +253,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
     setIsLoadingState(true);
     try {
-      const [owner, nextCorePaused, nextSwapPaused, nextMachinePrice, nextNodePrice, nextSuperPrice, nextOtcConfig, nextLightConfig, nextLightVault] = await Promise.all([
+      const [owner, nextCorePaused, nextSwapPaused, nextMachinePrice, nextNodePrice, nextSuperPrice, nextOtcConfig, nextLightConfig, nextLightVault, nextUsdtAddress] = await Promise.all([
         getContractOwner(provider),
         isCorePaused(provider),
         isSwapPaused(provider),
@@ -247,6 +263,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         getOtcFeeConfig(provider),
         getLightFeeConfig(provider),
         LIGHT_TOKEN_ADDRESS ? getSwapFeeVault(provider, 1, LIGHT_TOKEN_ADDRESS) : Promise.resolve(0n),
+        getUsdtAddress(provider),
       ]);
 
       const nextPools = await Promise.all(poolLabels.map((label, poolType) => getCorePoolConfig(provider, poolType).then((config) => ({
@@ -291,6 +308,10 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         nodeRecipient: nextLightConfig.nodeRecipient,
         superNodeRecipient: nextLightConfig.superNodeRecipient,
       });
+      setUsdtAddress(nextUsdtAddress);
+      setUsdtAddressInput(nextUsdtAddress);
+      setPairTokensState(nextSwapPools.map(pool => ({ token0: pool.token0, token1: pool.token1 })));
+      setPairTokensInputs(nextSwapPools.map(pool => ({ token0Input: pool.token0, token1Input: pool.token1 })));
     } finally {
       setIsLoadingState(false);
     }
@@ -504,6 +525,82 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <KVRow label={t.swapAddress}  value={SWAP_POOL_ADDRESS      || "-"} />
               <KVRow label={t.lightAddress} value={LIGHT_TOKEN_ADDRESS    || "-"} />
               <KVRow label={t.usdtAddress}  value={USDT_CONTRACT_ADDRESS  || "-"} />
+            </Card>
+
+            <Card title={t.addressSettingsTitle} hint={t.addressSettingsHint} className="grid-full">
+              {/* USDT 地址 */}
+              <div className="admin-setting-section">
+                <div className="admin-pool-echo">
+                  <KVRow label={t.usdtAddress} value={usdtAddress || "-"} />
+                </div>
+                <label className="field" style={{ marginTop: "12px" }}>
+                  {t.usdtAddress}
+                  <input
+                    value={usdtAddressInput}
+                    placeholder={usdtAddress}
+                    onChange={(e) => setUsdtAddressInput(e.target.value)}
+                  />
+                </label>
+                <div className="actions admin-actions-tight">
+                  <button className="primary-btn" type="button"
+                    onClick={() => void executeAction("set-usdt", async () => {
+                      validateAddress(usdtAddressInput);
+                      await setUsdtAddress(provider!, usdtAddressInput.trim());
+                    }, lang === "zh" ? "USDT 地址已更新。" : "USDT address updated.")}
+                    disabled={actionKey !== ""}>
+                    {actionKey === "set-usdt" ? t.loading : t.saveUsdtAddress}
+                  </button>
+                </div>
+              </div>
+
+              {/* Pair Token 地址 */}
+              <div className="admin-setting-section" style={{ marginTop: "24px" }}>
+                {pairTokens.map((pair, pairId) => (
+                  <div key={pairId} style={{ marginBottom: "16px", paddingBottom: "16px", borderBottom: "1px solid var(--border-color, #ddd)" }}>
+                    <div className="admin-pool-echo">
+                      <strong>{t.pairLabel} {pairId}</strong>
+                      <KVRow label={t.token0Address} value={pair.token0 || "-"} />
+                      <KVRow label={t.token1Address} value={pair.token1 || "-"} />
+                    </div>
+                    <label className="field" style={{ marginTop: "12px" }}>
+                      {t.token0Address}
+                      <input
+                        value={pairTokensInputs[pairId]?.token0Input || ""}
+                        placeholder={pair.token0}
+                        onChange={(e) => {
+                          const newInputs = [...pairTokensInputs];
+                          newInputs[pairId] = { ...newInputs[pairId], token0Input: e.target.value };
+                          setPairTokensInputs(newInputs);
+                        }}
+                      />
+                    </label>
+                    <label className="field">
+                      {t.token1Address}
+                      <input
+                        value={pairTokensInputs[pairId]?.token1Input || ""}
+                        placeholder={pair.token1}
+                        onChange={(e) => {
+                          const newInputs = [...pairTokensInputs];
+                          newInputs[pairId] = { ...newInputs[pairId], token1Input: e.target.value };
+                          setPairTokensInputs(newInputs);
+                        }}
+                      />
+                    </label>
+                    <div className="actions admin-actions-tight">
+                      <button className="primary-btn" type="button"
+                        onClick={() => void executeAction(`set-pair-${pairId}`, async () => {
+                          const input = pairTokensInputs[pairId];
+                          validateAddress(input.token0Input);
+                          validateAddress(input.token1Input);
+                          await setPairTokens(provider!, pairId, input.token0Input.trim(), input.token1Input.trim());
+                        }, lang === "zh" ? `交易池 ${pairId} Token 已更新。` : `Pair ${pairId} tokens updated.`)}
+                        disabled={actionKey !== ""}>
+                        {actionKey === `set-pair-${pairId}` ? t.loading : t.savePairTokens}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </Card>
 
             <Card title={t.adminChecklist} hint={t.checklistHint}>
