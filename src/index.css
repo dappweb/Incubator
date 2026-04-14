@@ -274,3 +274,74 @@ body {
 @media (max-width: 500px) {
   .admin-form-grid { grid-template-columns: 1fr; }
 }
+
+/* ═══ Admin 配置说明样式 ═══ */
+.admin-guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.guide-section {
+  border-left: 3px solid var(--color-accent, #5fd87f);
+  padding: 12px 16px;
+  background: rgba(95, 216, 127, 0.05);
+  border-radius: 4px;
+}
+
+.guide-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text, #e0e0e0);
+}
+
+.guide-section p {
+  margin: 0 0 4px 0;
+  font-size: 0.9rem;
+  color: var(--color-muted, #aaa);
+  line-height: 1.5;
+}
+
+.guide-section ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.guide-section li {
+  font-size: 0.9rem;
+  color: var(--color-muted, #aaa);
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.guide-faq {
+  margin: 8px 0 0 0 !important;
+  padding-left: 20px !important;
+}
+
+.guide-faq li {
+  font-size: 0.85rem !important;
+  margin: 6px 0 !important;
+}
+
+.guide-section-warning {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.guide-section-warning h4 {
+  color: #f59e0b;
+}
+
+.guide-warning-list {
+  margin: 8px 0 0 0 !important;
+  padding-left: 20px !important;
+}
+
+.guide-warning-list li {
+  color: #f59e0b !important;
+  font-weight: 500;
+}

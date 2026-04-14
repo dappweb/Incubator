@@ -36,7 +36,7 @@ import {
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
 
-type AdminTabKey = "overview" | "prices" | "pools" | "market" | "system";
+type AdminTabKey = "overview" | "prices" | "pools" | "market" | "system" | "guide";
 
 interface AdminProps {
   lang: "zh" | "en";
@@ -441,6 +441,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     { key: "pools",    label: lang === "zh" ? "资金池" : "Pools",   icon: "🏦" },
     { key: "market",   label: lang === "zh" ? "市场" : "Market",   icon: "🔄" },
     { key: "system",   label: lang === "zh" ? "权限" : "System",   icon: "⚙️" },
+    { key: "guide",    label: lang === "zh" ? "说明" : "Guide",    icon: "📖" },
   ];
 
   return (
@@ -903,6 +904,60 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 </div>
               </Card>
             )}
+          </section>
+        )}
+
+        {/* ════ 配置说明 ════ */}
+        {adminTab === "guide" && (
+          <section className="grid">
+            <Card title={lang === "zh" ? "📖 Admin 配置说明" : "📖 Admin Configuration Guide"} hint={lang === "zh" ? "快速了解各个配置功能" : "Quick reference for all settings"}>
+              <div className="admin-guide-content">
+                <div className="guide-section">
+                  <h4>{lang === "zh" ? "🏠 总览 Tab" : "🏠 Overview Tab"}</h4>
+                  <p>{lang === "zh" ? "显示系统当前状态、合约地址、Core 和 Swap 的暂停/恢复控制。可以点击按钮快速暂停或恢复对应的服务。" : "Displays current system status, contract addresses, and pause/resume controls for Core and Swap services. Click buttons to quickly toggle service state."}</p>
+                </div>
+
+                <div className="guide-section">
+                  <h4>{lang === "zh" ? "💰 价格 Tab" : "💰 Prices Tab"}</h4>
+                  <p>{lang === "zh" ? "管理矿机、节点和超节点的 USDT 价格。上方三个栅格显示链上当前价格，下方表格可编辑并保存新价格。所有金额以 USDT 计单位。" : "Manage USDT prices for machines, nodes, and super-nodes. Top grid shows current on-chain prices, table below allows editing and saving new prices. All amounts in USDT."}</p>
+                </div>
+
+                <div className="guide-section">
+                  <h4>{lang === "zh" ? "🏦 资金池 Tab" : "🏦 Pools Tab"}</h4>
+                  <p>{lang === "zh" ? "配置 Core 核心收入的分账地址和分账比例（BPS）。每个池子可独立设置接收地址（ERC-20 钱包）和分红比例。BPS 单位为万分之一，如 100 = 1%。" : "Configure recipient addresses and share ratios (BPS) for Core revenue distribution. Each pool can independently set a recipient address and share percentage. BPS is in basis points (100 = 1%)."}</p>
+                </div>
+
+                <div className="guide-section">
+                  <h4>{lang === "zh" ? "🔄 市场 Tab" : "🔄 Market Tab"}</h4>
+                  <p>{lang === "zh" ? "管理 OTC 市场的手续费、Swap 流动池的参数、LIGHT 代币的分账配置。包括手续费率、冲击上限、分账地址等核心参数。" : "Manage OTC market fees, Swap pool parameters, and LIGHT token distribution settings. Includes fee rates, impact limits, and recipient addresses."}</p>
+                </div>
+
+                <div className="guide-section">
+                  <h4>{lang === "zh" ? "⚙️ 权限 Tab" : "⚙️ System Tab"}</h4>
+                  <p>{lang === "zh" ? "管理子管理员权限和 Owner 转让。Owner 可添加或删除子管理员，以及将合约所有权转让给其他地址。操作需谨慎，确认无误后再执行。" : "Manage sub-admin permissions and Owner transfer. Owner can add/remove sub-admins and transfer contract ownership. Be careful with these operations."}</p>
+                </div>
+
+                <div className="guide-section">
+                  <h4>{lang === "zh" ? "💡 常见问题" : "💡 FAQs"}</h4>
+                  <ul className="guide-faq">
+                    <li>{lang === "zh" ? "Q: 修改价格后什么时候生效？ A: 点击保存后立即关联到合约，下次用户操作时使用新价格。" : "Q: When do price changes take effect? A: Immediately after saving to contract, new prices apply on next user operation."}</li>
+                    <li>{lang === "zh" ? "Q: 删除子管理员操作可以撤销吗？ A: 不可以，请务必确认无误后再操作。" : "Q: Can I undo removing a sub-admin? A: No, please confirm before removing."}</li>
+                    <li>{lang === "zh" ? "Q: BPS 如何转换为百分比？ A: BPS % = BPS 值 ÷ 100，如 500 BPS = 5%。" : "Q: How to convert BPS to percentage? A: BPS% = BPS ÷ 100, e.g. 500 BPS = 5%."}</li>
+                    <li>{lang === "zh" ? "Q: 如果操作失败怎么办？ A: 检查 Core 和 Swap 是否暂停，页面顶部会显示错误信息。" : "Q: What if an operation fails? A: Check if Core or Swap is paused. Error messages appear at top of page."}</li>
+                  </ul>
+                </div>
+
+                <div className="guide-section guide-section-warning">
+                  <h4>{lang === "zh" ? "⚠️ 重要提示" : "⚠️ Important"}</h4>
+                  <ul className="guide-warning-list">
+                    <li>{lang === "zh" ? "所有配置更改都会立即保存到区块链，无法撤销。" : "All configuration changes are immediately saved to blockchain and cannot be undone."}</li>
+                    <li>{lang === "zh" ? "只有 Owner 和授权的子管理员可以访问此页面。" : "Only Owner and authorized sub-admins can access this page."}</li>
+                    <li>{lang === "zh" ? "暂停 Core 或 Swap 将停止相关功能，用户无法进行操作。谨慎使用。" : "Pausing Core or Swap will stop related functionality. Use carefully."}</li>
+                    <li>{lang === "zh" ? "所有地址输入必须是有效的以太坊地址（0x 开头）。" : "All address inputs must be valid Ethereum addresses (starting with 0x)."}</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
           </section>
         )}
       </div>
