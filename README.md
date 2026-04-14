@@ -231,6 +231,55 @@ bash scripts/diagnose-caddy-525.sh t2.test2dapp.xyz <服务器公网IP>
 - `IncubatorToken` 支持持币人自助 `burn()`，也支持项目方对 `saleAllocationWallet` 的未售出库存执行 `burnUnsold()`
 - 链上会累计记录 `totalBurned`，便于审计和前端展示
 
+## 定时分红与燃烧（自动执行）
+
+### 1) 配置 `.env`
+
+至少补齐以下变量（可参考 `.env.example`）：
+
+- `INCUBATOR_CORE_PROXY`
+- `SWAP_POOL_MANAGER_PROXY`
+- `LIGHT_TOKEN_ADDRESS`
+- `NODE_REWARD_RECIPIENTS`
+- `NODE_REWARD_SHARES`
+- `SUPER_NODE_REWARD_RECIPIENTS`
+- `SUPER_NODE_REWARD_SHARES`
+
+可选变量：
+
+- `SWAP_LIGHT_PAIR_ID`（默认 `1`）
+- `LIGHT_SETTLE_MIN_AMOUNT`（小于该值跳过结算）
+- `ENABLE_NODE_SETTLEMENT` / `ENABLE_SUPER_NODE_SETTLEMENT` / `ENABLE_LEADERBOARD_SETTLEMENT`
+- `LEADERBOARD_DAY_ID`（留空默认结算昨天）
+
+### 2) 手动执行一次（推荐先试跑）
+
+```bash
+# 仅 LIGHT 手续费分红/燃烧
+npm run settle:light:cncMainnet
+
+# 仅 Core 节点/超节点/榜单池结算
+npm run settle:core:cncMainnet
+
+# 一次执行全部结算
+npm run settle:all:cncMainnet
+```
+
+### 3) 安装定时任务
+
+```bash
+npm run cron:install:settle
+```
+
+默认安装两条 cron：
+
+- 每小时执行 LIGHT 结算
+- 每天 00:10 执行 Core 池结算
+
+### 4) 日志位置
+
+- 结算日志输出到 `deploy/logs/settlement-*.log`
+
 ## Docs
 
 - [DApp UI 设计方案](docs/DAPP_UI_SPEC.md)
