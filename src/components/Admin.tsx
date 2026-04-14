@@ -445,6 +445,21 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
   return (
     <div className="admin-layout">
+      {/* ── 顶部 Tab 导航 ── */}
+      <nav className="admin-top-nav">
+        {ADMIN_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={`admin-nav-item ${adminTab === tab.key ? "active" : ""}`}
+            onClick={() => setAdminTab(tab.key)}
+          >
+            <span className="admin-nav-icon">{tab.icon}</span>
+            <span className="admin-nav-label">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
       {/* ── 顶部状态栏 ── */}
       <div className="admin-topbar">
         <span className="admin-topbar-title">{t.adminTitle}</span>
@@ -891,21 +906,6 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
           </section>
         )}
       </div>
-
-      {/* ── 底部 Tab 菜单 ── */}
-      <nav className="admin-bottom-nav">
-        {ADMIN_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`admin-nav-item ${adminTab === tab.key ? "active" : ""}`}
-            onClick={() => setAdminTab(tab.key)}
-          >
-            <span className="admin-nav-icon">{tab.icon}</span>
-            <span className="admin-nav-label">{tab.label}</span>
-          </button>
-        ))}
-      </nav>
     </div>
   );
 };
