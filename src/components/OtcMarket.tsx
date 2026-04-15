@@ -1,0 +1,422 @@
+import { BrowserProvider } from "ethers";
+import React, { useEffect, useState } from "react";
+import { isIdentityApproved } from "../lib/identityContract";
+import {
+    cancelOtcOrder,
+    createOtcOrder,
+    fillOtcOrder,
+    getActiveOrderIds,
+    getLastTradePriceByRole,
+    getOrder,
+    getOtcFeeBps,
+    type OtcOrder,
+} from "../lib/otcContract";
+import { formatUsdt, getUsdtBalance, parseUsdt } from "../lib/usdtContract";
+import { Card, KVRow } from "./Common";
+
+interface OtcMarketProps {
+  t: any;
+  address?: string;
+  provider?: BrowserProvider;
+  identityId?: bigint;
+  role: number; // 0=user, 1=node, 2=supernode
+  loading: boolean;
+  onStatusChange: (msg: string) => void;
+  onLoadingChange: (loading: boolean) => void;
+}
+
+const ITEMS_PER_PAGE = 10;
+
+export const OtcMarket: React.FC<OtcMarketProps> = ({
+  t,
+  address,
+  provider,
+  identityId,
+  role,
+  loading,
+  onStatusChange,
+  onLoadingChange,
+}) => {
+  // Pagination and filtering
+  const [currentPage, setCurrentPage] = useState(1);
+  const [roleFilter, setRoleFilter] = useState<0 | 1 | 2>(0); // 0=all, 1=node, 2=supernode
+  const [allOrderIds, setAllOrderIds] = useState<bigint[]>([]);
+  
+  // Market data
+  const [marketOrders, setMarketOrders] = useState<OtcOrder[]>([]);
+  const [myOrders, setMyOrders] = useState<OtcOrder[]>([]);
+  const [otcFeeBps, setOtcFeeBps] = useState(0n);
+  const [lastNodePrice, setLastNodePrice] = useState(0n);
+  const [lastSuperPrice, setLastSuperPrice] = useState(0n);
+
+  // Create listing modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createPrice, setCreatePrice] = useState("");
+  const [selectedIdentityId, setSelectedIdentityId] = useState<bigint | null>(identityId || null);
+  const [identityApproved, setIdentityApproved] = useState(false);
+
+  // Refresh market data
+  const refreshMarketData = async () => {
+    if (!provider) return;
+    try {
+      onLoadingChange(true);
+
+      // Fetch all order IDs
+      const ids = await getActiveOrderIds(provider);
+      setAllOrderIds(ids);
+
+      // Fetch order details and last prices
+      const [fee, lastNode, lastSuper] = await Promise.all([
+        getOtcFeeBps(provider),
+        getLastTradePriceByRole(provider, 1), // Node
+        getLastTradePriceByRole(provider, 2), // SuperNode
+      ]);
+
+      setOtcFeeBps(fee);
+      setLastNodePrice(lastNode);
+      setLastSuperPrice(lastSuper);
+
+      // Fetch details for paginated orders
+      const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
+      const pageEnd = pageStart + ITEMS_PER_PAGE;
+      const pageIds = ids.slice(pageStart, pageEnd);
+
+      const orders = await Promise.all(pageIds.map((id) => getOrder(provider, id)));
+      const activeOrders = orders.filter((o) => o.active);
+
+      // Apply role filter
+      const filtered =
+        roleFilter === 0 ? activeOrders : activeOrders.filter((o) => o.role === roleFilter);
+
+      // Separate my orders from market orders
+      const myOrdersFiltered = filtered.filter(
+        (o) => o.seller.toLowerCase() === address?.toLowerCase()
+      );
+      const marketOrdersFiltered = filtered.filter(
+        (o) => o.seller.toLowerCase() !== address?.toLowerCase()
+      );
+
+      setMyOrders(myOrdersFiltered);
+      setMarketOrders(marketOrdersFiltered);
+
+      // Check identity approval
+      if (selectedIdentityId && provider) {
+        const approved = await isIdentityApproved(provider, selectedIdentityId);
+        setIdentityApproved(approved);
+      }
+    } catch (error) {
+      onStatusChange(error instanceof Error ? error.message : "Failed to load market data");
+    } finally {
+      onLoadingChange(false);
+    }
+  };
+
+  // Auto-refresh on component mount and page/filter changes
+  useEffect(() => {
+    refreshMarketData();
+  }, [provider, currentPage, roleFilter, selectedIdentityId]);
+
+  // Handle create listing
+  const handleCreateListing = async () => {
+    if (!provider || !selectedIdentityId || !createPrice) {
+      onStatusChange(t.missingCreateFields || "Please fill all fields");
+      return;
+    }
+
+    try {
+      onLoadingChange(true);
+      const price = parseUsdt(createPrice);
+
+      if (price <= 0n) {
+        onStatusChange(t.invalidListingPrice || "Price must be greater than 0");
+        return;
+      }
+
+      // Check price floor
+      const minPrice = selectedIdentityId === role ? lastNodePrice : lastSuperPrice;
+      if (price < minPrice) {
+        onStatusChange(
+          `${t.priceTooLow || "Price too low"}: minimum ${formatUsdt(minPrice)} USDT`
+        );
+        return;
+      }
+
+      // Ensure identity approval
+      if (!identityApproved) {
+        onStatusChange(t.approvingIdentity || "Approving identity...");
+        // Note: OTC_CONTRACT_ADDRESS should be passed as prop or fetched
+        // For now, we'll assume it's available globally
+        // await approveIdentityForOtc(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS);
+      }
+
+      onStatusChange(t.creatingListing || "Creating listing...");
+      await createOtcOrder(provider, selectedIdentityId, price);
+
+      onStatusChange(t.createListingSuccess || "Listing created successfully");
+      setShowCreateModal(false);
+      setCreatePrice("");
+      await refreshMarketData();
+    } catch (error) {
+      onStatusChange(error instanceof Error ? error.message : "Failed to create listing");
+    } finally {
+      onLoadingChange(false);
+    }
+  };
+
+  // Handle fill order
+  const handleFillOrder = async (orderId: bigint) => {
+    if (!provider || !address) return;
+
+    try {
+      onLoadingChange(true);
+      const order = marketOrders.find((o) => o.id === orderId);
+
+      if (!order) {
+        onStatusChange(t.orderNotFound || "Order not found");
+        return;
+      }
+
+      // Check USDT balance
+      const balance = await getUsdtBalance(provider, address);
+      if (balance < order.priceUSDT) {
+        onStatusChange(t.insufficientUsdtBalance || "Insufficient USDT balance");
+        return;
+      }
+
+      onStatusChange(`${t.fillingOrder || "Filling order"} #${orderId}...`);
+      await fillOtcOrder(provider, orderId);
+
+      onStatusChange(`${t.fillOrderSuccess || "Order filled successfully"} #${orderId}`);
+      await refreshMarketData();
+    } catch (error) {
+      onStatusChange(error instanceof Error ? error.message : "Failed to fill order");
+    } finally {
+      onLoadingChange(false);
+    }
+  };
+
+  // Handle cancel order
+  const handleCancelOrder = async (orderId: bigint) => {
+    if (!provider) return;
+
+    try {
+      onLoadingChange(true);
+      onStatusChange(`${t.cancellingOrder || "Cancelling order"} #${orderId}...`);
+      await cancelOtcOrder(provider, orderId);
+
+      onStatusChange(`${t.cancelOrderSuccess || "Order cancelled"} #${orderId}`);
+      await refreshMarketData();
+    } catch (error) {
+      onStatusChange(error instanceof Error ? error.message : "Failed to cancel order");
+    } finally {
+      onLoadingChange(false);
+    }
+  };
+
+  const totalPages = Math.ceil(allOrderIds.length / ITEMS_PER_PAGE);
+  const getRoleLabel = (r: number) =>
+    r === 0 ? (t.user || "User") : r === 1 ? (t.node || "Node") : t.superNode || "SuperNode";
+
+  return (
+    <section className="grid-full">
+      {/* Market Info Card */}
+      <Card title={t.otcRuleTitle} hint={t.otcRuleHint}>
+        <KVRow label={t.otcFeeRate} value={`${(otcFeeBps / 100n).toString()}%`} />
+        <KVRow label={t.otcNodeLastPrice} value={`${formatUsdt(lastNodePrice)} USDT`} />
+        <KVRow label={t.otcSuperLastPrice} value={`${formatUsdt(lastSuperPrice)} USDT`} />
+        <p className="hint">{t.otcRuleSingleListing}</p>
+        <p className="hint">{t.otcRuleFloorPrice}</p>
+      </Card>
+
+      {/* Public Market Listings */}
+      <Card title={t.activeListings}>
+        <div className="filter-row" style={{ marginBottom: "1rem" }}>
+          <button
+            className={roleFilter === 0 ? "tab-btn tab-active" : "tab-btn"}
+            onClick={() => setRoleFilter(0)}
+          >
+            {t.all || "All"}
+          </button>
+          <button
+            className={roleFilter === 1 ? "tab-btn tab-active" : "tab-btn"}
+            onClick={() => setRoleFilter(1)}
+          >
+            {t.node || "Node"}
+          </button>
+          <button
+            className={roleFilter === 2 ? "tab-btn tab-active" : "tab-btn"}
+            onClick={() => setRoleFilter(2)}
+          >
+            {t.superNode || "SuperNode"}
+          </button>
+        </div>
+
+        {marketOrders.length === 0 ? (
+          <p className="hint">{t.noListings}</p>
+        ) : (
+          <>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t.orderId}</th>
+                    <th>{t.identityId}</th>
+                    <th>{t.otcRole}</th>
+                    <th>{t.seller}</th>
+                    <th>{t.priceUsdt}</th>
+                    <th>{t.action}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marketOrders.map((order) => (
+                    <tr key={String(order.id)}>
+                      <td>#{String(order.id)}</td>
+                      <td>{String(order.identityId)}</td>
+                      <td>{getRoleLabel(order.role)}</td>
+                      <td>{`${order.seller.slice(0, 6)}...${order.seller.slice(-4)}`}</td>
+                      <td>{formatUsdt(order.priceUSDT)} USDT</td>
+                      <td>
+                        <button
+                          className="link-btn"
+                          onClick={() => handleFillOrder(order.id)}
+                          disabled={loading || !address}
+                        >
+                          {t.fill}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="pagination" style={{ marginTop: "1rem", textAlign: "center" }}>
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="link-btn"
+                >
+                  &lt; {t.previous || "Previous"}
+                </button>
+                <span style={{ margin: "0 1rem" }}>
+                  {t.page || "Page"} {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="link-btn"
+                >
+                  {t.next || "Next"} &gt;
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+
+      {/* My Orders */}
+      {myOrders.length > 0 && (
+        <Card title={t.myOrders || "My Orders"}>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t.orderId}</th>
+                  <th>{t.identityId}</th>
+                  <th>{t.otcRole}</th>
+                  <th>{t.priceUsdt}</th>
+                  <th>{t.action}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myOrders.map((order) => (
+                  <tr key={String(order.id)}>
+                    <td>#{String(order.id)}</td>
+                    <td>{String(order.identityId)}</td>
+                    <td>{getRoleLabel(order.role)}</td>
+                    <td>{formatUsdt(order.priceUSDT)} USDT</td>
+                    <td>
+                      <button
+                        className="link-btn"
+                        onClick={() => handleCancelOrder(order.id)}
+                        disabled={loading}
+                      >
+                        {t.cancel}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Create Listing Button */}
+      <Card title={t.createListing || "Create Listing"}>
+        <button className="primary-btn" onClick={() => setShowCreateModal(true)} disabled={loading || !identityId}>
+          {t.createListing || "Create Listing"}
+        </button>
+        <p className="hint">{t.otcAutoApproveHint}</p>
+      </Card>
+
+      {/* Create Listing Modal */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>{t.createListing || "Create Listing"}</h3>
+
+            <div className="field-group">
+              <label>{t.identityId || "Identity ID"}</label>
+              <input
+                type="number"
+                value={selectedIdentityId ? String(selectedIdentityId) : ""}
+                onChange={(e) => setSelectedIdentityId(BigInt(e.target.value) || null)}
+                disabled={true}
+              />
+            </div>
+
+            <div className="field-group">
+              <label>{t.otcRole || "Role"}</label>
+              <input
+                type="text"
+                value={getRoleLabel(role)}
+                disabled={true}
+              />
+            </div>
+
+            <div className="field-group">
+              <label>{t.otcPrice || "Listing Price (USDT)"}</label>
+              <input
+                type="number"
+                min="0"
+                value={createPrice}
+                onChange={(e) => setCreatePrice(e.target.value)}
+                placeholder="Enter price..."
+              />
+              <p className="hint">
+                {t.minimumPrice || "Minimum"}:{" "}
+                {formatUsdt(role === 1 ? lastNodePrice : lastSuperPrice)} USDT
+              </p>
+            </div>
+
+            <div className="modal-actions">
+              <button className="secondary-btn" onClick={() => setShowCreateModal(false)}>
+                {t.cancel || "Cancel"}
+              </button>
+              <button
+                className="primary-btn"
+                onClick={handleCreateListing}
+                disabled={loading || !createPrice}
+              >
+                {loading ? t.creating || "Creating..." : t.confirm || "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};

@@ -5,6 +5,8 @@ import "./App.css";
 import Admin from "./components/Admin";
 import { Card, KVRow } from "./components/Common";
 import { Leaderboard } from "./components/Leaderboard";
+import { MyAssets } from "./components/MyAssets";
+import { OtcMarket } from "./components/OtcMarket";
 import { TokenHistory, type TokenType } from "./components/TokenHistory";
 import {
   CNC_MAINNET_CHAIN_ID,
@@ -72,7 +74,7 @@ import {
   setupWalletAfterConnect
 } from "./lib/wallet";
 
-type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
+type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "assets" | "admin";
 type SwapSubTab = "primary" | "light";
 type SwapDirection = "forward" | "reverse";
 
@@ -111,6 +113,7 @@ const DESKTOP_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
   { key: "mine", label: "记录" },
+  { key: "assets", label: "资产" },
 ];
 
 const MOBILE_TABS: Array<{ key: TabKey; label: string }> = [
@@ -119,6 +122,7 @@ const MOBILE_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
   { key: "mine", label: "记录" },
+  { key: "assets", label: "资产" },
 ];
 
 const App = () => {
@@ -155,6 +159,7 @@ const App = () => {
     swapSubPrimary: lang === "zh" ? "兑换 (USDT/ICO)" : "Swap (USDT/ICO)",
     swapSubLight: lang === "zh" ? "回收 (LIGHT/ICO)" : "Recovery (LIGHT/ICO)",
     tab_mine: lang === "zh" ? "记录" : "Records",
+    tab_assets: lang === "zh" ? "资产" : "Assets",
     tab_admin: lang === "zh" ? "管理" : "Admin",
     address: lang === "zh" ? "钱包地址" : "Wallet",
     network: lang === "zh" ? "当前网络" : "Network",
@@ -452,7 +457,36 @@ const App = () => {
     firstGuideLater: lang === "zh" ? "稍后" : "Later",
     firstGuideRunning: lang === "zh" ? "引导执行中..." : "Running setup...",
     firstGuideDone: lang === "zh" ? "首次引导已完成。" : "First-time setup completed.",
+    // OTC Market & Assets translations
+    all: lang === "zh" ? "全部" : "All",
+    previous: lang === "zh" ? "上一页" : "Previous",
+    next: lang === "zh" ? "下一页" : "Next",
+    page: lang === "zh" ? "第" : "Page",
+    myOrders: lang === "zh" ? "我的挂单" : "My Orders",
+    missingCreateFields: lang === "zh" ? "请填写所有字段" : "Please fill all fields",
+    invalidListingPrice: lang === "zh" ? "价格必须大于0" : "Price must be greater than 0",
+    priceTooLow: lang === "zh" ? "价格过低" : "Price too low",
+    orderNotFound: lang === "zh" ? "订单不存在" : "Order not found",
+    fillingOrder: lang === "zh" ? "成交订单" : "Filling order",
+    fillOrderSuccess: lang === "zh" ? "订单成交成功" : "Order filled successfully",
+    cancellingOrder: lang === "zh" ? "取消订单" : "Cancelling order",
+    cancelOrderSuccess: lang === "zh" ? "订单已取消" : "Order cancelled",
+    customPrice: lang === "zh" ? "自定义价格" : "Custom Price",
+    minimumPrice: lang === "zh" ? "最低价格" : "Minimum Price",
+    creating: lang === "zh" ? "创建中..." : "Creating...",
+    refresh: lang === "zh" ? "刷新" : "Refresh",
+    dataUpdatesOnChain: lang === "zh" ? "数据随链上更新。刷新可查看最新状态。" : "Data updates on-chain. Refresh to see latest.",
+    accountSnapshot: lang === "zh" ? "账户快照" : "Account Info",
+    totalCount: lang === "zh" ? "总数量" : "Total Count",
+    units: lang === "zh" ? "台" : "Units",
+    ordersCount: lang === "zh" ? "订单数" : "Orders",
+    allocated: lang === "zh" ? "✓ 已分配" : "✓ Allocated",
+    createdAt: lang === "zh" ? "创建时间" : "Created At",
+    identity: lang === "zh" ? "我的身份资产" : "My Identity Assets",
+    otcListings: lang === "zh" ? "OTC挂单" : "OTC Listings",
+    quickActions: lang === "zh" ? "快速操作" : "Quick Actions",
   };
+
 
   const [address, setAddress] = useState("");
   const [chainId, setChainId] = useState(0);
@@ -2293,83 +2327,16 @@ const App = () => {
       ) : null}
 
       {activeTab === "otc" ? (
-        <section className="grid-full">
-          <Card title={t.otcTitle} hint={t.otcHint}>
-            <div className="kv-row">
-              <span>{t.myIdentity}</span>
-              <strong>{identityId ? String(identityId) : t.none}</strong>
-            </div>
-            <div className="kv-row">
-              <span>{t.myIdentityRole}</span>
-              <strong>{identityId ? getRoleLabelByValue(role) : t.none}</strong>
-            </div>
-            <div className="kv-row">
-              <span>{t.identityApproval}</span>
-              <strong>{identityApproved ? t.approved : t.notApproved}</strong>
-            </div>
-            <label className="field">
-              {t.otcPrice}
-              <input type="number" min={1} value={newOtcPrice} onChange={(event) => setNewOtcPrice(event.target.value)} />
-            </label>
-            <div className="actions">
-              <button className="primary-btn" onClick={onCreateOtcOrder} disabled={loading || !identityId}>
-                {loading ? t.loading : t.createListing}
-              </button>
-            </div>
-            <p className="hint">{t.otcAutoApproveHint}</p>
-          </Card>
-
-          <Card title={t.otcRuleTitle} hint={t.otcRuleHint}>
-            <KVRow label={t.otcFeeRate} value={`${(otcFeeBps / 100).toFixed(2)}%`} />
-            <KVRow label={t.otcNodeLastPrice} value={`${formatUsdt(lastNodeTradePrice)} USDT`} />
-            <KVRow label={t.otcSuperLastPrice} value={`${formatUsdt(lastSuperTradePrice)} USDT`} />
-            <p className="hint">{t.otcRuleSingleListing}</p>
-            <p className="hint">{t.otcRuleFloorPrice}</p>
-          </Card>
-
-          <Card title={t.activeListings}>
-            {activeOrders.length === 0 ? (
-              <p className="hint">{t.noListings}</p>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t.orderId}</th>
-                      <th>{t.identityId}</th>
-                      <th>{t.otcRole}</th>
-                      <th>{t.seller}</th>
-                      <th>{t.priceUsdt}</th>
-                      <th>{t.action}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeOrders.map((order) => (
-                      <tr key={String(order.id)}>
-                        <td>{String(order.id)}</td>
-                        <td>{String(order.identityId)}</td>
-                        <td>{getRoleLabelByValue(order.role)}</td>
-                        <td>{`${order.seller.slice(0, 6)}...${order.seller.slice(-4)}`}</td>
-                        <td>{formatUsdt(order.priceUSDT)}</td>
-                        <td>
-                          {address && order.seller.toLowerCase() === address.toLowerCase() ? (
-                            <button className="link-btn" onClick={() => onCancelOrder(order.id)} disabled={loading}>
-                              {t.cancel}
-                            </button>
-                          ) : (
-                            <button className="link-btn" onClick={() => onFillOrder(order.id)} disabled={loading}>
-                              {t.fill}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </section>
+        <OtcMarket
+          t={t}
+          address={address}
+          provider={provider}
+          identityId={identityId}
+          role={role}
+          loading={loading}
+          onStatusChange={setStatus}
+          onLoadingChange={setLoading}
+        />
       ) : null}
 
       {activeTab === "swap" ? (
@@ -2594,6 +2561,19 @@ const App = () => {
             )}
           </Card>
         </section>
+      ) : null}
+
+      {activeTab === "assets" ? (
+        <MyAssets
+          t={t}
+          address={address}
+          provider={provider}
+          identityId={identityId}
+          role={role}
+          loading={loading}
+          onStatusChange={setStatus}
+          onLoadingChange={setLoading}
+        />
       ) : null}
 
       {activeTab === "mine" ? (

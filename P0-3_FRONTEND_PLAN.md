@@ -3,11 +3,13 @@
 ## 📍 当前状态分析
 
 ### 现有代码结构
+
 - `App.tsx`: 主应用组件，包含`onBuyMachine`函数
 - `lib/usdtContract.ts`: USDT操作库
 - `lib/coreContract.ts`: Core合约交互
 
 ### 现有流程
+
 ```
 onBuyMachine()
   ├─ ensureReferrerReady()  // 绑定推荐人
@@ -22,10 +24,12 @@ onBuyMachine()
 ## 🎯 改动目标
 
 ### 改动前
+
 - 单步购买：一键完成授权+购买
 - 用户看不到授权进度
 
 ### 改动后
+
 - 双步购买：
   1. **授权步骤**: 用户明确看到"授权USDT"按钮
   2. **购买步骤**: 授权后显示"购买矿机"按钮
@@ -36,6 +40,7 @@ onBuyMachine()
 ## 📝 具体改动项
 
 ### 1. 后端数据结构
+
 位置: `src/App.tsx`
 
 ```typescript
@@ -49,9 +54,11 @@ const needsUsdtApproval = coreAllowance < machineTotal;
 ```
 
 ### 2. UI组件改动
+
 位置: `src/components/Common.tsx`
 
 新增组件:
+
 ```typescript
 // RiskConfirmationModal - 风险确认弹窗
 interface RiskConfirmationModalProps {
@@ -82,41 +89,48 @@ export function RiskConfirmationModal(props: RiskConfirmationModalProps) {
 ```
 
 ### 3. 购买流程改动
+
 位置: `src/App.tsx`
 
 ```typescript
 // 步骤 1: USDT授权
-const onApproveUsdt = async () => guardedAction(async () => {
-  if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
-  if (usdtBalance < machineTotal) throw new Error(t.insufficientUsdtBalance);
-  
-  setUsdtApprovalInProgress(true);
-  setStatus(t.approvingUsdtCore);
-  
-  await approveUsdt(provider!, CORE_CONTRACT_ADDRESS, parseUsdt("1000000000"));
-  
-  setMachineApprovalConfirmed(true);
-  setStatus(t.approvedCoreSuccess);
-  setUsdtApprovalInProgress(false);
-});
+const onApproveUsdt = async () =>
+  guardedAction(async () => {
+    if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+    if (usdtBalance < machineTotal) throw new Error(t.insufficientUsdtBalance);
+
+    setUsdtApprovalInProgress(true);
+    setStatus(t.approvingUsdtCore);
+
+    await approveUsdt(
+      provider!,
+      CORE_CONTRACT_ADDRESS,
+      parseUsdt("1000000000"),
+    );
+
+    setMachineApprovalConfirmed(true);
+    setStatus(t.approvedCoreSuccess);
+    setUsdtApprovalInProgress(false);
+  });
 
 // 步骤 2: 风险确认
 const onConfirmMachineRisk = async () => {
   setShowMachineRiskModal(false);
-  
+
   await onPurchaseMachine();
 };
 
 // 步骤 3: 购买矿机
-const onPurchaseMachine = async () => guardedAction(async () => {
-  if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
-  await ensureReferrerReady();
-  if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
-  
-  setStatus(t.buyingMachine);
-  await purchaseMachine(provider!, machineQty);
-  setStatus(t.buyMachineSuccess);
-});
+const onPurchaseMachine = async () =>
+  guardedAction(async () => {
+    if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
+    await ensureReferrerReady();
+    if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+
+    setStatus(t.buyingMachine);
+    await purchaseMachine(provider!, machineQty);
+    setStatus(t.buyMachineSuccess);
+  });
 
 // 新增: 获取分账预览
 const getMachineAllocationPreview = () => {
@@ -133,64 +147,67 @@ const getMachineAllocationPreview = () => {
 ```
 
 ### 4. UI渲染改动
+
 位置: `src/App.tsx` 购买矿机卡片部分
 
 ```jsx
-{hasConnected && isOnCncMainnet && (
-  <Card>
-    <h2>{t.buyingMachiness}</h2>
-    
-    {/* 数量输入 */}
-    <input 
-      type="number" 
-      value={machineQty}
-      onChange={(e) => setMachineQty(Number(e.target.value))}
-      max="10"
-    />
-    
-    {/* 显示总价 */}
-    <KVRow label={t.totalPrice} value={formatUsdt(machineTotal)} />
-    
-    {/* 步骤 1: 授权 */}
-    {needsUsdtApproval ? (
-      <button
-        onClick={onApproveUsdt}
-        disabled={usdtApprovalInProgress}
-        className="primary-btn"
-      >
-        {usdtApprovalInProgress ? t.approving : "授权 USDT"}
-      </button>
-    ) : (
-      <div className="approved-badge">✓ 已授权</div>
-    )}
-    
-    {/* 步骤 2&3: 购买 */}
-    {machineApprovalConfirmed && (
-      <button
-        onClick={() => setShowMachineRiskModal(true)}
-        disabled={usdtApprovalInProgress}
-        className="primary-btn"
-      >
-        {t.confirmAndBuy}
-      </button>
-    )}
-    
-    {/* 风险确认弹窗 */}
-    <RiskConfirmationModal
-      isOpen={showMachineRiskModal}
-      details={{
-        quantity: machineQty,
-        unitPrice: machineUnitPrice,
-        totalAmount: machineTotal,
-        feePreview: getMachineAllocationPreview(),
-        network: t.cncMainnet,
-        address: address || "",
-      }}
-      onConfirm={onConfirmMachineRisk}
-      onCancel={() => setShowMachineRiskModal(false)}
-    />
-  </Card>
-)}
+{
+  hasConnected && isOnCncMainnet && (
+    <Card>
+      <h2>{t.buyingMachiness}</h2>
+
+      {/* 数量输入 */}
+      <input
+        type="number"
+        value={machineQty}
+        onChange={(e) => setMachineQty(Number(e.target.value))}
+        max="10"
+      />
+
+      {/* 显示总价 */}
+      <KVRow label={t.totalPrice} value={formatUsdt(machineTotal)} />
+
+      {/* 步骤 1: 授权 */}
+      {needsUsdtApproval ? (
+        <button
+          onClick={onApproveUsdt}
+          disabled={usdtApprovalInProgress}
+          className="primary-btn"
+        >
+          {usdtApprovalInProgress ? t.approving : "授权 USDT"}
+        </button>
+      ) : (
+        <div className="approved-badge">✓ 已授权</div>
+      )}
+
+      {/* 步骤 2&3: 购买 */}
+      {machineApprovalConfirmed && (
+        <button
+          onClick={() => setShowMachineRiskModal(true)}
+          disabled={usdtApprovalInProgress}
+          className="primary-btn"
+        >
+          {t.confirmAndBuy}
+        </button>
+      )}
+
+      {/* 风险确认弹窗 */}
+      <RiskConfirmationModal
+        isOpen={showMachineRiskModal}
+        details={{
+          quantity: machineQty,
+          unitPrice: machineUnitPrice,
+          totalAmount: machineTotal,
+          feePreview: getMachineAllocationPreview(),
+          network: t.cncMainnet,
+          address: address || "",
+        }}
+        onConfirm={onConfirmMachineRisk}
+        onCancel={() => setShowMachineRiskModal(false)}
+      />
+    </Card>
+  );
+}
 ```
 
 ---
@@ -198,26 +215,31 @@ const getMachineAllocationPreview = () => {
 ## 🔄 开发步骤
 
 ### Step 1: 创建风险弹窗组件 (30 mins)
+
 - [ ] 新增 `RiskConfirmationModal` in `src/components/Common.tsx`
 - [ ] 包含分账预览表格
 - [ ] 验证按钮正常工作
 
 ### Step 2: 修改App.tsx购买流程 (1 hour)
+
 - [ ] 添加新状态变量
 - [ ] 拆分`onBuyMachine`为三个函数: `onApproveUsdt`、`onConfirmMachineRisk`、`onPurchaseMachine`
 - [ ] 添加`getMachineAllocationPreview`函数
 
 ### Step 3: 更新UI渲染 (45 mins)
+
 - [ ] 修改购买卡片HTML结构
 - [ ] 添加三步按钮逻辑
 - [ ] 添加样式（已批准徽章、按钮状态等）
 
 ### Step 4: 测试 (30 mins)
+
 - [ ] 本地测试两步流程
 - [ ] 验证弹窗显示正确信息
 - [ ] 验证交易成功后重置状态
 
 ### Step 5: 国际化 (15 mins)
+
 - [ ] 添加新的多语言字符串
 
 **总计**: 2.5-3 小时
@@ -227,11 +249,13 @@ const getMachineAllocationPreview = () => {
 ## 📚 相关文件
 
 ### 需要修改的文件
+
 1. `src/App.tsx` - 核心逻辑改动
 2. `src/components/Common.tsx` - 新增弹窗组件
 3. `src/App.css` - 弹窗样式
 
 ### 不需要修改
+
 - `src/lib/` - 后端库无需改动
 - `contracts/` - 合约无需改动
 
@@ -252,17 +276,20 @@ const getMachineAllocationPreview = () => {
 ## 🎨 UI设计参考
 
 ### 授权状态
+
 ```
 [授权 USDT] (蓝紫色按钮)
 ```
 
 ### 已授权状态
+
 ```
 ✓ 已授权 (绿色徽章)
 [购买矿机] (蓝紫色按钮)
 ```
 
 ### 风险确认弹窗
+
 ```
 ┌─────────────────────────────┐
 │ 确认购买矿机                 │
