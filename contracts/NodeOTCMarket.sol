@@ -168,8 +168,43 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
         return activeOrderIds;
     }
 
+    function getActiveOrderIdsPaginated(uint256 offset, uint256 limit) external view returns (uint256[] memory) {
+        require(limit > 0 && limit <= 100, "invalid limit");
+        
+        if (offset >= activeOrderIds.length) {
+            return new uint256[](0);
+        }
+        
+        uint256 endIndex = offset + limit;
+        if (endIndex > activeOrderIds.length) {
+            endIndex = activeOrderIds.length;
+        }
+        
+        uint256 resultLength = endIndex - offset;
+        uint256[] memory result = new uint256[](resultLength);
+        
+        for (uint256 i = 0; i < resultLength; i++) {
+            result[i] = activeOrderIds[offset + i];
+        }
+        
+        return result;
+    }
+
     function getIdentityActiveOrder(uint256 identityId) external view returns (uint256) {
         return activeOrderByIdentity[identityId];
+    }
+
+    function getLastTradePrice(uint8 role) external view returns (uint256) {
+        require(role == 1 || role == 2, "invalid role");
+        return lastTradePriceByRole[role];
+    }
+
+    function hasActiveOrder(uint256 identityId) external view returns (bool) {
+        return activeOrderByIdentity[identityId] != 0;
+    }
+
+    function getActiveOrdersCount() external view returns (uint256) {
+        return activeOrderIds.length;
     }
 
     function _removeActiveOrder(Order storage order) private {
