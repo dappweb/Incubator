@@ -237,7 +237,12 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         });
         ownedIdentityId[msg.sender] = identityId;
 
+        address referrer = referralOf[msg.sender];
         _registerParticipant(msg.sender);
+        
+        // Allocate node purchase amount across pools
+        _allocateNodePurchase(identityId, nodePrice, referrer);
+        
         emit NodePurchased(msg.sender, nodePrice, identityId);
     }
 
@@ -264,7 +269,13 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
             identities[identityId].role = Role.SuperNode;
             identities[identityId].updatedAt = block.timestamp;
         }
+        
+        address referrer = referralOf[msg.sender];
         _registerParticipant(msg.sender);
+        
+        // Allocate super-node purchase amount across pools
+        _allocateSuperNodePurchase(identityId, superNodePrice, referrer);
+        
         emit SuperNodePurchased(msg.sender, superNodePrice, identityId);
     }
 
@@ -489,6 +500,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     function updatePoolShare(uint8 poolType, uint16 newBps) external onlyOwner {
         require(poolType < poolConfigs.length, "invalid pool");
         require(newBps > 0, "invalid bps");
+        require(newBps <= BPS_DENOMINATOR, "bps exceeds denominator");
 
         uint16 oldBps = poolConfigs[poolType].bps;
         poolConfigs[poolType].bps = newBps;
@@ -499,6 +511,11 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         }
 
         emit PoolConfigUpdated(poolType, poolConfigs[poolType].recipient, newBps);
+    }
+
+    function validatePoolConfiguration() external view returns (bool) {
+        require(_poolShareTotal() == BPS_DENOMINATOR, "pool shares must sum to 10000");
+        return true;
     }
 
     function withdrawUSDT(address to, uint256 amount) external onlyOwner {
@@ -670,6 +687,56 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         // Leaderboard money also accumulates in the dedicated reward pool.
         // Ranking data is still tracked on-chain for the daily settlement job.
         _transferPool(orderId, PoolType.Leaderboard, poolConfigs[uint8(PoolType.Leaderboard)].recipient, leaderboardAmount);
+    }
+
+    function _allocateNodePurchase(uint256 identityId, uint256 totalAmount, address referrer) private {
+        // Allocate node purchase using same pool configuration as machines
+        uint256 liquidityAmount = _poolAmount(totalAmount, uint8(PoolType.Liquidity));
+        uint256 referralAmount = _poolAmount(totalAmount, uint8(PoolType.Referral));
+        uint256 superAmount = _poolAmount(totalAmount, uint8(PoolType.SuperNode));
+        uint256 nodeAmount = _poolAmount(totalAmount, uint8(PoolType.Node));
+        uint256 platformAmount = _poolAmount(totalAmount, uint8(PoolType.Platform));
+
+        uint256 allocated = liquidityAmount + referralAmount + superAmount + nodeAmount + platformAmount;
+        uint256 leaderboardAmount = totalAmount - allocated;
+
+        // Use identityId (casted as orderId for event tracking)
+        uint256 trackingId = (1_000_000_000 + identityId); // prefix to distinguish from machine orders
+
+        _transferPool(trackingId, PoolType.Liquidity, poolConfigs[uint8(PoolType.Liquidity)].recipient, liquidityAmount);
+
+        address referralRecipient = referrer != address(0) ? referrer : poolConfigs[uint8(PoolType.Referral)].recipient;
+        _transferPool(trackingId, PoolType.Referral, referralRecipient, referralAmount);
+
+        _transferPool(trackingId, PoolType.SuperNode, poolConfigs[uint8(PoolType.SuperNode)].recipient, superAmount);
+        _transferPool(trackingId, PoolType.Node, poolConfigs[uint8(PoolType.Node)].recipient, nodeAmount);
+        _transferPool(trackingId, PoolType.Platform, poolConfigs[uint8(PoolType.Platform)].recipient, platformAmount);
+        _transferPool(trackingId, PoolType.Leaderboard, poolConfigs[uint8(PoolType.Leaderboard)].recipient, leaderboardAmount);
+    }
+
+    function _allocateSuperNodePurchase(uint256 identityId, uint256 totalAmount, address referrer) private {
+        // Allocate super-node purchase using same pool configuration as machines
+        uint256 liquidityAmount = _poolAmount(totalAmount, uint8(PoolType.Liquidity));
+        uint256 referralAmount = _poolAmount(totalAmount, uint8(PoolType.Referral));
+        uint256 superAmount = _poolAmount(totalAmount, uint8(PoolType.SuperNode));
+        uint256 nodeAmount = _poolAmount(totalAmount, uint8(PoolType.Node));
+        uint256 platformAmount = _poolAmount(totalAmount, uint8(PoolType.Platform));
+
+        uint256 allocated = liquidityAmount + referralAmount + superAmount + nodeAmount + platformAmount;
+        uint256 leaderboardAmount = totalAmount - allocated;
+
+        // Use identityId (casted as orderId for event tracking)
+        uint256 trackingId = (2_000_000_000 + identityId); // different prefix for super-node
+
+        _transferPool(trackingId, PoolType.Liquidity, poolConfigs[uint8(PoolType.Liquidity)].recipient, liquidityAmount);
+
+        address referralRecipient = referrer != address(0) ? referrer : poolConfigs[uint8(PoolType.Referral)].recipient;
+        _transferPool(trackingId, PoolType.Referral, referralRecipient, referralAmount);
+
+        _transferPool(trackingId, PoolType.SuperNode, poolConfigs[uint8(PoolType.SuperNode)].recipient, superAmount);
+        _transferPool(trackingId, PoolType.Node, poolConfigs[uint8(PoolType.Node)].recipient, nodeAmount);
+        _transferPool(trackingId, PoolType.Platform, poolConfigs[uint8(PoolType.Platform)].recipient, platformAmount);
+        _transferPool(trackingId, PoolType.Leaderboard, poolConfigs[uint8(PoolType.Leaderboard)].recipient, leaderboardAmount);
     }
 
     function _updateLeaderboard(uint256 dayId, address user, uint256 amount) private {
