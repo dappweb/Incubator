@@ -56,6 +56,7 @@
     "settle:core:cncMainnet": "hardhat run scripts/settle-core-pools.ts --network cncMainnet",
     "settle:all:cncMainnet": "bash scripts/run-settlement.sh",
     "cron:install:settle": "bash scripts/install-cron.sh",
-    "test:contracts": "hardhat run scripts/validate-contracts.ts"
+    "test:contracts": "hardhat run scripts/validate-contracts.ts",
+    "test:token-system": "hardhat run scripts/test-token-system.ts"
   }
 }
