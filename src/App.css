@@ -1778,6 +1778,212 @@ tr:last-child td {
   box-shadow: 0 0 0 3px rgba(92, 138, 26, 0.08);
 }
 
+/* Modal - Risk Confirmation */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 32px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-content h2 {
+  margin: 0 0 24px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-section {
+  margin-bottom: 24px;
+}
+
+.modal-section h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row span {
+  color: var(--text-secondary);
+}
+
+.detail-row strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.detail-row.highlight {
+  border-bottom: 2px solid rgba(134, 194, 50, 0.3);
+  padding: 14px 0;
+  background: rgba(134, 194, 50, 0.08);
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.detail-row.highlight strong {
+  color: var(--brand-green);
+  font-size: 16px;
+}
+
+.allocation-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.allocation-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.allocation-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.allocation-table td {
+  padding: 12px 0;
+  font-size: 14px;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.allocation-table td:first-child {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.allocation-table td.amount {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+  padding-right: 12px;
+}
+
+.allocation-table td.ratio {
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: right;
+  font-weight: 500;
+}
+
+.address {
+  font-family: monospace;
+  font-size: 12px !important;
+  word-break: break-all;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modal-actions button {
+  flex: 1;
+  min-height: 48px;
+  font-size: 15px;
+}
+
+.secondary-btn {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px 24px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.secondary-btn:disabled {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 24px;
+    border-radius: 20px;
+  }
+
+  .modal-content h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}
+
 /* Bottom Navigation (Floating Menu) */
 .bottom-nav {
   position: fixed;

@@ -7,69 +7,69 @@ import { Card, KVRow } from "./components/Common";
 import { Leaderboard } from "./components/Leaderboard";
 import { TokenHistory, type TokenType } from "./components/TokenHistory";
 import {
-    CNC_MAINNET_CHAIN_ID,
-    CNC_MAINNET_CHAIN_NAME,
-    CNC_MAINNET_RPC_URLS,
-    CORE_CONTRACT_ADDRESS,
-    ICO_TOKEN_ADDRESS,
-    LIGHT_TOKEN_ADDRESS,
-    OTC_CONTRACT_ADDRESS,
-    PANCAKE_V3_PRIMARY_FEE_PPM,
-    SWAP_POOL_ADDRESS,
-    USDT_CONTRACT_ADDRESS,
+  CNC_MAINNET_CHAIN_ID,
+  CNC_MAINNET_CHAIN_NAME,
+  CNC_MAINNET_RPC_URLS,
+  CORE_CONTRACT_ADDRESS,
+  ICO_TOKEN_ADDRESS,
+  LIGHT_TOKEN_ADDRESS,
+  OTC_CONTRACT_ADDRESS,
+  PANCAKE_V3_PRIMARY_FEE_PPM,
+  SWAP_POOL_ADDRESS,
+  USDT_CONTRACT_ADDRESS,
 } from "./config";
 import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
 import {
-    bindReferrer,
-    buyNode,
-    buySuperNode,
-    getContractOwner,
-    getDirectReferralsByReferrer,
-    getMachineOrder,
-    getMachineUnitPrice,
-    getNodePrice,
-    getPoolAccumulatedBalances,
-    getReferrer,
-    getRewardRecordsByBeneficiary,
-    getSuperNodePrice,
-    getTeamStats,
-    getUserMachineOrderIds,
-    getUserRole,
-    purchaseMachine,
-    type MachineOrder,
-    type RewardRecord,
-    type TeamStats,
+  bindReferrer,
+  buyNode,
+  buySuperNode,
+  getContractOwner,
+  getDirectReferralsByReferrer,
+  getMachineOrder,
+  getMachineUnitPrice,
+  getNodePrice,
+  getPoolAccumulatedBalances,
+  getReferrer,
+  getRewardRecordsByBeneficiary,
+  getSuperNodePrice,
+  getTeamStats,
+  getUserMachineOrderIds,
+  getUserRole,
+  purchaseMachine,
+  type MachineOrder,
+  type RewardRecord,
+  type TeamStats,
 } from "./lib/coreContract";
 import { parseContractError } from "./lib/errorParser";
 import { approveIdentityForOtc, getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
 import { currentDayId, fetchLeaderboardDay } from "./lib/leaderboard";
 import {
-    cancelOtcOrder,
-    createOtcOrder,
-    fillOtcOrder,
-    getActiveOrderIds,
-    getLastTradePriceByRole,
-    getOrder,
-    getOtcFeeBps,
-    type OtcOrder,
+  cancelOtcOrder,
+  createOtcOrder,
+  fillOtcOrder,
+  getActiveOrderIds,
+  getLastTradePriceByRole,
+  getOrder,
+  getOtcFeeBps,
+  type OtcOrder,
 } from "./lib/otcContract";
 import {
-    getPrimarySwapSpender,
-    getSwapPool,
-    getSwapPoolsInfo,
-    quotePrimarySwapExactIn,
-    quoteSwapExactIn,
-    resolvePrimarySwapTokens,
-    swapExactIn,
-    swapPrimaryExactIn,
+  getPrimarySwapSpender,
+  getSwapPool,
+  getSwapPoolsInfo,
+  quotePrimarySwapExactIn,
+  quoteSwapExactIn,
+  resolvePrimarySwapTokens,
+  swapExactIn,
+  swapPrimaryExactIn,
 } from "./lib/swapContract";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { fetchTokenHistory, type TxRecord } from "./lib/tokenHistory";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "./lib/usdtContract";
 import {
-    checkConnection,
-    ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
-    setupWalletAfterConnect
+  checkConnection,
+  ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
+  setupWalletAfterConnect
 } from "./lib/wallet";
 
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
@@ -474,6 +474,11 @@ const App = () => {
   const [usdtBalance, setUsdtBalance] = useState<bigint>(0n);
   const [coreAllowance, setCoreAllowance] = useState<bigint>(0n);
   const [otcAllowance, setOtcAllowance] = useState<bigint>(0n);
+
+  // P0-3: Machine purchase two-step flow
+  const [usdtApprovalInProgress, setUsdtApprovalInProgress] = useState(false);
+  const [machineApprovalConfirmed, setMachineApprovalConfirmed] = useState(false);
+  const [showMachineRiskModal, setShowMachineRiskModal] = useState(false);
 
   // 首页面板：交易池储备 & 奖励池积累
   const [historyToken, setHistoryToken] = useState<TokenType | null>(null);
@@ -1601,6 +1606,55 @@ const App = () => {
     setStatus(t.buyMachineSuccess);
   });
 
+  // P0-3: Two-step purchase flow
+  const getMachineAllocationPreview = () => {
+    const total = machineTotal;
+    return {
+      lpPool: (total * 60n) / 100n,
+      referralPool: (total * 5n) / 100n,
+      superNodePool: (total * 5n) / 100n,
+      nodePool: (total * 8n) / 100n,
+      platformPool: (total * 20n) / 100n,
+      leaderboardPool: (total * 2n) / 100n,
+    };
+  };
+
+  const onApproveUsdt = async () => guardedAction(async () => {
+    if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+    if (usdtBalance < machineTotal) throw new Error(t.insufficientUsdtBalance);
+
+    setUsdtApprovalInProgress(true);
+    setStatus(t.autoApproveThenPay);
+
+    try {
+      await approveUsdt(provider!, CORE_CONTRACT_ADDRESS, parseUsdt("1000000000"));
+      setMachineApprovalConfirmed(true);
+      setStatus(t.approvedCoreSuccess);
+    } finally {
+      setUsdtApprovalInProgress(false);
+    }
+  });
+
+  const onConfirmMachineRisk = async () => {
+    setShowMachineRiskModal(false);
+    await onPurchaseMachineOnly();
+  };
+
+  const onPurchaseMachineOnly = async () => guardedAction(async () => {
+    if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
+    await ensureReferrerReady();
+    if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
+
+    setStatus(t.buyingMachine);
+    await purchaseMachine(provider!, machineQty);
+    
+    // Reset two-step flow after successful purchase
+    setMachineApprovalConfirmed(false);
+    setStatus(t.buyMachineSuccess);
+  });
+
+  const needsUsdtApproval = coreAllowance < machineTotal;
+
   const onBindReferrer = async () => guardedAction(async () => {
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
 
@@ -2023,12 +2077,49 @@ const App = () => {
                 <span>{t.orderTotal}</span>
                 <strong>{formatUsdt(machineTotal)} USDT</strong>
               </div>
-              <div className="actions">
-                <button className="primary-btn" onClick={onBuyMachine} disabled={loading || Boolean(machineDisabledReason)}>
-                  {loading ? t.loading : t.submitMachine}
-                </button>
-              </div>
-              {machineActionHint ? <p className="action-hint">{machineActionHint}</p> : null}
+
+              {/* Step 1: USDT Approval */}
+              {needsUsdtApproval ? (
+                <div className="actions">
+                  <button
+                    className="primary-btn"
+                    onClick={onApproveUsdt}
+                    disabled={loading || usdtApprovalInProgress}
+                  >
+                    {usdtApprovalInProgress ? t.loading : "授权 USDT"}
+                  </button>
+                </div>
+              ) : (
+                <div className="chip-label">✓ 已授权</div>
+              )}
+
+              {/* Step 2&3: Purchase (only show if approved) */}
+              {machineApprovalConfirmed && (
+                <div className="actions">
+                  <button
+                    className="primary-btn"
+                    onClick={() => setShowMachineRiskModal(true)}
+                    disabled={loading || usdtApprovalInProgress}
+                  >
+                    {loading ? t.loading : "确认并购买"}
+                  </button>
+                </div>
+              )}
+
+              {/* Risk Confirmation Modal */}
+              <RiskConfirmationModal
+                isOpen={showMachineRiskModal}
+                details={{
+                  quantity: machineQty,
+                  unitPrice: machinePrice,
+                  totalAmount: machineTotal,
+                  feePreview: getMachineAllocationPreview(),
+                  network: CNC_MAINNET_CHAIN_NAME,
+                  address: address || "",
+                }}
+                onConfirm={onConfirmMachineRisk}
+                onCancel={() => setShowMachineRiskModal(false)}
+              />
             </div>
             <p className="hint">{t.machineAutoApproveHint}</p>
             <p className="hint">{t.machineBusinessHint}</p>
