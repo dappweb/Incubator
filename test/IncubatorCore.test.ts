@@ -384,6 +384,39 @@ describe("IncubatorCore", function () {
     assert.equal(await core.poolAccumulated(2), 0n);
   });
 
+  it("stores sub-admins on-chain and supports add/remove", async function () {
+    const [owner, subAdmin, outsider, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+
+    assert.equal(await core.subAdmins(subAdmin.address), false);
+    assert.equal(await core.isOwnerOrSubAdmin(owner.address), true);
+    assert.equal(await core.isOwnerOrSubAdmin(subAdmin.address), false);
+
+    await core.connect(owner).setSubAdmin(subAdmin.address, true);
+    assert.equal(await core.subAdmins(subAdmin.address), true);
+    assert.equal(await core.isOwnerOrSubAdmin(subAdmin.address), true);
+
+    const listAfterAdd = await core.getSubAdmins();
+    assert.equal(listAfterAdd.length, 1);
+    assert.equal(listAfterAdd[0], subAdmin.address);
+
+    await assert.rejects(
+      core.connect(outsider).setSubAdmin(subAdmin.address, false),
+    );
+
+    await core.connect(owner).setSubAdmin(subAdmin.address, false);
+    assert.equal(await core.subAdmins(subAdmin.address), false);
+    assert.equal(await core.isOwnerOrSubAdmin(subAdmin.address), false);
+
+    const listAfterRemove = await core.getSubAdmins();
+    assert.equal(listAfterRemove.length, 0);
+  });
+
   it("preserves state across UUPS upgrade", async function () {
     const [owner, buyer, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
     const usdt = await deployMockUsdt(owner.address);

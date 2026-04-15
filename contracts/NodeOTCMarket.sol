@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -19,7 +20,7 @@ interface IIncubatorCoreIdentity {
         returns (uint256 id, address owner, uint8 role, uint256 updatedAt);
 }
 
-contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
+contract NodeOTCMarket is OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     struct Order {
@@ -123,7 +124,7 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
         emit OtcOrderCancelled(orderId, msg.sender);
     }
 
-    function fillOrder(uint256 orderId) external {
+    function fillOrder(uint256 orderId) external nonReentrant {
         Order storage order = orders[orderId];
         require(order.active, "inactive");
         require(order.seller != msg.sender, "self trade");
@@ -229,8 +230,10 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
 
     function _autoCancelLowerOrders(uint8 role, uint256 filledPrice, uint256 filledOrderId) private {
         uint256 cursor = 0;
+        uint256 cancelled = 0;
+        uint256 maxCancels = 50; // Gas safety: limit batch cancels per fill
 
-        while (cursor < activeOrderIds.length) {
+        while (cursor < activeOrderIds.length && cancelled < maxCancels) {
             uint256 activeOrderId = activeOrderIds[cursor];
             if (activeOrderId == filledOrderId) {
                 cursor += 1;
@@ -246,6 +249,7 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
             candidate.active = false;
             address seller = candidate.seller;
             _removeActiveOrder(candidate);
+            cancelled += 1;
             emit OtcOrderAutoCancelled(activeOrderId, seller, role, filledPrice);
         }
     }

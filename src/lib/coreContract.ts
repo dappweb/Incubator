@@ -23,6 +23,10 @@ const coreAbi = [
   "function teamTotalVolume(address user) view returns (uint256)",
   "function referralOf(address user) view returns (address)",
   "function owner() view returns (address)",
+  "function subAdmins(address user) view returns (bool)",
+  "function getSubAdmins() view returns (address[])",
+  "function setSubAdmin(address account, bool enabled) external",
+  "function isOwnerOrSubAdmin(address account) view returns (bool)",
   "function paused() view returns (bool)",
   "function getPoolConfig(uint8 poolType) view returns (address recipient, uint16 bps)",
   "function poolAccumulated(uint8 poolType) view returns (uint256)",
@@ -276,6 +280,28 @@ export async function getDirectReferralsByReferrer(
 export async function getContractOwner(provider: BrowserProvider): Promise<string> {
   const contract = getCoreContract(provider) as any;
   return contract.owner();
+}
+
+export async function isSubAdmin(provider: BrowserProvider, account: string): Promise<boolean> {
+  const contract = getCoreContract(provider) as any;
+  return contract.subAdmins(account);
+}
+
+export async function getSubAdmins(provider: BrowserProvider): Promise<string[]> {
+  const contract = getCoreContract(provider) as any;
+  return contract.getSubAdmins();
+}
+
+export async function setCoreSubAdmin(provider: BrowserProvider, account: string, enabled: boolean) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setSubAdmin(account, enabled);
+  return tx.wait();
+}
+
+export async function isOwnerOrSubAdmin(provider: BrowserProvider, account: string): Promise<boolean> {
+  const contract = getCoreContract(provider) as any;
+  return contract.isOwnerOrSubAdmin(account);
 }
 
 export async function isCorePaused(provider: BrowserProvider): Promise<boolean> {

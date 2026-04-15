@@ -26,6 +26,7 @@ import {
   buyNode,
   buySuperNode,
   getContractOwner,
+  getCorePoolConfig,
   getDirectReferralsByReferrer,
   getMachineOrder,
   getMachineUnitPrice,
@@ -37,6 +38,7 @@ import {
   getTeamStats,
   getUserMachineOrderIds,
   getUserRole,
+  isSubAdmin as isCoreSubAdmin,
   purchaseMachine,
   type MachineOrder,
   type RewardRecord,
@@ -82,6 +84,9 @@ const LIGHT_ICO_PAIR_ID = 1;
 const FIRST_CONNECT_GUIDE_DONE_KEY = "incubator:first-connect-guide-done";
 const INOUT_LOOKBACK_DAYS = 7;
 const INOUT_PREVIEW_LIMIT = 12;
+
+/** 一次性最大授权量，避免每次购买重复 approve */
+const MAX_APPROVAL = 2n ** 256n - 1n;
 
 const toSafeBigInt = (value: unknown): bigint => {
   if (typeof value === "bigint") {
@@ -447,6 +452,7 @@ const App = () => {
     nav: lang === "zh" ? "导航" : "Navigation",
     statusReady: lang === "zh" ? "系统就绪" : "System Ready",
     loading: lang === "zh" ? "加载中..." : "Loading...",
+    rpcUnreachable: lang === "zh" ? "⚠ 网络连接异常，无法连接 CNC 链节点 (rpc.cncchainpro.com)，请检查网络或使用 VPN 后刷新页面" : "⚠ Cannot reach CNC RPC node (rpc.cncchainpro.com). Check your network or use a VPN, then refresh.",
     firstGuideTitle: lang === "zh" ? "新钱包快速引导" : "New Wallet Quick Setup",
     firstGuideHint: lang === "zh" ? "一键完成基础配置：网络 → 代币 → 推荐人 → 数据刷新。" : "Complete base setup in one click: network → tokens → referrer → data refresh.",
     firstGuideStepNetwork: lang === "zh" ? "1. 切换并确认 CNC Mainnet 网络" : "1. Switch and confirm CNC Mainnet network",
@@ -493,7 +499,9 @@ const App = () => {
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [_status, setStatus] = useState("");
+  const [rpcReachable, setRpcReachable] = useState(true);
   const [contractOwner, setContractOwner] = useState("");
+  const [hasChainSubAdminRole, setHasChainSubAdminRole] = useState(false);
   const [showFirstConnectGuide, setShowFirstConnectGuide] = useState(false);
   const [firstConnectGuideRunning, setFirstConnectGuideRunning] = useState(false);
   const [addingTokenSymbol, setAddingTokenSymbol] = useState<"ICO" | "LIGHT" | null>(null);
@@ -598,6 +606,9 @@ const App = () => {
   const [swapQuoteImpactBps, setSwapQuoteImpactBps] = useState(0);
 
   const [loading, setLoading] = useState(false);
+  const [activeActionKey, setActiveActionKey] = useState("");
+  const refreshAllRunningRef = React.useRef(false);
+  const refreshAllPendingRef = React.useRef(false);
 
   // 处理邀请链接逻辑
   useEffect(() => {
@@ -645,6 +656,7 @@ const App = () => {
     setAddress("");
     setChainId(0);
     setProvider(null);
+    setHasChainSubAdminRole(false);
     setRole(0);
     setUsdtBalance(0n);
     setCoreAllowance(0n);
@@ -674,6 +686,15 @@ const App = () => {
   const refreshPublicData = async () => {
     // Reuse existing read helpers with a read-only JSON-RPC provider.
     const readProvider = readonlyProvider as unknown as BrowserProvider;
+
+    // RPC 健康探测：快速尝试获取区块号
+    try {
+      await (readonlyProvider as any).getBlockNumber();
+      setRpcReachable(true);
+    } catch {
+      setRpcReachable(false);
+      return; // RPC 不可达时跳过全部读取，避免堆积错误
+    }
 
     try {
       const [nextMachinePrice, nextNodePrice, nextSuperPrice] = await Promise.all([
@@ -708,11 +729,13 @@ const App = () => {
     try {
       const dayId = currentDayId();
       const lbData = await fetchLeaderboardDay(readProvider, dayId);
-      setTop3Leaderboard(lbData.top10.slice(0, 3).map((entry) => ({
-        address: entry.address,
-        volume: entry.totalVolume,
-        rank: entry.rank,
-      })));
+      if (lbData && Array.isArray(lbData.top10)) {
+        setTop3Leaderboard(lbData.top10.slice(0, 3).map((entry) => ({
+          address: entry.address,
+          volume: entry.totalVolume,
+          rank: entry.rank,
+        })));
+      }
     } catch (e) {
       console.error("Failed to fetch public leaderboard", e);
     }
@@ -815,17 +838,15 @@ const App = () => {
   const nodeDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needCncMainnetToBuy;
-    if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role !== 0) return t.roleMismatchForNode;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needCncMainnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.roleMismatchForNode]);
+  }, [isConnected, isWrongNetwork, role, t.needCncMainnetToBuy, t.needConnectToBuy, t.roleMismatchForNode]);
   const superDisabledReason = useMemo(() => {
     if (!isConnected) return t.needConnectToBuy;
     if (isWrongNetwork) return t.needCncMainnetToBuy;
-    if (!hasEffectiveReferrer) return t.needReferrerToBuy;
     if (role === 2) return t.alreadySuperNode;
     return "";
-  }, [hasEffectiveReferrer, isConnected, isWrongNetwork, role, t.needCncMainnetToBuy, t.needConnectToBuy, t.needReferrerToBuy, t.alreadySuperNode]);
+  }, [isConnected, isWrongNetwork, role, t.needCncMainnetToBuy, t.needConnectToBuy, t.alreadySuperNode]);
   const bindReferrerDisabledReason = useMemo(() => {
     if (!isConnected) return t.connectFirst;
     if (isWrongNetwork) return t.switchCncMainnet;
@@ -882,27 +903,31 @@ const App = () => {
     () => Boolean(address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase()),
     [address, contractOwner],
   );
+  const hasAdminAccess = useMemo(
+    () => isOwner || hasChainSubAdminRole,
+    [hasChainSubAdminRole, isOwner],
+  );
   const getRoleLabelByValue = (roleValue: number) => (roleValue === 2 ? t.roleSuperNode : roleValue === 1 ? t.roleNode : t.roleUser);
   const visibleDesktopTabs = useMemo(() => {
     const tabs = [...DESKTOP_TABS];
-    if (isOwner) {
+    if (hasAdminAccess) {
       tabs.push({ key: "admin" as TabKey, label: t.tab_admin });
     }
     return tabs;
-  }, [isOwner, t.tab_admin]);
+  }, [hasAdminAccess, t.tab_admin]);
   const visibleMobileTabs = useMemo(() => {
     const tabs = [...MOBILE_TABS];
-    if (isOwner) {
+    if (hasAdminAccess) {
       tabs.push({ key: "admin" as TabKey, label: t.tab_admin });
     }
     return tabs;
-  }, [isOwner, t.tab_admin]);
+  }, [hasAdminAccess, t.tab_admin]);
 
   useEffect(() => {
-    if (!isOwner) {
+    if (!hasAdminAccess) {
       setActiveTab((current) => (current === "admin" ? "overview" : current));
     }
-  }, [isOwner]);
+  }, [hasAdminAccess]);
 
   const effectiveSwapDirection = useMemo<SwapDirection>(
     () => activeSwapDirection,
@@ -1148,11 +1173,13 @@ const App = () => {
     try {
       const dayId = currentDayId();
       const lbData = await fetchLeaderboardDay(connectedProvider, dayId);
-      setTop3Leaderboard(lbData.top10.slice(0, 3).map(e => ({
-        address: e.address,
-        volume: e.totalVolume,
-        rank: e.rank,
-      })));
+      if (lbData && Array.isArray(lbData.top10)) {
+        setTop3Leaderboard(lbData.top10.slice(0, 3).map(e => ({
+          address: e.address,
+          volume: e.totalVolume,
+          rank: e.rank,
+        })));
+      }
     } catch (e) {
       console.error("Failed to fetch leaderboard top3", e);
     }
@@ -1173,12 +1200,16 @@ const App = () => {
       setDirectReferrals([]);
     }
 
-    // 合约 Owner 与推荐人状态（单独 try/catch，失败不影响整体刷新）
+    // 合约 Owner、子管理员与推荐人状态（单独 try/catch，失败不影响整体刷新）
     try {
-      const owner = await getContractOwner(connectedProvider);
+      const [owner, subAdmin, currentReferrer] = await Promise.all([
+        getContractOwner(connectedProvider),
+        isCoreSubAdmin(connectedProvider, wallet),
+        getReferrer(connectedProvider, wallet),
+      ]);
       setContractOwner(owner);
+      setHasChainSubAdminRole(Boolean(subAdmin));
 
-      const currentReferrer = await getReferrer(connectedProvider, wallet);
       const zeroAddr = "0x0000000000000000000000000000000000000000";
       if (!currentReferrer || currentReferrer === zeroAddr) {
         setMyReferrer("");
@@ -1202,7 +1233,8 @@ const App = () => {
         setReferrerSource("onchain");
       }
     } catch (e) {
-      console.error("Failed to fetch owner / referrer", e);
+      console.error("Failed to fetch owner / sub-admin / referrer", e);
+      setHasChainSubAdminRole(false);
     }
 
     // 算力订单
@@ -1555,7 +1587,54 @@ const App = () => {
     }
   };
 
-  const guardedAction = async (action: () => Promise<void>) => {
+  const refreshUserEssentials = async (connectedProvider: BrowserProvider, wallet: string) => {
+    try {
+      const [nextRole, balance, allowanceCore, allowanceOtc, currentReferrer] = await Promise.all([
+        getUserRole(connectedProvider, wallet),
+        getUsdtBalance(connectedProvider, wallet),
+        CORE_CONTRACT_ADDRESS ? getUsdtAllowance(connectedProvider, wallet, CORE_CONTRACT_ADDRESS) : Promise.resolve(0n),
+        OTC_CONTRACT_ADDRESS ? getUsdtAllowance(connectedProvider, wallet, OTC_CONTRACT_ADDRESS) : Promise.resolve(0n),
+        getReferrer(connectedProvider, wallet),
+      ]);
+
+      setRole(nextRole);
+      setUsdtBalance(balance);
+      setCoreAllowance(allowanceCore);
+      setOtcAllowance(allowanceOtc);
+
+      const zeroAddr = "0x0000000000000000000000000000000000000000";
+      if (currentReferrer && currentReferrer !== zeroAddr) {
+        setMyReferrer(currentReferrer);
+        setMachineReferrer(currentReferrer);
+        setReferrerSource("onchain");
+      }
+    } catch (error) {
+      console.error("Failed to refresh essentials", error);
+    }
+  };
+
+  const scheduleFullRefresh = (connectedProvider: BrowserProvider, wallet: string) => {
+    if (refreshAllRunningRef.current) {
+      refreshAllPendingRef.current = true;
+      return;
+    }
+
+    refreshAllRunningRef.current = true;
+    void (async () => {
+      try {
+        do {
+          refreshAllPendingRef.current = false;
+          await refreshAll(connectedProvider, wallet);
+        } while (refreshAllPendingRef.current);
+      } catch (error) {
+        console.error("Post-action full refresh failed", error);
+      } finally {
+        refreshAllRunningRef.current = false;
+      }
+    })();
+  };
+
+  const guardedAction = async (action: () => Promise<void>, actionKey = "") => {
     if (!provider || !address) {
       setStatus(t.connectFirst);
       return;
@@ -1566,36 +1645,70 @@ const App = () => {
     }
     try {
       setLoading(true);
+      setActiveActionKey(actionKey);
       await action();
     } catch (error) {
       setStatus(parseContractError(error, langRef.current));
       setLoading(false);
+      setActiveActionKey("");
       return;
     }
-    // Post-action refresh — run in the background so a refresh failure
-    // does NOT overwrite the success status from action().
-    try {
-      await refreshAll(provider, address);
-    } catch (e) {
-      console.error("Post-action refresh failed", e);
-    } finally {
-      setLoading(false);
-    }
+
+    // 立即释放 loading，不再阻塞在刷新上（节省 1-3s）
+    setLoading(false);
+    setActiveActionKey("");
+
+    // 轻量刷新 + 全量刷新都在后台执行，不阻塞 UI
+    refreshUserEssentials(provider, address).catch(() => {});
+    scheduleFullRefresh(provider, address);
   };
+
+  const isActionLoading = (key: string) => loading && activeActionKey === key;
+  const isTxActionBusy = activeActionKey !== "";
 
   const ensureUsdtApproval = async (spender: string, requiredAmount: bigint, currentAllowance: bigint, mode: "core" | "otc") => {
     if (currentAllowance >= requiredAmount) {
       return;
     }
 
+    // 一次性授权最大金额，后续购买无需再 approve（节省一轮钱包弹窗 + 3-5s 等待出块）
     setStatus(`${t.autoApproveThenPay} ${mode === "core" ? t.approvingUsdtCore : t.approvingUsdtOtc}`);
-    await approveUsdt(provider!, spender, parseUsdt("1000000000"));
+    await approveUsdt(provider!, spender, MAX_APPROVAL);
+    // 更新本地缓存，后续购买 allowance 检查直接通过
+    if (mode === "core") setCoreAllowance(MAX_APPROVAL);
+    else setOtcAllowance(MAX_APPROVAL);
     setStatus(mode === "core" ? t.approvedCoreSuccess : t.approvedOtcSuccess);
+  };
+
+  const resolveDefaultReferrerCandidate = async (): Promise<string> => {
+    if (!provider || !address) {
+      return "";
+    }
+
+    if (contractOwner && isAddress(contractOwner) && contractOwner.toLowerCase() !== address.toLowerCase()) {
+      return contractOwner;
+    }
+
+    try {
+      const nextOwner = await getContractOwner(provider);
+      if (nextOwner && isAddress(nextOwner) && nextOwner.toLowerCase() !== address.toLowerCase()) {
+        setContractOwner(nextOwner);
+        return nextOwner;
+      }
+    } catch {
+    }
+
+    return "";
   };
 
   const ensureReferrerReady = async () => {
     if (!provider || !address) {
       throw new Error(t.connectFirst);
+    }
+
+    // 已绑定推荐人时直接跳过链上查询，节省 0.5-2s RPC 延迟
+    if (referrerSource === "onchain" && machineReferrer) {
+      return;
     }
 
     const zeroAddr = "0x0000000000000000000000000000000000000000";
@@ -1608,14 +1721,7 @@ const App = () => {
 
     let candidate = referrerCandidate;
     if (!candidate) {
-      try {
-        const nextOwner = await getContractOwner(provider);
-        if (nextOwner && isAddress(nextOwner) && nextOwner.toLowerCase() !== address.toLowerCase()) {
-          candidate = nextOwner;
-          setContractOwner(nextOwner);
-        }
-      } catch {
-      }
+      candidate = await resolveDefaultReferrerCandidate();
     }
 
     if (!candidate) {
@@ -1638,18 +1744,26 @@ const App = () => {
     setStatus(t.buyingMachine);
     await purchaseMachine(provider!, machineQty);
     setStatus(t.buyMachineSuccess);
-  });
+  }, "buy-machine");
 
-  // P0-3: Two-step purchase flow
+  // P0-3: Two-step purchase flow — pool bps read from chain
+  const [poolBps, setPoolBps] = useState<number[]>([6000, 500, 500, 800, 2000, 200]);
+  useEffect(() => {
+    if (!provider) return;
+    Promise.all([0,1,2,3,4,5].map(i => getCorePoolConfig(provider, i)))
+      .then(configs => setPoolBps(configs.map(c => c.bps)))
+      .catch(() => {/* keep defaults */});
+  }, [provider]);
+
   const getMachineAllocationPreview = () => {
     const total = machineTotal;
     return {
-      lpPool: (total * 60n) / 100n,
-      referralPool: (total * 5n) / 100n,
-      superNodePool: (total * 5n) / 100n,
-      nodePool: (total * 8n) / 100n,
-      platformPool: (total * 20n) / 100n,
-      leaderboardPool: (total * 2n) / 100n,
+      lpPool: (total * BigInt(poolBps[0])) / 10000n,
+      referralPool: (total * BigInt(poolBps[1])) / 10000n,
+      superNodePool: (total * BigInt(poolBps[2])) / 10000n,
+      nodePool: (total * BigInt(poolBps[3])) / 10000n,
+      platformPool: (total * BigInt(poolBps[4])) / 10000n,
+      leaderboardPool: (total * BigInt(poolBps[5])) / 10000n,
     };
   };
 
@@ -1661,13 +1775,14 @@ const App = () => {
     setStatus(t.autoApproveThenPay);
 
     try {
-      await approveUsdt(provider!, CORE_CONTRACT_ADDRESS, parseUsdt("1000000000"));
+      await approveUsdt(provider!, CORE_CONTRACT_ADDRESS, MAX_APPROVAL);
+      setCoreAllowance(MAX_APPROVAL);
       setMachineApprovalConfirmed(true);
       setStatus(t.approvedCoreSuccess);
     } finally {
       setUsdtApprovalInProgress(false);
     }
-  });
+  }, "approve-machine");
 
   const onConfirmMachineRisk = async () => {
     setShowMachineRiskModal(false);
@@ -1685,9 +1800,11 @@ const App = () => {
     // Reset two-step flow after successful purchase
     setMachineApprovalConfirmed(false);
     setStatus(t.buyMachineSuccess);
-  });
+  }, "buy-machine");
 
   const needsUsdtApproval = coreAllowance < machineTotal;
+  // 授权已充足时自动视为已确认，确保购买按钮可见
+  const effectiveApprovalConfirmed = machineApprovalConfirmed || !needsUsdtApproval;
 
   const onBindReferrer = async () => guardedAction(async () => {
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
@@ -1717,7 +1834,7 @@ const App = () => {
     setMachineReferrer(referrer);
     setReferrerSource("onchain");
     setStatus(t.bindReferrerSuccess);
-  });
+  }, "bind-referrer");
 
   const onBindDefaultReferrer = async () => guardedAction(async () => {
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
@@ -1727,14 +1844,15 @@ const App = () => {
       return;
     }
 
-    if (!defaultReferrerCandidate) throw new Error(t.needReferrerToBuy);
+    const fallbackReferrer = await resolveDefaultReferrerCandidate();
+    if (!fallbackReferrer) throw new Error(t.needReferrerToBuy);
 
     setStatus(t.bindingReferrer);
-    await bindReferrer(provider!, defaultReferrerCandidate);
-    setMachineReferrer(defaultReferrerCandidate);
+    await bindReferrer(provider!, fallbackReferrer);
+    setMachineReferrer(fallbackReferrer);
     setReferrerSource("onchain");
     setStatus(t.bindReferrerSuccess);
-  });
+  }, "bind-default-referrer");
 
   const onBuyNode = async () => guardedAction(async () => {
     await ensureReferrerReady();
@@ -1744,7 +1862,7 @@ const App = () => {
     setStatus(t.buyingNode);
     await buyNode(provider!);
     setStatus(t.buyNodeSuccess);
-  });
+  }, "buy-node");
 
   const onBuySuperNode = async () => guardedAction(async () => {
     await ensureReferrerReady();
@@ -1754,7 +1872,7 @@ const App = () => {
     setStatus(t.buyingSuperNode);
     await buySuperNode(provider!);
     setStatus(t.buySuperNodeSuccess);
-  });
+  }, "buy-super-node");
 
 
   const onCreateOtcOrder = async () => guardedAction(async () => {
@@ -1814,7 +1932,7 @@ const App = () => {
       : getPrimarySwapSpender();
     if (!swapSpender) throw new Error(t.missingSwapConfig);
     setStatus(`${t.approvingToken} ${swapTokenInSymbol}...`);
-    await approveToken(provider!, swapTokenInAddress, swapSpender, parseTokenAmount("1000000000", swapTokenInDecimals));
+    await approveToken(provider!, swapTokenInAddress, swapSpender, MAX_APPROVAL);
     await refreshSwapPanel(provider!, address);
     setStatus(`${swapTokenInSymbol} ${t.approveTokenSuccess}`);
   });
@@ -1835,7 +1953,7 @@ const App = () => {
     }
     if (swapTokenInAllowance < amountInRaw) {
       setStatus(`${t.autoApproveThenPay} ${t.approvingToken} ${swapTokenInSymbol}...`);
-      await approveToken(provider!, swapTokenInAddress, swapSpender, parseTokenAmount("1000000000", swapTokenInDecimals));
+      await approveToken(provider!, swapTokenInAddress, swapSpender, MAX_APPROVAL);
       setStatus(`${swapTokenInSymbol} ${t.approveTokenSuccess}`);
     }
     const minOut = (swapQuoteOut * BigInt(10_000 - swapSlippageBps)) / 10_000n;
@@ -1896,7 +2014,7 @@ const App = () => {
       </div>
 
       <div className="topbar-actions">
-        {isOwner ? (
+        {hasAdminAccess ? (
           <button className="ghost-btn" type="button" onClick={() => setActiveTab("admin")}>
             {t.tab_admin}
           </button>
@@ -1917,6 +2035,14 @@ const App = () => {
     </header>
 
     <main className="container">
+      {!rpcReachable && (
+        <div className="rpc-error-banner" role="alert">
+          {t.rpcUnreachable}
+          <button className="ghost-btn" type="button" style={{ marginLeft: 12, fontSize: "0.85em" }} onClick={() => window.location.reload()}>
+            {lang === "zh" ? "刷新页面" : "Refresh"}
+          </button>
+        </div>
+      )}
       <section className="tabs desktop-tabs">
         {visibleDesktopTabs.map((tab) => <button key={tab.key} className={tab.key === activeTab ? "tab-btn tab-active" : "tab-btn"} onClick={() => setActiveTab(tab.key)}>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</button>)}
       </section>
@@ -1929,7 +2055,7 @@ const App = () => {
             <KVRow label={t.role} value={roleLabel} />
             <KVRow label={t.balance} value={formatUsdt(usdtBalance) + " USDT"} />
             <KVRow label={t.coreApproval} value={formatUsdt(coreAllowance) + " USDT"} />
-            {isOwner ? (
+            {hasAdminAccess ? (
               <KVRow
                 label={t.ownerPanel}
                 value={(
@@ -2021,8 +2147,8 @@ const App = () => {
             </div>
           </Card>
 
-          {/* 绑定推荐人（非 Owner 且未绑定且非默认 Owner 来源时显示） */}
-          {!isOwner && !hasBoundReferrer && referrerSource !== "owner" ? (
+          {/* 绑定推荐人（非 Owner 且未绑定时始终显示） */}
+          {!isOwner && !hasBoundReferrer ? (
             <Card title={t.referrerCardTitle} hint={t.referrerCardHint}>
               <label className="field">
                 {t.referrerInputLabel}
@@ -2042,16 +2168,16 @@ const App = () => {
                 <button
                   className="primary-btn"
                   onClick={onBindReferrer}
-                  disabled={loading || !referrerCandidate || hasInvalidManualReferrer || Boolean(bindReferrerDisabledReason)}
+                  disabled={isTxActionBusy || !referrerCandidate || hasInvalidManualReferrer || Boolean(bindReferrerDisabledReason)}
                 >
-                  {loading ? t.loading : t.bindReferrer}
+                  {isActionLoading("bind-referrer") ? t.loading : t.bindReferrer}
                 </button>
                 <button
                   className="primary-btn primary-btn--ghost"
                   onClick={onBindDefaultReferrer}
-                  disabled={loading || !defaultReferrerCandidate || Boolean(bindReferrerDisabledReason)}
+                  disabled={isTxActionBusy || Boolean(bindReferrerDisabledReason)}
                 >
-                  {loading ? t.loading : t.bindDefaultReferrer}
+                  {isActionLoading("bind-default-referrer") ? t.loading : t.bindDefaultReferrer}
                 </button>
               </div>
               {bindReferrerHint ? <p className="action-hint">{bindReferrerHint}</p> : null}
@@ -2118,7 +2244,7 @@ const App = () => {
                   <button
                     className="primary-btn"
                     onClick={onApproveUsdt}
-                    disabled={loading || usdtApprovalInProgress}
+                    disabled={isTxActionBusy || usdtApprovalInProgress}
                   >
                     {usdtApprovalInProgress ? t.loading : "授权 USDT"}
                   </button>
@@ -2127,33 +2253,19 @@ const App = () => {
                 <div className="chip-label">✓ 已授权</div>
               )}
 
-              {/* Step 2&3: Purchase (only show if approved) */}
-              {machineApprovalConfirmed && (
+              {/* Purchase (only show if approved) */}
+              {effectiveApprovalConfirmed && (
                 <div className="actions">
                   <button
                     className="primary-btn"
-                    onClick={() => setShowMachineRiskModal(true)}
-                    disabled={loading || usdtApprovalInProgress}
+                    onClick={onPurchaseMachineOnly}
+                    disabled={isTxActionBusy || usdtApprovalInProgress}
                   >
-                    {loading ? t.loading : "确认并购买"}
+                    {isActionLoading("buy-machine") ? t.loading : "确认并购买"}
                   </button>
                 </div>
               )}
 
-              {/* Risk Confirmation Modal */}
-              <RiskConfirmationModal
-                isOpen={showMachineRiskModal}
-                details={{
-                  quantity: machineQty,
-                  unitPrice: machinePrice,
-                  totalAmount: machineTotal,
-                  feePreview: getMachineAllocationPreview(),
-                  network: CNC_MAINNET_CHAIN_NAME,
-                  address: address || "",
-                }}
-                onConfirm={onConfirmMachineRisk}
-                onCancel={() => setShowMachineRiskModal(false)}
-              />
             </div>
             <p className="hint">{t.machineAutoApproveHint}</p>
             <p className="hint">{t.machineBusinessHint}</p>
@@ -2180,9 +2292,9 @@ const App = () => {
               <button 
                 className="primary-btn" 
                 onClick={onBuyNode} 
-                disabled={loading || Boolean(nodeDisabledReason) || role !== 0}
+                disabled={isTxActionBusy || Boolean(nodeDisabledReason) || role !== 0}
               >
-                {loading ? t.loading : role === 0 ? t.buyNode : role === 1 ? "升级为超级节点" : "已拥有"}
+                {isActionLoading("buy-node") ? t.loading : role === 0 ? t.buyNode : role === 1 ? "升级为超级节点" : "已拥有"}
               </button>
             </div>
             {nodeDisabledReason && role === 0 ? <p className="action-hint">{nodeDisabledReason}</p> : null}
@@ -2215,9 +2327,9 @@ const App = () => {
               <button 
                 className="primary-btn" 
                 onClick={onBuySuperNode} 
-                disabled={loading || Boolean(superDisabledReason) || role === 2}
+                disabled={isTxActionBusy || Boolean(superDisabledReason) || role === 2}
               >
-                {loading ? t.loading : role === 2 ? "已拥有" : role === 1 ? "升级为超级节点" : t.buySuperNode}
+                {isActionLoading("buy-super-node") ? t.loading : role === 2 ? "已拥有" : role === 1 ? "升级为超级节点" : t.buySuperNode}
               </button>
             </div>
             {superDisabledReason && role !== 2 ? <p className="action-hint">{superDisabledReason}</p> : null}
@@ -2330,8 +2442,8 @@ const App = () => {
         <OtcMarket
           t={t}
           address={address}
-          provider={provider}
-          identityId={identityId}
+          provider={provider ?? undefined}
+          identityId={identityId ?? undefined}
           role={role}
           loading={loading}
           onStatusChange={setStatus}
@@ -2357,208 +2469,148 @@ const App = () => {
               </button>
             </div>
 
-            {swapSubTab === "primary" ? (
-              <>
-                <div className="swap-hero">
-                  <div>
-                    <h2>{t.swapTitle} — USDT / ICO</h2>
-                    <p className="hint">{t.swapPoolPrimaryDesc}</p>
-                    <p className="hint">{t.swapAutoHint}</p>
-                  </div>
-                  <div className="swap-hero-badge-wrap">
-                    <span className="swap-mode-badge">{t.swapPrimaryMode}</span>
+            {/* Unified swap UI for both tabs */}
+            <div className="swap-compact">
+              {/* Token In */}
+              <div className="swap-token-box swap-token-in">
+                <div className="swap-token-header">
+                  <span className="swap-token-label">{t.inputAmount}</span>
+                  <span className="swap-token-bal" onClick={onSetSwapMax} title={t.max}>
+                    {t.tokenBalance}: {formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}
+                  </span>
+                </div>
+                <div className="swap-token-row">
+                  <input
+                    className="swap-amount-input"
+                    type="number"
+                    min={0}
+                    placeholder="0.0"
+                    value={swapAmountIn}
+                    onChange={(event) => setSwapAmountIn(event.target.value)}
+                  />
+                  <div className="swap-token-badge">
+                    <span className="swap-token-symbol">{swapTokenInSymbol === "-" ? (activeSwapDirection === "forward" ? poolToken0Name : poolToken1Name) : swapTokenInSymbol}</span>
+                    <button className="chip-btn swap-max-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
                   </div>
                 </div>
+              </div>
 
-                <div className="swap-shell">
-                  <div className="swap-panel">
-                    <div className="swap-flow-card">
-                      <div className="swap-flow-head">
-                        <strong>{t.swapFlowTitle}</strong>
-                        <span>{swapRouteLabel}</span>
-                      </div>
-                      <div className="flow-grid swap-flow-grid">
-                        {swapFlow.map((step) => (
-                          <div key={step.label} className={`flow-step ${step.done ? "flow-step-done" : ""}`}>
-                            <span>{step.label}</span>
-                            <strong>{step.done ? "✓" : "..."}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="swap-direction-row">
-                      <label className="field swap-field-grow">
-                        {t.swapDirection}
-                        <select
-                          value={swapDirection}
-                          onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}
-                        >
-                          <option value="forward">{swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol} -&gt; {swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol}</option>
-                          <option value="reverse">{swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol} -&gt; {swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol}</option>
-                        </select>
-                      </label>
-                      <button className="ghost-btn" onClick={onReverseSwapDirection} type="button">
-                        {t.reverseDirection}
-                      </button>
-                    </div>
+              {/* Direction toggle */}
+              <div className="swap-direction-toggle-wrap">
+                <button
+                  className={`swap-direction-toggle ${activePairId === LIGHT_ICO_PAIR_ID ? "swap-direction-locked" : ""}`}
+                  onClick={onReverseSwapDirection}
+                  disabled={activePairId === LIGHT_ICO_PAIR_ID}
+                  type="button"
+                  title={activePairId === LIGHT_ICO_PAIR_ID ? t.swapDirectionLocked : t.reverseDirection}
+                >
+                  {activePairId === LIGHT_ICO_PAIR_ID ? "↓" : "⇅"}
+                </button>
+              </div>
 
-                    <div className="swap-input-card">
-                      <div className="swap-input-top">
-                        <span>{t.inputAmount}</span>
-                        <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
-                      </div>
-                      <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
-                      <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
-                    </div>
+              {/* Token Out */}
+              <div className="swap-token-box swap-token-out">
+                <div className="swap-token-header">
+                  <span className="swap-token-label">{t.estimatedOutput}</span>
+                  <span className="swap-token-bal">{swapRouteLabel}</span>
+                </div>
+                <div className="swap-token-row">
+                  <span className="swap-amount-output">
+                    {swapQuoteOut > 0n ? formatTokenAmount(swapQuoteOut, swapTokenOutDecimals) : "—"}
+                  </span>
+                  <span className="swap-token-badge">
+                    <span className="swap-token-symbol">{swapTokenOutSymbol === "-" ? (activeSwapDirection === "forward" ? poolToken1Name : poolToken0Name) : swapTokenOutSymbol}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Direction selector - only for primary pool */}
+              {swapSubTab === "primary" && (
+                <div className="swap-direction-select-row">
+                  <select
+                    className="swap-direction-select"
+                    value={swapDirection}
+                    onChange={(event) => setSwapDirection(event.target.value as SwapDirection)}
+                  >
+                    <option value="forward">{swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol} → {swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol}</option>
+                    <option value="reverse">{swapTokenOutSymbol === "-" ? poolToken1Name : swapTokenOutSymbol} → {swapTokenInSymbol === "-" ? poolToken0Name : swapTokenInSymbol}</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Light pool one-way notice */}
+              {swapSubTab === "light" && (
+                <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div>
+              )}
+
+              {/* Compact quote details (collapsed by default) */}
+              {swapQuoteOut > 0n && (
+                <div className="swap-quote-details">
+                  <div className="swap-quote-row">
+                    <span>{t.estimatedFee}</span>
+                    <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
                   </div>
-
-                  <div className="swap-summary">
-                    <div className="swap-cta-card">
-                      <div className="swap-cta-copy">
-                        <span>{t.swapNextAction}</span>
-                        <strong>{swapPrimaryActionLabel}</strong>
-                        <p>{swapPrimaryActionHint}</p>
-                      </div>
-                      <div className="swap-cta-actions">
-                        <button className="primary-btn swap-primary-btn" onClick={onSwapPrimaryAction} disabled={!(swapCanApprove || swapCanExecute)}>
-                          {swapPrimaryActionLabel}
-                        </button>
-                        <button className="ghost-btn swap-secondary-btn" onClick={onRefreshSwapQuote} disabled={loading || !provider || !address} type="button">
-                          {t.refreshQuote}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.estimatedOutput}</span>
-                      <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.estimatedFee}</span>
-                      <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.fee}</span>
-                      <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
-                    </div>
-                    <div className="swap-stat">
+                  <div className="swap-quote-row">
+                    <span>{t.fee}</span>
+                    <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
+                  </div>
+                  <div className="swap-quote-row">
+                    <span>{t.estimatedImpact}</span>
+                    <strong className={`swap-impact-${swapImpactTone}`}>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
+                  </div>
+                  {swapPoolImpactLimitBps > 0 && (
+                    <div className="swap-quote-row">
                       <span>{t.impactLimit}</span>
                       <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
                     </div>
-                    <div className="swap-stat">
-                      <span>{t.swapApprovalReady}</span>
-                      <strong>{swapApprovalStatus}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
-                      <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.estimatedImpact}</span>
-                      <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
-                    </div>
-                    <div className={`swap-status swap-status-${swapImpactTone}`}>
-                      <strong>{t.quoteStatus}</strong>
-                      <span>{swapStatusText}</span>
-                      <small>{swapImpactLabel}</small>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="swap-hero">
-                  <div>
-                    <h2>{t.swapTitle} — LIGHT / ICO</h2>
-                    <p className="hint">{t.swapPoolLightDesc}</p>
-                    <p className="hint">{t.swapAutoHint}</p>
-                  </div>
-                  <div className="swap-hero-badge-wrap">
-                    <span className="swap-mode-badge swap-mode-badge-warn">{t.swapLightMode}</span>
-                  </div>
-                </div>
+              )}
 
-                <div className="swap-shell">
-                  <div className="swap-panel">
-                    <div className="swap-flow-card swap-flow-card-warn">
-                      <div className="swap-flow-head">
-                        <strong>{t.swapFlowTitle}</strong>
-                        <span>{t.swapRouteLockedBadge}</span>
-                      </div>
-                      <div className="flow-grid swap-flow-grid">
-                        {swapFlow.map((step) => (
-                          <div key={step.label} className={`flow-step ${step.done ? "flow-step-done" : ""}`}>
-                            <span>{step.label}</span>
-                            <strong>{step.done ? "✓" : "..."}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              {/* Status pill */}
+              <div className={`swap-status-pill swap-status-pill-${swapImpactTone}`}>
+                <span>{swapStatusText}</span>
+                {swapQuoteOut > 0n && <small>{swapImpactLabel}</small>}
+              </div>
 
-                    <div className="swap-note swap-note-warn">{t.swapDirectionLocked}</div>
-
-                    <div className="swap-input-card">
-                      <div className="swap-input-top">
-                        <span>{t.inputAmount}</span>
-                        <button className="chip-btn" onClick={onSetSwapMax} type="button">{t.max}</button>
-                      </div>
-                      <input type="number" min={0} value={swapAmountIn} onChange={(event) => setSwapAmountIn(event.target.value)} />
-                      <p className="hint">{t.tokenBalance}（{swapTokenInSymbol}）：{formatTokenAmount(swapTokenInBalance, swapTokenInDecimals)}</p>
-                    </div>
+              {/* Flow steps */}
+              <div className="swap-flow-mini">
+                {swapFlow.map((step) => (
+                  <div key={step.label} className={`swap-flow-dot ${step.done ? "done" : ""}`}>
+                    <span className="swap-flow-icon">{step.done ? "✓" : "○"}</span>
+                    <span>{step.label}</span>
                   </div>
+                ))}
+              </div>
 
-                  <div className="swap-summary">
-                    <div className="swap-cta-card swap-cta-card-warn">
-                      <div className="swap-cta-copy">
-                        <span>{t.swapNextAction}</span>
-                        <strong>{swapPrimaryActionLabel}</strong>
-                        <p>{swapPrimaryActionHint}</p>
-                      </div>
-                      <div className="swap-cta-actions">
-                        <button className="primary-btn swap-primary-btn" onClick={onSwapPrimaryAction} disabled={!(swapCanApprove || swapCanExecute)}>
-                          {swapPrimaryActionLabel}
-                        </button>
-                        <button className="ghost-btn swap-secondary-btn" onClick={onRefreshSwapQuote} disabled={loading || !provider || !address} type="button">
-                          {t.refreshQuote}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.estimatedOutput}</span>
-                      <strong>{formatTokenAmount(swapQuoteOut, swapTokenOutDecimals)} {swapTokenOutSymbol}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.estimatedFee}</span>
-                      <strong>{formatTokenAmount(swapQuoteFee, swapTokenInDecimals)} {swapTokenInSymbol}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.fee}</span>
-                      <strong>{(swapPoolFeeBps / 100).toFixed(2)}%</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.impactLimit}</span>
-                      <strong>{(swapPoolImpactLimitBps / 100).toFixed(2)}%</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.swapApprovalReady}</span>
-                      <strong>{swapApprovalStatus}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.tokenAllowance}（{swapTokenInSymbol}）</span>
-                      <strong>{formatTokenAmount(swapTokenInAllowance, swapTokenInDecimals)}</strong>
-                    </div>
-                    <div className="swap-stat">
-                      <span>{t.estimatedImpact}</span>
-                      <strong>{(swapQuoteImpactBps / 100).toFixed(2)}%</strong>
-                    </div>
-                    <div className={`swap-status swap-status-${swapImpactTone}`}>
-                      <strong>{t.quoteStatus}</strong>
-                      <span>{swapStatusText}</span>
-                      <small>{swapImpactLabel}</small>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+              {/* Action buttons */}
+              <div className="swap-actions">
+                <button
+                  className="primary-btn swap-main-btn"
+                  onClick={onSwapPrimaryAction}
+                  disabled={!(swapCanApprove || swapCanExecute)}
+                >
+                  {swapPrimaryActionLabel}
+                </button>
+                <button
+                  className="ghost-btn swap-refresh-btn"
+                  onClick={onRefreshSwapQuote}
+                  disabled={loading || !provider || !address}
+                  type="button"
+                >
+                  ↻ {t.refreshQuote}
+                </button>
+              </div>
+
+              <p className="swap-hint">{t.swapAutoHint}</p>
+              {swapSubTab === "primary" && <p className="swap-hint">{t.swapPoolPrimaryDesc}</p>}
+              {swapSubTab === "light" && (
+                <>
+                  <p className="swap-hint">{t.swapPoolLightDesc}</p>
+                  <p className="swap-hint">{t.swapLightDistribution}</p>
+                </>
+              )}
+            </div>
           </Card>
         </section>
       ) : null}
@@ -2567,8 +2619,8 @@ const App = () => {
         <MyAssets
           t={t}
           address={address}
-          provider={provider}
-          identityId={identityId}
+          provider={provider ?? undefined}
+          identityId={identityId ?? undefined}
           role={role}
           loading={loading}
           onStatusChange={setStatus}
@@ -2735,7 +2787,7 @@ const App = () => {
         )
       ) : null}
 
-      {activeTab === "admin" && isOwner ? (
+      {activeTab === "admin" && hasAdminAccess ? (
         <Admin lang={lang} address={address} contractOwner={contractOwner} provider={provider} onRefresh={onRefreshWallet} onStatusChange={setStatus} />
       ) : null}
 
@@ -2759,7 +2811,8 @@ const App = () => {
               {tab.key === "team" && "👥"}
               {tab.key === "otc" && "🤝"}
               {tab.key === "swap" && "🔄"}
-              {tab.key === "mine" && "🧑"}
+              {tab.key === "mine" && "📋"}
+              {tab.key === "assets" && "💰"}
               {tab.key === "admin" && "⚙️"}
             </div>
             <span>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</span>

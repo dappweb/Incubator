@@ -3,36 +3,38 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CORE_CONTRACT_ADDRESS, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
 import type { CorePoolConfig } from "../lib/coreContract";
 import {
-    getContractOwner,
-    getCorePoolConfig,
-    getMachineUnitPrice,
-    getNodePrice,
-    getSuperNodePrice,
-    isCorePaused,
-    pauseCore,
-    transferCoreOwnership,
-    unpauseCore,
-    updateCoreNodePrice,
-    updateCorePoolRecipient,
-    updateCorePoolShare,
-    updateCoreSuperNodePrice,
-    updateMachinePrice
+  getContractOwner,
+  getCorePoolConfig,
+  getMachineUnitPrice,
+  getNodePrice,
+  getSubAdmins,
+  getSuperNodePrice,
+  isCorePaused,
+  pauseCore,
+  setCoreSubAdmin,
+  transferCoreOwnership,
+  unpauseCore,
+  updateCoreNodePrice,
+  updateCorePoolRecipient,
+  updateCorePoolShare,
+  updateCoreSuperNodePrice,
+  updateMachinePrice
 } from "../lib/coreContract";
 import { parseContractError } from "../lib/errorParser";
 import { getOtcFeeConfig, updateOtcFeeConfig } from "../lib/otcContract";
 import {
-    getLightFeeConfig,
-    getSwapFeeVault,
-    getSwapPool,
-    getUsdtAddress,
-    isSwapPaused,
-    pauseSwap,
-    settleLightFees,
-    unpauseSwap,
-    updateSwapLightFeeConfig,
-    updateSwapPoolConfig,
-    type LightFeeConfig,
-    type SwapPool
+  getLightFeeConfig,
+  getSwapFeeVault,
+  getSwapPool,
+  getUsdtAddress,
+  isSwapPaused,
+  pauseSwap,
+  settleLightFees,
+  unpauseSwap,
+  updateSwapLightFeeConfig,
+  updateSwapPoolConfig,
+  type LightFeeConfig,
+  type SwapPool
 } from "../lib/swapContract";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
@@ -61,15 +63,13 @@ type EditableSwapPool = SwapPool & {
   impactBpsInput: string;
 };
 
-const ADMIN_LIST_KEY = (owner: string) => `incubator_admins_${owner.toLowerCase()}`;
-
 const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, onRefresh, onStatusChange }) => {
   const t = {
     adminTitle: lang === "zh" ? "管理后台" : "Admin Panel",
-    adminHint: lang === "zh" ? "仅合约 Owner 可访问此页面。" : "Only contract owner can access this page.",
+    adminHint: lang === "zh" ? "仅合约 Owner 或链上授权子管理员可访问此页面。" : "Only contract owner or on-chain authorized sub-admins can access this page.",
     ownerAddress: lang === "zh" ? "合约 Owner" : "Contract Owner",
     currentAddress: lang === "zh" ? "当前地址" : "Current Address",
-    notOwner: lang === "zh" ? "权限不足，只有合约 Owner 可访问此页面。" : "Insufficient permissions. Only the contract owner can access this page.",
+    notOwner: lang === "zh" ? "权限不足，只有合约 Owner 或链上授权子管理员可访问此页面。" : "Insufficient permissions. Only the contract owner or on-chain authorized sub-admins can access this page.",
     userManagement: lang === "zh" ? "用户管理" : "User Management",
     contractManagement: lang === "zh" ? "合约管理" : "Contract Management",
     statisticsAnalysis: lang === "zh" ? "统计分析" : "Statistics & Analytics",
@@ -158,7 +158,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
     // 多管理员
     multiAdminTitle: lang === "zh" ? "多管理员管理" : "Admin Management",
-    multiAdminHint: lang === "zh" ? "添加可查看管理后台的子管理员地址（仅 Owner 可修改，链上写操作仍需 Owner 钱包）。" : "Add sub-admin addresses that can view the admin panel. Only the owner can modify this list; on-chain writes still require the owner wallet.",
+    multiAdminHint: lang === "zh" ? "子管理员列表保存在链上。仅 Owner 可增删子管理员。" : "Sub-admin list is stored on-chain. Only the owner can add or remove sub-admins.",
     subAdminList: lang === "zh" ? "当前子管理员列表" : "Current Sub-Admins",
     noSubAdmins: lang === "zh" ? "暂无子管理员" : "No sub-admins",
     addSubAdmin: lang === "zh" ? "添加子管理员" : "Add Sub-Admin",
@@ -229,14 +229,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   const [adminTab, setAdminTab] = useState<AdminTabKey>("overview");
 
   // 多管理员
-  const [subAdmins, setSubAdmins] = useState<string[]>(() => {
-    if (!contractOwner) return [];
-    try {
-      return JSON.parse(localStorage.getItem(ADMIN_LIST_KEY(contractOwner)) ?? "[]") as string[];
-    } catch {
-      return [];
-    }
-  });
+  const [subAdmins, setSubAdmins] = useState<string[]>([]);
   const [newAdminInput, setNewAdminInput] = useState("");
 
   // Owner 转让
@@ -253,7 +246,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
     setIsLoadingState(true);
     try {
-      const [owner, nextCorePaused, nextSwapPaused, nextMachinePrice, nextNodePrice, nextSuperPrice, nextOtcConfig, nextLightConfig, nextLightVault, nextUsdtAddress] = await Promise.all([
+      const [owner, nextCorePaused, nextSwapPaused, nextMachinePrice, nextNodePrice, nextSuperPrice, nextOtcConfig, nextLightConfig, nextLightVault, nextUsdtAddress, nextSubAdmins] = await Promise.all([
         getContractOwner(provider),
         isCorePaused(provider),
         isSwapPaused(provider),
@@ -264,6 +257,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         getLightFeeConfig(provider),
         LIGHT_TOKEN_ADDRESS ? getSwapFeeVault(provider, 1, LIGHT_TOKEN_ADDRESS) : Promise.resolve(0n),
         getUsdtAddress(provider),
+        getSubAdmins(provider),
       ]);
 
       const nextPools = await Promise.all(poolLabels.map((label, poolType) => getCorePoolConfig(provider, poolType).then((config) => ({
@@ -312,6 +306,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       setUsdtAddressInput(nextUsdtAddress);
       setPairTokensState(nextSwapPools.map(pool => ({ token0: pool.token0, token1: pool.token1 })));
       setPairTokensInputs(nextSwapPools.map(pool => ({ token0Input: pool.token0, token1Input: pool.token1 })));
+      setSubAdmins(nextSubAdmins);
     } finally {
       setIsLoadingState(false);
     }
@@ -324,7 +319,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       onStatusChange(message);
       setIsLoadingState(false);
     });
-  }, [provider, lang]);
+  }, [provider, lang, address]);
 
   const executeAction = async (key: string, action: () => Promise<void>, successMessage = t.actionSuccess) => {
     if (!provider) {
@@ -426,20 +421,16 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       onStatusChange(t.adminAlreadyExists);
       return;
     }
-    const next = [...subAdmins, normalized];
-    setSubAdmins(next);
-    localStorage.setItem(ADMIN_LIST_KEY(resolvedOwner), JSON.stringify(next));
-    setNewAdminInput("");
-    setLocalStatus(t.adminAdded);
-    onStatusChange(t.adminAdded);
+    void executeAction("add-sub-admin", async () => {
+      await setCoreSubAdmin(provider!, normalized, true);
+      setNewAdminInput("");
+    }, t.adminAdded);
   };
 
   const removeSubAdmin = (target: string) => {
-    const next = subAdmins.filter((a) => a.toLowerCase() !== target.toLowerCase());
-    setSubAdmins(next);
-    localStorage.setItem(ADMIN_LIST_KEY(resolvedOwner), JSON.stringify(next));
-    setLocalStatus(t.adminRemoved);
-    onStatusChange(t.adminRemoved);
+    void executeAction(`remove-sub-admin-${target.toLowerCase()}`, async () => {
+      await setCoreSubAdmin(provider!, target, false);
+    }, t.adminRemoved);
   };
 
   if (!isAdmin) {

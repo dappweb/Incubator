@@ -4,11 +4,12 @@ pragma solidity ^0.8.24;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeable {
+contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     enum Role {
@@ -62,6 +63,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     uint16 public constant LEADERBOARD_LAST_SHARE_BPS = 2_500;
     uint256 public machineUnitPrice;
     uint256 public constant MAX_MACHINE_PER_ORDER = 10;
+    uint256 public constant MAX_MACHINE_PER_ADDRESS = 100;
 
     uint256 public nodePrice;
     uint256 public superNodePrice;
@@ -103,6 +105,11 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     uint8 public usdtTokenDecimals;
     bool public usdtScaleMigrated;
 
+    // Sub-admin access control (stored on-chain). Keep newly added storage at the end.
+    mapping(address => bool) public subAdmins;
+    address[] private subAdminList;
+    mapping(address => uint256) private subAdminIndexPlusOne;
+
     event MachinePurchased(
         address indexed user,
         uint256 indexed orderId,
@@ -141,6 +148,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT);
     event LeaderboardLuckySettled(uint256 indexed dayId, address indexed user, uint8 luckyRank, uint256 amountUSDT);
     event PoolRewardSettled(uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT);
+    event SubAdminUpdated(address indexed account, bool enabled);
     event UsdtDecimalsSynced(uint8 decimals);
     event PriceScaleMigrated(uint8 fromDecimals, uint8 toDecimals, uint256 machineUnitPrice, uint256 nodePrice, uint256 superNodePrice);
 
@@ -178,9 +186,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
     // ============ Main Functions ============
 
-    function purchaseMachine(uint256 quantity) external whenNotPaused {
+    function purchaseMachine(uint256 quantity) external whenNotPaused nonReentrant {
         require(quantity > 0 && quantity <= MAX_MACHINE_PER_ORDER, "invalid qty");
         require(referralOf[msg.sender] != address(0), "bind referrer first");
+        require(personalPower[msg.sender] + quantity <= MAX_MACHINE_PER_ADDRESS, "exceeds address limit");
 
         uint256 amountUSDT = machineUnitPrice * quantity;
         usdt.safeTransferFrom(msg.sender, address(this), amountUSDT);
@@ -219,7 +228,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         _bindReferrer(msg.sender, referrer);
     }
 
-    function buyNode() external whenNotPaused {
+    function buyNode() external whenNotPaused nonReentrant {
         require(referralOf[msg.sender] != address(0), "bind referrer first");
         Role role = _getRole(msg.sender);
         require(role == Role.None, "already has role");
@@ -239,6 +248,11 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
         address referrer = referralOf[msg.sender];
         _registerParticipant(msg.sender);
+
+        // Update team stats and leaderboard for node purchase
+        directReferralVolume[referrer] += nodePrice;
+        _updateTeamVolume(referrer, nodePrice);
+        _updateLeaderboard(currentDay(), msg.sender, nodePrice);
         
         // Allocate node purchase amount across pools
         _allocateNodePurchase(identityId, nodePrice, referrer);
@@ -246,7 +260,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         emit NodePurchased(msg.sender, nodePrice, identityId);
     }
 
-    function buySuperNode() external whenNotPaused {
+    function buySuperNode() external whenNotPaused nonReentrant {
         require(referralOf[msg.sender] != address(0), "bind referrer first");
         Role currentRole = _getRole(msg.sender);
         require(currentRole != Role.SuperNode, "already a super node");
@@ -272,6 +286,11 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         
         address referrer = referralOf[msg.sender];
         _registerParticipant(msg.sender);
+
+        // Update team stats and leaderboard for super-node purchase
+        directReferralVolume[referrer] += superNodePrice;
+        _updateTeamVolume(referrer, superNodePrice);
+        _updateLeaderboard(currentDay(), msg.sender, superNodePrice);
         
         // Allocate super-node purchase amount across pools
         _allocateSuperNodePurchase(identityId, superNodePrice, referrer);
@@ -312,7 +331,9 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         ownedIdentityId[to] = identityId;
         identity.owner = to;
         identity.updatedAt = block.timestamp;
-        delete referralOf[from];
+        // NOTE: Do NOT delete referralOf[from] — seller should retain their
+        // referral binding so they can continue purchasing machines and
+        // participating in the ecosystem after selling their identity.
         delete identityOperatorApproval[identityId][msg.sender];
 
         emit IdentityTransferred(identityId, from, to, uint8(identity.role));
@@ -387,6 +408,14 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
         return rewardParticipants[index];
     }
 
+    function getSubAdmins() external view returns (address[] memory) {
+        return subAdminList;
+    }
+
+    function isOwnerOrSubAdmin(address account) public view returns (bool) {
+        return account == owner() || subAdmins[account];
+    }
+
     function getLeaderboard(uint256 dayId)
         external
         view
@@ -402,6 +431,35 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
 
     function pause() external onlyOwner {
         _pause();
+    }
+
+    function setSubAdmin(address account, bool enabled) external onlyOwner {
+        require(account != address(0), "invalid account");
+
+        bool exists = subAdmins[account];
+        if (enabled) {
+            require(!exists, "already sub admin");
+            subAdmins[account] = true;
+            subAdminList.push(account);
+            subAdminIndexPlusOne[account] = subAdminList.length;
+            emit SubAdminUpdated(account, true);
+            return;
+        }
+
+        require(exists, "not sub admin");
+        subAdmins[account] = false;
+
+        uint256 removeIndex = subAdminIndexPlusOne[account] - 1;
+        uint256 lastIndex = subAdminList.length - 1;
+        if (removeIndex != lastIndex) {
+            address lastAccount = subAdminList[lastIndex];
+            subAdminList[removeIndex] = lastAccount;
+            subAdminIndexPlusOne[lastAccount] = removeIndex + 1;
+        }
+
+        subAdminList.pop();
+        delete subAdminIndexPlusOne[account];
+        emit SubAdminUpdated(account, false);
     }
 
     function unpause() external onlyOwner {
@@ -770,6 +828,21 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, UUPSUpgradeab
     }
 
     function _updateLast(LeaderboardState storage board, address user) private {
+        // Deduplicate: if user is already in the lucky list, just move them to the end
+        bool found = false;
+        for (uint8 i = 0; i < board.lastCount; i++) {
+            if (board.lastUsers[i] == user) {
+                // Shift left from this position
+                for (uint8 j = i; j < board.lastCount - 1; j++) {
+                    board.lastUsers[j] = board.lastUsers[j + 1];
+                }
+                board.lastUsers[board.lastCount - 1] = user;
+                found = true;
+                break;
+            }
+        }
+        if (found) return;
+
         if (board.lastCount < 10) {
             board.lastUsers[board.lastCount] = user;
             board.lastCount += 1;

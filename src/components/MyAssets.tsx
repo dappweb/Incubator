@@ -1,14 +1,14 @@
 import { BrowserProvider } from "ethers";
 import React, { useEffect, useState } from "react";
 import {
-    getMachineOrder,
-    getUserMachineOrderIds,
-    getUserRole,
-    type MachineOrder,
+  getMachineOrder,
+  getUserMachineOrderIds,
+  getUserRole,
+  type MachineOrder,
 } from "../lib/coreContract";
 import {
-    getActiveOrderIds,
-    getOrder
+  getActiveOrderIds,
+  getOrder
 } from "../lib/otcContract";
 import { Card, KVRow } from "./Common";
 
@@ -159,8 +159,8 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
                     <td>#{String(order.id)}</td>
                     <td>{String(order.quantity)}</td>
                     <td>
-                      {order.purchaseTime
-                        ? new Date(Number(order.purchaseTime) * 1000).toLocaleDateString()
+                      {order.createdAt
+                        ? new Date(Number(order.createdAt) * 1000).toLocaleDateString()
                         : "-"}
                     </td>
                     <td>{t.allocated || "✓ Allocated"}</td>

@@ -1,11 +1,19 @@
-import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { defineChain, fallback, http } from 'viem';
+import { connectorsForWallets } from '@rainbow-me/rainbowkit';
 import {
-    CNC_MAINNET_BLOCK_EXPLORER_URL,
-    CNC_MAINNET_CHAIN_ID,
-    CNC_MAINNET_CHAIN_NAME,
-    CNC_MAINNET_NATIVE_CURRENCY,
-    CNC_MAINNET_RPC_URLS,
+  injectedWallet,
+  metaMaskWallet,
+  okxWallet,
+  tokenPocketWallet,
+  walletConnectWallet,
+} from '@rainbow-me/rainbowkit/wallets';
+import { defineChain, fallback, http } from 'viem';
+import { createConfig } from 'wagmi';
+import {
+  CNC_MAINNET_BLOCK_EXPLORER_URL,
+  CNC_MAINNET_CHAIN_ID,
+  CNC_MAINNET_CHAIN_NAME,
+  CNC_MAINNET_NATIVE_CURRENCY,
+  CNC_MAINNET_RPC_URLS,
 } from './config';
 
 const cncMainnet = defineChain({
@@ -39,9 +47,26 @@ const cncMainnetTransport = fallback(
   },
 );
 
-export const wagmiConfig = getDefaultConfig({
-  appName: 'Incubator',
-  projectId: import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '730caccf77e6027ab577fedf9add2c25', // Use a default for testing if not provided
+const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '730caccf77e6027ab577fedf9add2c25';
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: '推荐钱包',
+      wallets: [
+        tokenPocketWallet,
+        okxWallet,
+        metaMaskWallet,
+        injectedWallet,     // 自动检测系统已安装的钱包
+        walletConnectWallet, // 扫码连接
+      ],
+    },
+  ],
+  { appName: 'Incubator', projectId },
+);
+
+export const wagmiConfig = createConfig({
+  connectors,
   chains: [cncMainnet],
   transports: {
     [cncMainnet.id]: cncMainnetTransport,

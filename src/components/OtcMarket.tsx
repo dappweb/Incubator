@@ -1,15 +1,16 @@
 import { BrowserProvider } from "ethers";
 import React, { useEffect, useState } from "react";
+import { OTC_CONTRACT_ADDRESS } from "../config";
 import { isIdentityApproved } from "../lib/identityContract";
 import {
-    cancelOtcOrder,
-    createOtcOrder,
-    fillOtcOrder,
-    getActiveOrderIds,
-    getLastTradePriceByRole,
-    getOrder,
-    getOtcFeeBps,
-    type OtcOrder,
+  cancelOtcOrder,
+  createOtcOrder,
+  fillOtcOrder,
+  getActiveOrderIds,
+  getLastTradePriceByRole,
+  getOrder,
+  getOtcFeeBps,
+  type OtcOrder,
 } from "../lib/otcContract";
 import { formatUsdt, getUsdtBalance, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
@@ -45,7 +46,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
   // Market data
   const [marketOrders, setMarketOrders] = useState<OtcOrder[]>([]);
   const [myOrders, setMyOrders] = useState<OtcOrder[]>([]);
-  const [otcFeeBps, setOtcFeeBps] = useState(0n);
+  const [otcFeeBps, setOtcFeeBps] = useState(0);
   const [lastNodePrice, setLastNodePrice] = useState(0n);
   const [lastSuperPrice, setLastSuperPrice] = useState(0n);
 
@@ -72,36 +73,38 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
         getLastTradePriceByRole(provider, 2), // SuperNode
       ]);
 
-      setOtcFeeBps(fee);
+      setOtcFeeBps(Number(fee));
       setLastNodePrice(lastNode);
       setLastSuperPrice(lastSuper);
 
-      // Fetch details for paginated orders
-      const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
-      const pageEnd = pageStart + ITEMS_PER_PAGE;
-      const pageIds = ids.slice(pageStart, pageEnd);
+      // Fetch details for ALL active orders first, then filter, then paginate
+      const allOrders = await Promise.all(ids.map((id) => getOrder(provider, id)));
+      const activeOrders = allOrders.filter((o) => o.active);
 
-      const orders = await Promise.all(pageIds.map((id) => getOrder(provider, id)));
-      const activeOrders = orders.filter((o) => o.active);
-
-      // Apply role filter
-      const filtered =
+      // Apply role filter BEFORE pagination
+      const roleFiltered =
         roleFilter === 0 ? activeOrders : activeOrders.filter((o) => o.role === roleFilter);
 
+      // Now paginate the filtered results
+      const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
+      const pageEnd = pageStart + ITEMS_PER_PAGE;
+      const paged = roleFiltered.slice(pageStart, pageEnd);
+
       // Separate my orders from market orders
-      const myOrdersFiltered = filtered.filter(
+      const myOrdersFiltered = paged.filter(
         (o) => o.seller.toLowerCase() === address?.toLowerCase()
       );
-      const marketOrdersFiltered = filtered.filter(
+      const marketOrdersFiltered = paged.filter(
         (o) => o.seller.toLowerCase() !== address?.toLowerCase()
       );
 
       setMyOrders(myOrdersFiltered);
       setMarketOrders(marketOrdersFiltered);
+      setAllOrderIds(roleFiltered.map(o => o.id));
 
       // Check identity approval
-      if (selectedIdentityId && provider) {
-        const approved = await isIdentityApproved(provider, selectedIdentityId);
+      if (selectedIdentityId && provider && OTC_CONTRACT_ADDRESS) {
+        const approved = await isIdentityApproved(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS);
         setIdentityApproved(approved);
       }
     } catch (error) {
@@ -114,7 +117,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
   // Auto-refresh on component mount and page/filter changes
   useEffect(() => {
     refreshMarketData();
-  }, [provider, currentPage, roleFilter, selectedIdentityId]);
+  }, [provider, address, currentPage, roleFilter, selectedIdentityId]);
 
   // Handle create listing
   const handleCreateListing = async () => {
@@ -133,7 +136,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       }
 
       // Check price floor
-      const minPrice = selectedIdentityId === role ? lastNodePrice : lastSuperPrice;
+      const minPrice = Number(selectedIdentityId) === role ? lastNodePrice : lastSuperPrice;
       if (price < minPrice) {
         onStatusChange(
           `${t.priceTooLow || "Price too low"}: minimum ${formatUsdt(minPrice)} USDT`
@@ -221,7 +224,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
     <section className="grid-full">
       {/* Market Info Card */}
       <Card title={t.otcRuleTitle} hint={t.otcRuleHint}>
-        <KVRow label={t.otcFeeRate} value={`${(otcFeeBps / 100n).toString()}%`} />
+        <KVRow label={t.otcFeeRate} value={`${(otcFeeBps / 100).toFixed(0)}%`} />
         <KVRow label={t.otcNodeLastPrice} value={`${formatUsdt(lastNodePrice)} USDT`} />
         <KVRow label={t.otcSuperLastPrice} value={`${formatUsdt(lastSuperPrice)} USDT`} />
         <p className="hint">{t.otcRuleSingleListing}</p>

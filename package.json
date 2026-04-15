@@ -48,6 +48,7 @@
     "deploy:cncMainnet": "hardhat run scripts/deploy.ts --network cncMainnet",
     "precheck:upgrade:cncMainnet": "hardhat run scripts/precheck-upgrade.ts --network cncMainnet",
     "upgrade:cncMainnet": "hardhat run scripts/upgrade-contracts.ts --network cncMainnet",
+    "set:subadmin:cncMainnet": "hardhat run scripts/set-sub-admin.ts --network cncMainnet",
     "migrate:usdt-decimals:cncMainnet": "hardhat run scripts/migrate-usdt-decimals.ts --network cncMainnet",
     "init:swap:cncMainnet": "hardhat run scripts/init-swap-pools.ts --network cncMainnet",
     "pancake:pool:cncMainnet": "hardhat run scripts/create-pancake-pool.ts --network cncMainnet",
