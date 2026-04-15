@@ -2129,24 +2129,64 @@ const App = () => {
           <Card title={t.nodeTitle}>
             <KVRow label={t.nodePrice} value={formatUsdt(nodePrice) + " USDT"} />
             <p className="hint">{t.nodeDesc}</p>
+            
+            {/* 状态展示 */}
+            <div className="stats-grid">
+              <div className="stat-pill">
+                <span>我的状态</span>
+                <strong>{role === 0 ? "未购买" : role === 1 ? "✓ 已购买" : "超级节点"}</strong>
+              </div>
+              <div className="stat-pill">
+                <span>购买限制</span>
+                <strong>最多 1 个</strong>
+              </div>
+            </div>
+
             <div className="actions">
-              <button className="primary-btn" onClick={onBuyNode} disabled={loading || Boolean(nodeDisabledReason)}>
-                {loading ? t.loading : role === 0 ? t.buyNode : t.buyNodeLocked}
+              <button 
+                className="primary-btn" 
+                onClick={onBuyNode} 
+                disabled={loading || Boolean(nodeDisabledReason) || role !== 0}
+              >
+                {loading ? t.loading : role === 0 ? t.buyNode : role === 1 ? "升级为超级节点" : "已拥有"}
               </button>
             </div>
-            {nodeDisabledReason ? <p className="action-hint">{nodeDisabledReason}</p> : null}
+            {nodeDisabledReason && role === 0 ? <p className="action-hint">{nodeDisabledReason}</p> : null}
           </Card>
 
           {/* 超级节点购买卡 */}
           <Card title={t.superNodeTitle}>
             <KVRow label={t.superNodePrice} value={formatUsdt(superPrice) + " USDT"} />
             <p className="hint">{t.superNodeDesc}</p>
+
+            {/* 身份信息展示 */}
+            <div className="stats-grid">
+              <div className="stat-pill">
+                <span>当前身份</span>
+                <strong>
+                  {role === 0 ? "普通用户" : role === 1 ? "节点用户" : "超级节点用户"}
+                </strong>
+              </div>
+              <div className="stat-pill">
+                <span>购买限制</span>
+                <strong>最多 1 个</strong>
+              </div>
+            </div>
+
+            {role === 1 && (
+              <p className="hint">💡 作为节点持有者，您可以升级到超级节点获得更多权益</p>
+            )}
+
             <div className="actions">
-              <button className="primary-btn" onClick={onBuySuperNode} disabled={loading || Boolean(superDisabledReason)}>
-                {loading ? t.loading : t.buySuperNode}
+              <button 
+                className="primary-btn" 
+                onClick={onBuySuperNode} 
+                disabled={loading || Boolean(superDisabledReason) || role === 2}
+              >
+                {loading ? t.loading : role === 2 ? "已拥有" : role === 1 ? "升级为超级节点" : t.buySuperNode}
               </button>
             </div>
-            {superDisabledReason ? <p className="action-hint">{superDisabledReason}</p> : null}
+            {superDisabledReason && role !== 2 ? <p className="action-hint">{superDisabledReason}</p> : null}
           </Card>
 
           {/* 公告卡 */}
