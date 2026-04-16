@@ -43,7 +43,15 @@ export async function getActiveOrderIds(provider: BrowserProvider): Promise<bigi
 
 export async function getOrder(provider: BrowserProvider, orderId: bigint): Promise<OtcOrder> {
   const contract = getOtcContract(provider) as any;
-  return contract.getOrder(orderId);
+  const row = await contract.getOrder(orderId);
+  return {
+    id: BigInt(row.id),
+    identityId: BigInt(row.identityId),
+    role: Number(row.role),
+    seller: row.seller,
+    priceUSDT: BigInt(row.priceUSDT),
+    active: Boolean(row.active),
+  };
 }
 
 export async function createOtcOrder(

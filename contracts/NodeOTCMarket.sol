@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -19,7 +20,7 @@ interface IIncubatorCoreIdentity {
         returns (uint256 id, address owner, uint8 role, uint256 updatedAt);
 }
 
-contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
+contract NodeOTCMarket is OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     struct Order {
@@ -123,7 +124,7 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
         emit OtcOrderCancelled(orderId, msg.sender);
     }
 
-    function fillOrder(uint256 orderId) external {
+    function fillOrder(uint256 orderId) external nonReentrant {
         Order storage order = orders[orderId];
         require(order.active, "inactive");
         require(order.seller != msg.sender, "self trade");
@@ -168,8 +169,43 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
         return activeOrderIds;
     }
 
+    function getActiveOrderIdsPaginated(uint256 offset, uint256 limit) external view returns (uint256[] memory) {
+        require(limit > 0 && limit <= 100, "invalid limit");
+        
+        if (offset >= activeOrderIds.length) {
+            return new uint256[](0);
+        }
+        
+        uint256 endIndex = offset + limit;
+        if (endIndex > activeOrderIds.length) {
+            endIndex = activeOrderIds.length;
+        }
+        
+        uint256 resultLength = endIndex - offset;
+        uint256[] memory result = new uint256[](resultLength);
+        
+        for (uint256 i = 0; i < resultLength; i++) {
+            result[i] = activeOrderIds[offset + i];
+        }
+        
+        return result;
+    }
+
     function getIdentityActiveOrder(uint256 identityId) external view returns (uint256) {
         return activeOrderByIdentity[identityId];
+    }
+
+    function getLastTradePrice(uint8 role) external view returns (uint256) {
+        require(role == 1 || role == 2, "invalid role");
+        return lastTradePriceByRole[role];
+    }
+
+    function hasActiveOrder(uint256 identityId) external view returns (bool) {
+        return activeOrderByIdentity[identityId] != 0;
+    }
+
+    function getActiveOrdersCount() external view returns (uint256) {
+        return activeOrderIds.length;
     }
 
     function _removeActiveOrder(Order storage order) private {
@@ -194,8 +230,10 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
 
     function _autoCancelLowerOrders(uint8 role, uint256 filledPrice, uint256 filledOrderId) private {
         uint256 cursor = 0;
+        uint256 cancelled = 0;
+        uint256 maxCancels = 50; // Gas safety: limit batch cancels per fill
 
-        while (cursor < activeOrderIds.length) {
+        while (cursor < activeOrderIds.length && cancelled < maxCancels) {
             uint256 activeOrderId = activeOrderIds[cursor];
             if (activeOrderId == filledOrderId) {
                 cursor += 1;
@@ -211,6 +249,7 @@ contract NodeOTCMarket is OwnableUpgradeable, UUPSUpgradeable {
             candidate.active = false;
             address seller = candidate.seller;
             _removeActiveOrder(candidate);
+            cancelled += 1;
             emit OtcOrderAutoCancelled(activeOrderId, seller, role, filledPrice);
         }
     }

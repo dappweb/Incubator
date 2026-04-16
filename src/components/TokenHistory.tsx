@@ -1,6 +1,7 @@
 import { BrowserProvider, isAddress } from "ethers";
 import { useCallback, useState } from "react";
 import {
+    CNC_MAINNET_BLOCK_EXPLORER_URL,
     CORE_CONTRACT_ADDRESS,
     ICO_TOKEN_ADDRESS,
     LIGHT_TOKEN_ADDRESS,
@@ -24,7 +25,7 @@ interface Props {
 }
 
 const PAGE_SIZE = 20;
-// BSC ~3 seconds per block
+// CNC ~3 seconds per block
 const BLOCK_TIME_SEC = 3;
 const MAX_LOOKBACK_DAYS = 14;
 
@@ -231,7 +232,7 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
               <span className="hi-label">{zh ? "订单ID：" : "TxHash:"}</span>
               <a
                 className="hi-hash"
-                href={`https://testnet.bscscan.com/tx/${r.txHash}`}
+                href={`${CNC_MAINNET_BLOCK_EXPLORER_URL}/tx/${r.txHash}`}
                 target="_blank"
                 rel="noreferrer"
               >

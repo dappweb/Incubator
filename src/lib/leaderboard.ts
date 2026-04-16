@@ -5,7 +5,7 @@ import { getCoreContract } from "./coreContract";
 // ────────────────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────────────────
-const BLOCK_TIME = 3; // BSC ~3 s/block
+const BLOCK_TIME = 3; // CNC ~3 s/block
 const BLOCKS_PER_DAY = Math.ceil(86400 / BLOCK_TIME); // 28 800
 // Default rank shares (initialised in contract, no public setter)
 const RANK_SHARES = [4000, 2000, 500, 500, 500, 500, 500, 500, 500, 500] as const;
@@ -220,7 +220,7 @@ export async function fetchLeaderboardDay(
     // LeaderboardSettled(dayId, user, rank, amountUSDT) - rank and amount are non-indexed
     // Actually: event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT)
     // data = abi.encode(rank, amountUSDT) — but rank is uint8 = padded to 32 bytes
-    const decoded = coder.decode(["uint8", "uint256"], log.data) as [bigint, bigint];
+    const decoded = coder.decode(["uint8", "uint256"], log.data) as unknown as [bigint, bigint];
     const amount = decoded[1];
     settledMap.set(user.toLowerCase(), {
       amount,
@@ -242,7 +242,7 @@ export async function fetchLeaderboardDay(
   const purchaseMap = new Map<string, PurchaseEntry[]>();
   for (const log of purchaseLogs) {
     const user = getAddress("0x" + log.topics[1].slice(26)).toLowerCase();
-    const [, amountUSDT] = coder.decode(["uint256", "uint256"], log.data) as [bigint, bigint];
+    const [, amountUSDT] = coder.decode(["uint256", "uint256"], log.data) as unknown as [bigint, bigint];
     const ts = tsMap.get(log.blockNumber) ?? 0;
     if (!purchaseMap.has(user)) purchaseMap.set(user, []);
     purchaseMap.get(user)!.push({ amount: amountUSDT, blockNum: log.blockNumber, ts });

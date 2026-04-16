@@ -425,7 +425,7 @@ userAddress
     ├─ 【钱包错误】
     │   ├─ "User denied" → 用户取消签名 → 提示"取消操作"
     │   ├─ "No Ethereum" → 未安装钱包 → 提示"安装 MetaMask"
-    │   └─ "Wrong network" → 网络错误 → 提示切换到 BSC Testnet
+    │   └─ "Wrong network" → 网络错误 → 提示切换到 CNC Mainnet
     │
     ├─ 【合约错误】
     │   ├─ "bind referrer first" → 未绑定推荐人 → 跳转到推荐人界面

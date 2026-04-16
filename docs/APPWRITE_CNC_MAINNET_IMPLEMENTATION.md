@@ -1,4 +1,4 @@
-# Appwrite + BSC Testnet 实施蓝图（修订版）
+# Appwrite + CNC Mainnet 实施蓝图（修订版）
 
 ## 1. 最终架构边界（按你的最新要求）
 
@@ -6,24 +6,27 @@
 - 业务功能：全部链上实现与读取。
 - 结论：订单、身份、奖励、OTC、池子余额、排行榜等都不入 Appwrite。
 
-唯一可信业务数据源是 BSC Testnet 链上合约状态与事件。
+唯一可信业务数据源是 CNC Mainnet 链上合约状态与事件。
 
 ---
 
 ## 2. 系统架构
 
-1) 前端 DApp
+1. 前端 DApp
+
 - 钱包连接（MetaMask）
 - 发起链上交易（购买矿机、升级节点/超级节点、OTC 挂单/成交等）
 - 直接读取合约 view 与事件日志
 - 只从 Appwrite 读取公告列表
 
-2) 智能合约（BSC Testnet）
+2. 智能合约（CNC Mainnet）
+
 - Core：矿机、节点、超级节点、分账与规则
 - Reward：奖励结算与领取（如适用）
 - OTC：身份 NFT 交易、手续费、价格约束
 
-3) Appwrite
+3. Appwrite
+
 - Database：公告集合（Announcement）
 - Auth（可选）：后台运营账号登录
 - Functions（可选）：公告定时发布、过期下线
@@ -37,6 +40,7 @@
 ### 集合：announcements
 
 字段建议：
+
 - announcementId (string, unique)
 - title (string, required)
 - summary (string, required)
@@ -44,17 +48,18 @@
 - lang (enum: zh-CN, en-US)
 - category (enum: system, campaign, maintenance, risk)
 - status (enum: draft, published, archived)
-- priority (integer, default 0)  // 数值越高越靠前
-- startAt (datetime, nullable)    // 生效时间
-- endAt (datetime, nullable)      // 失效时间
-- pin (boolean, default false)    // 是否置顶
-- tags (string[])                 // 标签
+- priority (integer, default 0) // 数值越高越靠前
+- startAt (datetime, nullable) // 生效时间
+- endAt (datetime, nullable) // 失效时间
+- pin (boolean, default false) // 是否置顶
+- tags (string[]) // 标签
 - coverUrl (string, nullable)
 - createdBy (string)
 - createdAt (datetime)
 - updatedAt (datetime)
 
 索引建议：
+
 - status + startAt + endAt
 - pin + priority + createdAt
 - lang + category
@@ -68,6 +73,7 @@
 - 普通钱包用户：不允许写入公告集合。
 
 建议策略：
+
 - 前台查询条件固定为：
   - status = published
   - (startAt 为空 或 startAt <= 当前时间)
@@ -92,6 +98,7 @@
 ## 6. 合约设计约束（为前端可读性服务）
 
 建议所有关键动作发出标准化事件：
+
 - MachinePurchased
 - NodePurchased
 - SuperNodePurchased
@@ -101,6 +108,7 @@
 - OtcOrderCancelled
 
 每个事件应包含：
+
 - 用户地址
 - 业务主键（orderId/rewardId/tokenId）
 - 金额与代币类型
@@ -113,6 +121,7 @@
 ## 7. 前端实现建议（避免性能问题）
 
 因为业务不落库，建议：
+
 - 近期数据（如 7 天）实时从 RPC 拉取
 - 历史数据采用分页按区块范围检索
 - 对事件结果做本地缓存（浏览器 IndexedDB）
@@ -122,12 +131,13 @@
 
 ---
 
-## 8. BSC Testnet 部署与环境变量
+## 8. CNC Mainnet 部署与环境变量
 
 必要变量：
-- BSC_TESTNET_RPC_URL
-- BSC_TESTNET_RPC_FALLBACK_URL（可选）
-- CHAIN_ID=97
+
+- CNC_MAINNET_RPC_URL
+- CNC_MAINNET_RPC_FALLBACK_URL（可选）
+- CHAIN_ID=50716
 - CORE_CONTRACT_ADDRESS
 - REWARD_CONTRACT_ADDRESS
 - OTC_CONTRACT_ADDRESS
@@ -150,10 +160,12 @@
 ## 10. 迁移说明（从旧设计到新设计）
 
 如果你之前按旧方案准备了 Appwrite 业务集合：
+
 - users、machine_orders、reward_ledger、otc_orders、otc_trades、pool_snapshots 等都可以废弃。
 - 保留并新建 announcements 即可。
 
 推荐做法：
+
 - 后端索引服务可选（仅用于前端加速），但不写 Appwrite。
 - 若未来需要分析报表，可另建离线数仓，不作为 DApp 业务依赖。
 
@@ -161,6 +173,6 @@
 
 ## 11. 下一步可直接执行
 
-1) 我可以继续给你输出 Appwrite 公告集合初始化 JSON（字段+索引）。
-2) 我可以给你一个前端数据层规范：哪些页面读 view，哪些页面读 event，统一 ABI 查询接口。
-3) 我可以补一份链上事件命名与字段标准，方便合约和前端一次对齐。
+1. 我可以继续给你输出 Appwrite 公告集合初始化 JSON（字段+索引）。
+2. 我可以给你一个前端数据层规范：哪些页面读 view，哪些页面读 event，统一 ABI 查询接口。
+3. 我可以补一份链上事件命名与字段标准，方便合约和前端一次对齐。

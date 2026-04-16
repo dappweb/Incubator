@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 
-const ROUTER = process.env.VITE_PANCAKE_V2_ROUTER_ADDRESS || "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
-const FACTORY = process.env.VITE_PANCAKE_V2_FACTORY_ADDRESS || "0xB7926C0430Afb07AA7DEfDE6DA862aE0Bde767bc";
+const ROUTER = process.env.PANCAKE_V2_ROUTER_ADDRESS || process.env.VITE_PANCAKE_V2_ROUTER_ADDRESS || "";
+const FACTORY = process.env.PANCAKE_V2_FACTORY_ADDRESS || process.env.VITE_PANCAKE_V2_FACTORY_ADDRESS || "";
 
 const USDT = process.env.USDT_TOKEN_ADDRESS!;
 const ICO = process.env.ICO_TOKEN_ADDRESS!;
@@ -43,6 +43,9 @@ async function tryMint(token: any, to: string, amount: bigint, symbol: string, c
 async function main() {
   if (!USDT || !ICO) {
     throw new Error("缺少 USDT_TOKEN_ADDRESS 或 ICO_TOKEN_ADDRESS");
+  }
+  if (!ROUTER || !FACTORY) {
+    throw new Error("缺少 CNC 上的 Pancake V2 ROUTER / FACTORY 地址配置");
   }
 
   const [deployer] = await ethers.getSigners();

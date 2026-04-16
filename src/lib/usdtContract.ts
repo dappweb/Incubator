@@ -1,6 +1,9 @@
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { USDT_CONTRACT_ADDRESS } from "../config";
 
+const envDecimals = Number(import.meta.env.VITE_USDT_DECIMALS ?? "18");
+export const USDT_DECIMALS = Number.isInteger(envDecimals) && envDecimals > 0 ? envDecimals : 18;
+
 const usdtAbi = [
   "function balanceOf(address account) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
@@ -34,9 +37,9 @@ export async function approveUsdt(provider: BrowserProvider, spender: string, am
 }
 
 export function parseUsdt(value: string) {
-  return parseUnits(value, 6);
+  return parseUnits(value, USDT_DECIMALS);
 }
 
 export function formatUsdt(value: bigint) {
-  return formatUnits(value, 6);
+  return formatUnits(value, USDT_DECIMALS);
 }

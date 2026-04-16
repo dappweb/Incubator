@@ -111,7 +111,7 @@ async function main() {
   if (nodeIncr !== 8_000_000n) throw new Error(`Node pool increment mismatch: ${nodeIncr}`);
   if (lbIncr   !== 2_000_000n) throw new Error(`Leaderboard pool increment mismatch: ${lbIncr}`);
 
-  // Helper: poll with retries for state reads (BSC Testnet public RPC can return stale data)
+  // Helper: poll with retries for state reads over public RPC.
   async function pollZero(readFn, label, maxRetries = 15) {
     for (let i = 0; i < maxRetries; i++) {
       const val = await readFn();
@@ -144,7 +144,7 @@ async function main() {
   console.log("Core role traderA:", roleA.toString());
   console.log("Identity owner after OTC:", ownerOfIdentity);
   console.log("ICO totalBurned:", totalBurned.toString());
-  console.log("Smoke test passed on BSC Testnet.");
+  console.log("Smoke test passed on CNC Mainnet.");
 }
 
 main().catch((error) => {

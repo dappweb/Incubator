@@ -37,8 +37,7 @@ async function main() {
   await swap.waitForDeployment();
 
   await (await swap.createDefaultPools(50, 200, 3000)).wait();
-  const shouldSeedSwapLiquidity =
-    process.env.SEED_SWAP_LIQUIDITY === "true" || (!process.env.ICO_TOKEN_ADDRESS && !process.env.LIGHT_TOKEN_ADDRESS);
+  const shouldSeedSwapLiquidity = process.env.SEED_SWAP_LIQUIDITY === "true";
   if (shouldSeedSwapLiquidity) {
     await trySeedSwapLiquidity(ethers, swap, usdtAddress, icoAddress, lightAddress, deployer.address);
   }
@@ -49,38 +48,21 @@ async function main() {
   console.log("IncubatorCore:", await core.getAddress());
   console.log("NodeOTCMarket:", await otc.getAddress());
   console.log("SwapPoolManager:", await swap.getAddress());
+  if (!shouldSeedSwapLiquidity) {
+    console.log("Swap liquidity seeding skipped. Set SEED_SWAP_LIQUIDITY=true after funding CNC USDT if you want to add initial liquidity.");
+  }
 }
 
 async function resolveUsdtAddress(
-  hardhatEthers: typeof ethers,
-  deployerAddress: string,
+  _hardhatEthers: typeof ethers,
+  _deployerAddress: string,
 ) {
-  const usdtAddress = process.env.USDT_TOKEN_ADDRESS;
-  const useMockUsdt = !usdtAddress || process.env.USE_MOCK_USDT === "true";
-
-  if (!useMockUsdt) {
-    return usdtAddress;
+  const usdtAddress = process.env.USDT_TOKEN_ADDRESS?.trim();
+  if (!usdtAddress) {
+    throw new Error("缺少 USDT_TOKEN_ADDRESS：当前部署已禁用 MockUSDT，请配置真实 USDT 地址");
   }
 
-  const MockUsdtFactory = await hardhatEthers.getContractFactory("MockUSDT");
-  const mockUsdt = await MockUsdtFactory.deploy(deployerAddress);
-  await mockUsdt.waitForDeployment();
-
-  const mintRecipients = splitEnvList(process.env.USDT_MINT_RECIPIENTS);
-  const mintAmounts = splitEnvList(process.env.USDT_MINT_AMOUNTS);
-
-  for (let index = 0; index < mintRecipients.length; index += 1) {
-    const recipient = mintRecipients[index];
-    const amount = mintAmounts[index];
-    if (!recipient || !amount) {
-      continue;
-    }
-
-    const mintTx = await mockUsdt.mint(recipient, amount);
-    await mintTx.wait();
-  }
-
-  return await mockUsdt.getAddress();
+  return usdtAddress;
 }
 
 async function resolveNamedTokenAddress(
@@ -135,9 +117,14 @@ async function trySeedSwapLiquidity(
   lightAddress: string,
   deployerAddress: string,
 ) {
-  const usdt = await hardhatEthers.getContractAt("MockUSDT", usdtAddress);
-  const ico = await hardhatEthers.getContractAt("IncubatorToken", icoAddress);
-  const light = await hardhatEthers.getContractAt("MockToken", lightAddress);
+  const erc20Abi = [
+    "function balanceOf(address) view returns (uint256)",
+    "function approve(address,uint256) returns (bool)",
+    "function mint(address,uint256)",
+  ];
+  const usdt = new hardhatEthers.Contract(usdtAddress, erc20Abi, await hardhatEthers.getSigner(deployerAddress));
+  const ico = new hardhatEthers.Contract(icoAddress, erc20Abi, await hardhatEthers.getSigner(deployerAddress));
+  const light = new hardhatEthers.Contract(lightAddress, erc20Abi, await hardhatEthers.getSigner(deployerAddress));
 
   const swapAddress = await swap.getAddress();
 
@@ -166,13 +153,24 @@ async function trySeedSwapLiquidity(
 
 function buildPoolRecipients(fallbackRecipient: string) {
   return [
-    process.env.LP_POOL_ADDRESS || fallbackRecipient,
-    process.env.REFERRAL_POOL_ADDRESS || fallbackRecipient,
-    process.env.SUPER_NODE_POOL_ADDRESS || fallbackRecipient,
-    process.env.NODE_POOL_ADDRESS || fallbackRecipient,
-    process.env.PLATFORM_POOL_ADDRESS || fallbackRecipient,
-    process.env.LEADERBOARD_POOL_ADDRESS || fallbackRecipient,
+    pickEnv("LP_POOL_ADDRESS", "POOL_LIQUIDITY_RECIPIENT") || fallbackRecipient,
+    pickEnv("REFERRAL_POOL_ADDRESS", "POOL_REFERRAL_RECIPIENT") || fallbackRecipient,
+    pickEnv("SUPER_NODE_POOL_ADDRESS", "POOL_SUPER_NODE_RECIPIENT") || fallbackRecipient,
+    pickEnv("NODE_POOL_ADDRESS", "POOL_NODE_RECIPIENT") || fallbackRecipient,
+    pickEnv("PLATFORM_POOL_ADDRESS", "POOL_PLATFORM_RECIPIENT") || fallbackRecipient,
+    pickEnv("LEADERBOARD_POOL_ADDRESS", "POOL_LEADERBOARD_RECIPIENT") || fallbackRecipient,
   ] as [string, string, string, string, string, string];
+}
+
+function pickEnv(...keys: string[]) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
 }
 
 function splitEnvList(value?: string) {
