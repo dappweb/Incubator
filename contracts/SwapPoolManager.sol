@@ -71,6 +71,10 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     mapping(uint8 => Pool) private pools;
     mapping(uint8 => mapping(address => uint256)) public feeVault;
 
+    // === NEW VARIABLES (appended after existing layout) ===
+    uint256 public lastLightSettlementDay;
+    address public rewardController;
+
     event PoolCreated(
         uint8 indexed pairId,
         address indexed token0,
@@ -109,6 +113,9 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         uint256 nodeAmount,
         uint256 superNodeAmount
     );
+    event LightSettlementTriggered(address indexed operator, uint256 indexed dayId, bool manual);
+    event LightRewardWithdrawn(address indexed to, uint256 amount, uint256 remainingReserve);
+    event RewardControllerUpdated(address indexed controller);
 
     function createDefaultPools(uint16 feeBpsUsdtIco, uint16 feeBpsLightIco, uint16 maxPriceImpactBps) external onlyOwner {
         _createPool(uint8(PairId.UsdtIco), address(usdt), address(ico), feeBpsUsdtIco, maxPriceImpactBps);
@@ -281,9 +288,36 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     }
 
     function settleLightFees() external onlyOwner whenNotPaused {
+        uint256 dayId = _currentDay();
         uint8 pairId = uint8(PairId.LightIco);
         uint256 totalAmount = feeVault[pairId][address(light)];
         require(totalAmount > 0, "no light fee");
+
+        _settleLightFees(dayId, totalAmount);
+        emit LightSettlementTriggered(msg.sender, dayId, true);
+    }
+
+    function settleLightFeesIfDue() external whenNotPaused returns (bool settled) {
+        uint256 dayId = _currentDay();
+        if (dayId <= lastLightSettlementDay) {
+            return false;
+        }
+
+        uint8 pairId = uint8(PairId.LightIco);
+        uint256 totalAmount = feeVault[pairId][address(light)];
+        if (totalAmount == 0) {
+            return false;
+        }
+
+        _settleLightFees(dayId, totalAmount);
+        emit LightSettlementTriggered(msg.sender, dayId, false);
+        return true;
+    }
+
+    function _settleLightFees(uint256 dayId, uint256 totalAmount) private {
+        require(dayId > lastLightSettlementDay, "already settled today");
+
+        uint8 pairId = uint8(PairId.LightIco);
 
         uint256 burnedAmount = (totalAmount * lightBurnBps) / BPS_DENOMINATOR;
         uint256 bootstrapAmount = (totalAmount * lightBootstrapBps) / BPS_DENOMINATOR;
@@ -312,7 +346,12 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
             emit FeeDistributed(pairId, address(light), lightSuperNodeRecipient, superNodeAmount);
         }
 
+        lastLightSettlementDay = dayId;
         emit LightFeesSettled(totalAmount, burnedAmount, bootstrapAmount, nodeAmount, superNodeAmount);
+    }
+
+    function _currentDay() private view returns (uint256) {
+        return block.timestamp / 1 days;
     }
 
     function updatePoolConfig(uint8 pairId, uint16 feeBps, uint16 maxPriceImpactBps) external onlyOwner {
@@ -362,6 +401,24 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    function setRewardController(address controller) external onlyOwner {
+        rewardController = controller;
+        emit RewardControllerUpdated(controller);
+    }
+
+    function withdrawLightForRewards(uint256 amount) external whenNotPaused {
+        require(msg.sender == rewardController, "not authorized");
+        require(amount > 0, "invalid amount");
+        Pool storage pool = pools[uint8(PairId.LightIco)];
+        require(pool.exists, "pool not found");
+        require(amount <= pool.reserve0, "insufficient reserve");
+
+        pool.reserve0 -= amount;
+        light.safeTransfer(msg.sender, amount);
+
+        emit LightRewardWithdrawn(msg.sender, amount, pool.reserve0);
     }
 
     function _createPool(

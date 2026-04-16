@@ -40,7 +40,29 @@ npm run precheck:upgrade:cncMainnet
 npm run upgrade:cncMainnet
 ```
 
-> 注意：业务功能全部链上实现，Appwrite 仅用于公告模块。
+> 注意：业务功能全部链上实现，公告默认走 JSONBin（可回退到 public/announcements.json）。
+
+### 公告模块（JSONBin）
+
+- 前端读取（可公开）：
+  - `VITE_JSONBIN_ANNOUNCEMENTS_BIN_ID`
+  - `VITE_JSONBIN_ANNOUNCEMENTS_ACCESS_KEY`（可选）
+  - `VITE_JSONBIN_API_BASE_URL`（可选，默认 `https://api.jsonbin.io/v3`）
+- 服务端写入（私钥，不能用 `VITE_` 前缀）：
+  - `JSONBIN_API_KEY`
+  - `JSONBIN_ANNOUNCEMENTS_BIN_ID`
+
+发布公告到 JSONBin：
+
+```bash
+npm run announcements:push
+```
+
+如需指定文件：
+
+```bash
+node scripts/push-announcements-jsonbin.js public/announcements.json
+```
 
 ## 部署到 Vercel
 
@@ -279,6 +301,50 @@ npm run cron:install:settle
 ### 4) 日志位置
 
 - 结算日志输出到 `deploy/logs/settlement-*.log`
+
+## Primary USDT/ICO 控制器运维（CNC Mainnet）
+
+当已配置 `VITE_PRIMARY_SWAP_CONTROLLER_ADDRESS`（或 `PRIMARY_SWAP_CONTROLLER_PROXY`）时，可通过以下命令对主交易对卖出门控进行运维。
+
+### 1) 先检查状态
+
+```bash
+npm run primary:status:cncMainnet
+```
+
+可选：如果你希望临时指定控制器地址，可在命令后追加参数。
+
+```bash
+npm run primary:status:cncMainnet -- 0xYourControllerAddress
+```
+
+### 2) 上报 ICO 持币地址数
+
+方式 A：环境变量
+
+```bash
+ICO_HOLDER_COUNT=12345 npm run primary:report-holders:cncMainnet
+```
+
+方式 B：命令参数（地址 + holderCount）
+
+```bash
+npm run primary:report-holders:cncMainnet -- 0xYourControllerAddress 12345
+```
+
+### 3) 开启 ICO->USDT 卖出
+
+```bash
+npm run primary:enable-sell:cncMainnet
+```
+
+可选：指定控制器地址
+
+```bash
+npm run primary:enable-sell:cncMainnet -- 0xYourControllerAddress
+```
+
+若阈值（USDT 储备 + 持币人数）未满足，脚本会直接报错并阻止开启。
 
 ## Docs
 

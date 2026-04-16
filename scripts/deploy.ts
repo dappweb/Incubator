@@ -8,6 +8,8 @@ async function main() {
   const usdtAddress = await resolveUsdtAddress(ethers, deployer.address);
   const icoAddress = await resolveIcoTokenAddress(ethers, deployer.address);
   const lightAddress = await resolveNamedTokenAddress(ethers, "LIGHT", "Incubator LIGHT", "LIGHT", deployer.address);
+  const externalRouterAddress = pickEnv("PANCAKE_V2_ROUTER_ADDRESS", "VITE_PANCAKE_V2_ROUTER_ADDRESS", "VITE_PANCAKE_V3_ROUTER_ADDRESS");
+  const externalFactoryAddress = pickEnv("PANCAKE_V2_FACTORY_ADDRESS", "VITE_PANCAKE_V2_FACTORY_ADDRESS", "PANCAKE_V3_FACTORY_ADDRESS", "VITE_PANCAKE_V3_FACTORY_ADDRESS");
 
   const CoreFactory = await ethers.getContractFactory("IncubatorCore");
   const core = await upgrades.deployProxy(CoreFactory, [usdtAddress, deployer.address, poolRecipients], {
@@ -42,12 +44,40 @@ async function main() {
     await trySeedSwapLiquidity(ethers, swap, usdtAddress, icoAddress, lightAddress, deployer.address);
   }
 
+  let primarySwapControllerAddress = "";
+  if (externalRouterAddress && externalFactoryAddress) {
+    const PrimaryFactory = await ethers.getContractFactory("PrimarySwapController");
+    const controller = await upgrades.deployProxy(
+      PrimaryFactory,
+      [
+        usdtAddress,
+        icoAddress,
+        externalRouterAddress,
+        externalFactoryAddress,
+        deployer.address,
+        [poolRecipients[2], poolRecipients[3], poolRecipients[4]],
+      ],
+      {
+        kind: "uups",
+        initializer: "initialize",
+        unsafeAllow: ["constructor"],
+      },
+    );
+    await controller.waitForDeployment();
+    primarySwapControllerAddress = await controller.getAddress();
+  }
+
   console.log("USDT:", usdtAddress);
   console.log("ICO:", icoAddress);
   console.log("LIGHT:", lightAddress);
   console.log("IncubatorCore:", await core.getAddress());
   console.log("NodeOTCMarket:", await otc.getAddress());
   console.log("SwapPoolManager:", await swap.getAddress());
+  if (primarySwapControllerAddress) {
+    console.log("PrimarySwapController:", primarySwapControllerAddress);
+  } else {
+    console.log("PrimarySwapController skipped. Set PANCAKE_V2_ROUTER_ADDRESS and PANCAKE_V2_FACTORY_ADDRESS to deploy it.");
+  }
   if (!shouldSeedSwapLiquidity) {
     console.log("Swap liquidity seeding skipped. Set SEED_SWAP_LIQUIDITY=true after funding CNC USDT if you want to add initial liquidity.");
   }

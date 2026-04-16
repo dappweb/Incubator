@@ -1,4 +1,4 @@
-import { BrowserProvider, Contract } from "ethers";
+import { AbstractSigner, BrowserProvider, Contract } from "ethers";
 import { OTC_CONTRACT_ADDRESS } from "../config";
 
 const otcAbi = [
@@ -12,6 +12,8 @@ const otcAbi = [
   "function feeBps() view returns (uint256)",
   "function feeRecipient() view returns (address)",
   "function updateFeeConfig(uint256 newFeeBps, address newRecipient) external",
+  "function cleanupLowerOrders(uint8 role, uint256 maxCancels) external",
+  "function getActiveOrdersCount() view returns (uint256)",
 ];
 
 export type OtcFeeConfig = {
@@ -58,24 +60,25 @@ export async function createOtcOrder(
   provider: BrowserProvider,
   identityId: bigint,
   priceUSDT: bigint,
+  signer?: AbstractSigner,
 ) {
-  const signer = await provider.getSigner();
+  if (!signer) signer = await provider.getSigner();
   const contract = getOtcContract(provider).connect(signer) as any;
-  const tx = await contract.createOrder(identityId, priceUSDT);
+  const tx = await contract.createOrder(identityId, priceUSDT, { gasLimit: 500_000n });
   return tx.wait();
 }
 
-export async function cancelOtcOrder(provider: BrowserProvider, orderId: bigint) {
-  const signer = await provider.getSigner();
+export async function cancelOtcOrder(provider: BrowserProvider, orderId: bigint, signer?: AbstractSigner) {
+  if (!signer) signer = await provider.getSigner();
   const contract = getOtcContract(provider).connect(signer) as any;
-  const tx = await contract.cancelOrder(orderId);
+  const tx = await contract.cancelOrder(orderId, { gasLimit: 300_000n });
   return tx.wait();
 }
 
-export async function fillOtcOrder(provider: BrowserProvider, orderId: bigint) {
-  const signer = await provider.getSigner();
+export async function fillOtcOrder(provider: BrowserProvider, orderId: bigint, signer?: AbstractSigner) {
+  if (!signer) signer = await provider.getSigner();
   const contract = getOtcContract(provider).connect(signer) as any;
-  const tx = await contract.fillOrder(orderId);
+  const tx = await contract.fillOrder(orderId, { gasLimit: 800_000n });
   return tx.wait();
 }
 
@@ -104,4 +107,16 @@ export async function updateOtcFeeConfig(provider: BrowserProvider, feeBps: numb
 export async function getLastTradePriceByRole(provider: BrowserProvider, role: number): Promise<bigint> {
   const contract = getOtcContract(provider) as any;
   return contract.lastTradePriceByRole(role);
+}
+
+export async function cleanupLowerOrders(provider: BrowserProvider, role: number, maxCancels: number) {
+  const signer = await provider.getSigner();
+  const contract = getOtcContract(provider).connect(signer) as any;
+  const tx = await contract.cleanupLowerOrders(role, maxCancels, { gasLimit: 2_000_000n });
+  return tx.wait();
+}
+
+export async function getActiveOrdersCount(provider: BrowserProvider): Promise<number> {
+  const contract = getOtcContract(provider) as any;
+  return Number(await contract.getActiveOrdersCount());
 }

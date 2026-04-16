@@ -59,11 +59,17 @@ describe("IncubatorCore", function () {
 
     assert.equal(await core.roles(buyer.address), 0n);
 
+    const nodePoolBeforeRoleBuys = await usdt.balanceOf(nodePool.address);
+    const superPoolBeforeRoleBuys = await usdt.balanceOf(superPool.address);
+
     await core.connect(buyer).buyNode();
     assert.equal(await core.roles(buyer.address), 1n);
 
     await core.connect(buyer).buySuperNode();
     assert.equal(await core.roles(buyer.address), 2n);
+
+    assert.equal(await usdt.balanceOf(nodePool.address), nodePoolBeforeRoleBuys);
+    assert.equal(await usdt.balanceOf(superPool.address), superPoolBeforeRoleBuys);
   });
 
   it("blocks purchases while paused", async function () {
@@ -211,6 +217,227 @@ describe("IncubatorCore", function () {
     assert.equal(after[4] - before[4], 2_000_000n);  // Leaderboard 2%
   });
 
+  it("applies 30/20/50 referral cycle for node purchases regardless of referrer role", async function () {
+    const [owner, nodeReferrer, superReferrer, buyerA, buyerB, buyerC, buyerD, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    const fundAndApprove = async (account: any, amount: bigint) => {
+      await usdt.connect(owner).mint(account.address, amount);
+      await usdt.connect(account).approve(coreAddr, amount);
+    };
+
+    for (const account of [nodeReferrer, superReferrer, buyerA, buyerB, buyerC, buyerD]) {
+      await fundAndApprove(account, 20_000_000_000n);
+    }
+
+    await core.connect(nodeReferrer).bindReferrer(owner.address);
+    await core.connect(nodeReferrer).buyNode();
+
+    await core.connect(superReferrer).bindReferrer(owner.address);
+    await core.connect(superReferrer).buySuperNode();
+
+    const nodeReferrerBefore = await usdt.balanceOf(nodeReferrer.address);
+    const lpBeforeNode = await usdt.balanceOf(lp.address);
+
+    await core.connect(buyerA).bindReferrer(nodeReferrer.address);
+    await core.connect(buyerA).buyNode();
+    await core.connect(buyerB).bindReferrer(nodeReferrer.address);
+    await core.connect(buyerB).buyNode();
+    await core.connect(buyerC).bindReferrer(nodeReferrer.address);
+    await core.connect(buyerC).buyNode();
+
+    const nodeReferrerAfter = await usdt.balanceOf(nodeReferrer.address);
+    const lpAfterNode = await usdt.balanceOf(lp.address);
+
+    assert.equal(nodeReferrerAfter - nodeReferrerBefore, 1_000_000_000n);
+    assert.equal(lpAfterNode - lpBeforeNode, 1_340_000_000n);
+    assert.equal(await core.directNodeReferralCount(nodeReferrer.address), 3n);
+
+    const superReferrerBefore = await usdt.balanceOf(superReferrer.address);
+    const lpBeforeSuperReferrer = await usdt.balanceOf(lp.address);
+
+    await core.connect(buyerD).bindReferrer(superReferrer.address);
+    await core.connect(buyerD).buyNode();
+
+    const superReferrerAfter = await usdt.balanceOf(superReferrer.address);
+    const lpAfterSuperReferrer = await usdt.balanceOf(lp.address);
+
+    assert.equal(superReferrerAfter - superReferrerBefore, 300_000_000n);
+    assert.equal(lpAfterSuperReferrer - lpBeforeSuperReferrer, 480_000_000n);
+    assert.equal(await core.directNodeReferralCount(superReferrer.address), 1n);
+  });
+
+  it("pays fixed 20 percent referral for super-node purchases regardless of referrer role", async function () {
+    const [owner, nodeReferrer, superReferrer, buyerA, buyerB, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    const fundAndApprove = async (account: any, amount: bigint) => {
+      await usdt.connect(owner).mint(account.address, amount);
+      await usdt.connect(account).approve(coreAddr, amount);
+    };
+
+    for (const account of [nodeReferrer, superReferrer, buyerA, buyerB]) {
+      await fundAndApprove(account, 30_000_000_000n);
+    }
+
+    await core.connect(nodeReferrer).bindReferrer(owner.address);
+    await core.connect(nodeReferrer).buyNode();
+
+    await core.connect(superReferrer).bindReferrer(owner.address);
+    await core.connect(superReferrer).buySuperNode();
+
+    const nodeReferrerBefore = await usdt.balanceOf(nodeReferrer.address);
+    const superReferrerBefore = await usdt.balanceOf(superReferrer.address);
+    const lpBefore = await usdt.balanceOf(lp.address);
+
+    await core.connect(buyerA).bindReferrer(nodeReferrer.address);
+    await core.connect(buyerA).buySuperNode();
+    await core.connect(buyerB).bindReferrer(superReferrer.address);
+    await core.connect(buyerB).buySuperNode();
+
+    const nodeReferrerAfter = await usdt.balanceOf(nodeReferrer.address);
+    const superReferrerAfter = await usdt.balanceOf(superReferrer.address);
+    const lpAfter = await usdt.balanceOf(lp.address);
+
+    assert.equal(nodeReferrerAfter - nodeReferrerBefore, 600_000_000n);
+    assert.equal(superReferrerAfter - superReferrerBefore, 600_000_000n);
+    assert.equal(lpAfter - lpBefore, 3_480_000_000n);
+    assert.equal(await core.directSuperNodeReferralCount(nodeReferrer.address), 1n);
+    assert.equal(await core.directSuperNodeReferralCount(superReferrer.address), 1n);
+  });
+
+  it("does not fund node or super-node pools from role purchases", async function () {
+    const [owner, buyer, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+
+    await usdt.connect(owner).mint(buyer.address, 10_000_000_000n);
+    await usdt.connect(buyer).approve(await core.getAddress(), 10_000_000_000n);
+    await core.connect(buyer).bindReferrer(owner.address);
+
+    const superPoolBefore = await usdt.balanceOf(superPool.address);
+    const nodePoolBefore = await usdt.balanceOf(nodePool.address);
+
+    await core.connect(buyer).buyNode();
+    await core.connect(buyer).buySuperNode();
+
+    assert.equal(await usdt.balanceOf(superPool.address), superPoolBefore);
+    assert.equal(await usdt.balanceOf(nodePool.address), nodePoolBefore);
+  });
+
+  it("settles daily rewards manually and enforces same-day ifDue idempotency", async function () {
+    const [owner, buyer, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    await usdt.connect(owner).mint(buyer.address, 2_000_000_000n);
+    await usdt.connect(owner).mint(owner.address, 2_000_000_000n);
+    await usdt.connect(buyer).approve(coreAddr, 2_000_000_000n);
+    await usdt.connect(owner).approve(coreAddr, 2_000_000_000n);
+
+    await core.connect(buyer).bindReferrer(owner.address);
+    await core.connect(buyer).purchaseMachine(1);
+
+    await core.connect(owner).fundRewardPool(1_000_000_000n);
+    const poolBefore = await core.rewardPoolBalance();
+    assert.equal(poolBefore, 1_000_000_000n);
+
+    await core.connect(owner).settleDailyRewardsManual([buyer.address]);
+
+    const orderProgress = await core.getOrderRewardProgress(1);
+    assert.equal(orderProgress.staticPaid, 5_760_000n);
+    assert.equal(orderProgress.dynamicPaid, 0n);
+    assert.equal(orderProgress.remainingCap, 294_240_000n);
+    assert.equal(orderProgress.exited, false);
+
+    // 2% release from 1000 USDT => 20 USDT; burn 10.4 USDT, reward 9.6 USDT.
+    // With no dynamic denominator, only static 60% (5.76 USDT) is distributed and 3.84 USDT is carried back.
+    assert.equal(await core.rewardPoolBalance(), 983_840_000n);
+
+    const canSettleAgainSameDay = await core.connect(owner).settleDailyRewardsIfDue.staticCall([buyer.address]);
+    assert.equal(canSettleAgainSameDay, false);
+
+    await ethers.provider.send("evm_increaseTime", [24 * 60 * 60]);
+    await ethers.provider.send("evm_mine", []);
+
+    const canSettleNextDay = await core.connect(owner).settleDailyRewardsIfDue.staticCall([buyer.address]);
+    assert.equal(canSettleNextDay, true);
+  });
+
+  it("distributes daily dynamic rewards by team volume ratio", async function () {
+    const [owner, alice, bob, aliceMid, aliceLeaf, bobMid, bobLeafA, bobLeafB, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    const participants = [alice, bob, aliceMid, aliceLeaf, bobMid, bobLeafA, bobLeafB];
+    for (const user of participants) {
+      await usdt.connect(owner).mint(user.address, 3_000_000_000n);
+      await usdt.connect(user).approve(coreAddr, 3_000_000_000n);
+    }
+    await usdt.connect(owner).mint(owner.address, 2_000_000_000n);
+    await usdt.connect(owner).approve(coreAddr, 2_000_000_000n);
+
+    await core.connect(alice).bindReferrer(owner.address);
+    await core.connect(bob).bindReferrer(owner.address);
+    await core.connect(aliceMid).bindReferrer(alice.address);
+    await core.connect(aliceLeaf).bindReferrer(aliceMid.address);
+    await core.connect(bobMid).bindReferrer(bob.address);
+    await core.connect(bobLeafA).bindReferrer(bobMid.address);
+    await core.connect(bobLeafB).bindReferrer(bobMid.address);
+
+    // Participants each own one machine order (orderId 1 and 2) for static split.
+    await core.connect(alice).purchaseMachine(1);
+    await core.connect(bob).purchaseMachine(1);
+
+    // Build dynamic weights through indirect downlines:
+    // alice team = 100 USDT, bob team = 300 USDT.
+    await core.connect(aliceLeaf).purchaseMachine(1);
+    await core.connect(bobLeafA).purchaseMachine(1);
+    await core.connect(bobLeafB).purchaseMachine(2);
+
+    assert.equal(await core.teamTotalVolume(alice.address), 100_000_000n);
+    assert.equal(await core.teamTotalVolume(bob.address), 300_000_000n);
+
+    await core.connect(owner).fundRewardPool(1_000_000_000n);
+    await core.connect(owner).settleDailyRewardsManual([alice.address, bob.address]);
+
+    const aliceOrder = await core.getOrderRewardProgress(1);
+    const bobOrder = await core.getOrderRewardProgress(2);
+
+    // Static pool = 5.76 USDT, equal power => 2.88 + 2.88.
+    // Dynamic pool = 3.84 USDT, team ratio 1:3 => 0.96 + 2.88.
+    assert.equal(aliceOrder.staticPaid, 2_880_000n);
+    assert.equal(aliceOrder.dynamicPaid, 960_000n);
+    assert.equal(bobOrder.staticPaid, 2_880_000n);
+    assert.equal(bobOrder.dynamicPaid, 2_880_000n);
+  });
+
   it("rejects price updates that exceed allowed maximums", async function () {
     const [owner, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
     const usdt = await deployMockUsdt(owner.address);
@@ -336,6 +563,116 @@ describe("IncubatorCore", function () {
     assert.ok(aliceAfter > aliceBefore);
     assert.ok(bobAfter > bobBefore);
     assert.equal((aliceAfter - aliceBefore) + (bobAfter - bobBefore), accumulated);
+  });
+
+  it("tracks lucky leaderboard by latest 10 orders including duplicate buyers", async function () {
+    const [owner, alice, bob, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    await usdt.connect(owner).mint(alice.address, 10_000_000_000n);
+    await usdt.connect(owner).mint(bob.address, 10_000_000_000n);
+    await usdt.connect(alice).approve(coreAddr, 10_000_000_000n);
+    await usdt.connect(bob).approve(coreAddr, 10_000_000_000n);
+
+    await core.connect(alice).bindReferrer(owner.address);
+    await core.connect(bob).bindReferrer(owner.address);
+
+    await core.connect(alice).purchaseMachine(1);
+    await core.connect(bob).purchaseMachine(1);
+    await core.connect(alice).purchaseMachine(1);
+
+    const dayId = await core.currentDay();
+    const board = await core.getLeaderboard(dayId);
+
+    assert.equal(board.lastCount, 3n);
+    assert.equal(board.lastUsers[0], alice.address);
+    assert.equal(board.lastUsers[1], bob.address);
+    assert.equal(board.lastUsers[2], alice.address);
+  });
+
+  it("uses first order time as tie-breaker when top volumes are equal", async function () {
+    const [owner, alice, bob, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    await usdt.connect(owner).mint(alice.address, 10_000_000_000n);
+    await usdt.connect(owner).mint(bob.address, 10_000_000_000n);
+    await usdt.connect(alice).approve(coreAddr, 10_000_000_000n);
+    await usdt.connect(bob).approve(coreAddr, 10_000_000_000n);
+
+    await core.connect(alice).bindReferrer(owner.address);
+    await core.connect(bob).bindReferrer(owner.address);
+
+    await core.connect(alice).purchaseMachine(2);
+    await core.connect(bob).purchaseMachine(2);
+
+    const dayId = await core.currentDay();
+    const board = await core.getLeaderboard(dayId);
+
+    assert.equal(board.topCount, 2n);
+    assert.equal(board.topVolumes[0], board.topVolumes[1]);
+    assert.equal(board.topUsers[0], alice.address);
+    assert.equal(board.topUsers[1], bob.address);
+  });
+
+  it("applies whitelist adjustment by deducting first-rank share on top and lucky pools", async function () {
+    const [owner, alice, bob, white, lp, referral, superPool, nodePool, platform] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+
+    const factory = await ethers.getContractFactory("IncubatorCore");
+    const core: any = await upgrades.deployProxy(
+      factory,
+      [await usdt.getAddress(), owner.address,
+        [lp.address, referral.address, superPool.address, nodePool.address, platform.address, owner.address]],
+      { kind: "uups", initializer: "initialize", unsafeAllow: ["constructor", "state-variable-assignment"] },
+    );
+    await core.waitForDeployment();
+    const coreAddr = await core.getAddress();
+
+    await core.connect(owner).updatePoolRecipient(5, coreAddr);
+    await core.connect(owner).setLeaderboardWhitelist([white.address]);
+    await core.connect(owner).setLeaderboardWhitelistAdjustPct(10);
+
+    await usdt.connect(owner).mint(alice.address, 10_000_000_000n);
+    await usdt.connect(owner).mint(bob.address, 10_000_000_000n);
+    await usdt.connect(alice).approve(coreAddr, 10_000_000_000n);
+    await usdt.connect(bob).approve(coreAddr, 10_000_000_000n);
+
+    await core.connect(alice).bindReferrer(owner.address);
+    await core.connect(bob).bindReferrer(owner.address);
+
+    await core.connect(alice).purchaseMachine(5);
+    await core.connect(bob).purchaseMachine(2);
+
+    const accumulated = await core.poolAccumulated(5);
+    assert.equal(accumulated, 14_000_000n);
+
+    const dayId = await core.currentDay();
+    const aliceBefore = await usdt.balanceOf(alice.address);
+    const bobBefore = await usdt.balanceOf(bob.address);
+    const whiteBefore = await usdt.balanceOf(white.address);
+
+    await core.connect(owner).settleLeaderboard(dayId);
+
+    const aliceDelta = (await usdt.balanceOf(alice.address)) - aliceBefore;
+    const bobDelta = (await usdt.balanceOf(bob.address)) - bobBefore;
+    const whiteDelta = (await usdt.balanceOf(white.address)) - whiteBefore;
+
+    assert.equal(whiteDelta, 1_400_000n);
+    assert.equal(aliceDelta, 7_560_000n);
+    assert.equal(bobDelta, 5_040_000n);
+    assert.equal(aliceDelta + bobDelta + whiteDelta, accumulated);
   });
 
   it("settles node and super-node pool with provided BPS list", async function () {

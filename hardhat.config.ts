@@ -16,10 +16,13 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 1,
       },
       evmVersion: "paris",
       viaIR: true,
+      debug: {
+        revertStrings: "strip",
+      },
     },
   },
   paths: {
@@ -29,6 +32,9 @@ const config: HardhatUserConfig = {
     artifacts: "./artifacts",
   },
   networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
     cncMainnet: {
       url: cncMainnetRpcUrl,
       accounts: deployerAccounts,

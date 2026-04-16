@@ -1,0 +1,1698 @@
+{
+  "core": "0xECD96148D33A8ca8F86cd701d445FB3bbe7592E2",
+  "rpc": "https://rpc.cncchainpro.com",
+  "latestBlock": 7632616,
+  "token": {
+    "address": "0xC4eA24dFC165Fedb881783a84F44C2806CF7FBbD",
+    "symbol": "USDx5",
+    "decimals": 18
+  },
+  "counts": {
+    "machinePurchased": 8,
+    "nodePurchased": 3,
+    "superNodePurchased": 3,
+    "poolAllocated": 84,
+    "poolRewardSettled": 0,
+    "leaderboardSettled": 0,
+    "leaderboardLuckySettled": 0,
+    "rewardSettled": 0
+  },
+  "totalsRaw": {
+    "poolAllocated": "14600000000000000000000",
+    "poolRewardSettled": "0",
+    "leaderboardSettled": "0",
+    "leaderboardLuckySettled": "0",
+    "rewardSettled": "0"
+  },
+  "totalsFormatted": {
+    "poolAllocated": "14600.0",
+    "poolRewardSettled": "0.0",
+    "leaderboardSettled": "0.0",
+    "leaderboardLuckySettled": "0.0",
+    "rewardSettled": "0.0"
+  },
+  "byRecipientPoolAllocated": {
+    "0x744447d8580eb900b199e852c132f626247a36f7": {
+      "count": 81,
+      "amountUSDT": "14395000000000000000000",
+      "amountFormatted": "14395.0"
+    },
+    "0x2f0549714e63b91d07c84100f1e753d4516bb9f0": {
+      "count": 3,
+      "amountUSDT": "205000000000000000000",
+      "amountFormatted": "205.0"
+    }
+  },
+  "events": {
+    "poolAllocated": [
+      {
+        "orderId": "1",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0xa6b985575422a0561a6c9cc56b421883e55308bee6b8fc1129e6ad3d0af74fe5",
+        "block": 7619380,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 6000,
+          "formula": "60000000000000000000 = 100000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0xa6b985575422a0561a6c9cc56b421883e55308bee6b8fc1129e6ad3d0af74fe5",
+        "block": 7619380,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0xa6b985575422a0561a6c9cc56b421883e55308bee6b8fc1129e6ad3d0af74fe5",
+        "block": 7619380,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "8000000000000000000",
+        "tx": "0xa6b985575422a0561a6c9cc56b421883e55308bee6b8fc1129e6ad3d0af74fe5",
+        "block": 7619380,
+        "amountFormatted": "8.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 800,
+          "formula": "8000000000000000000 = 100000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0xa6b985575422a0561a6c9cc56b421883e55308bee6b8fc1129e6ad3d0af74fe5",
+        "block": 7619380,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 2000,
+          "formula": "20000000000000000000 = 100000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "2000000000000000000",
+        "tx": "0xa6b985575422a0561a6c9cc56b421883e55308bee6b8fc1129e6ad3d0af74fe5",
+        "block": 7619380,
+        "amountFormatted": "2.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 200,
+          "formula": "2000000000000000000 = 100000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0x78be69e7c5991db6bcab6489f5fce95b9d92a00a6a96ec98cadaf977cc1eebcd",
+        "block": 7619737,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 6000,
+          "formula": "60000000000000000000 = 100000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0x78be69e7c5991db6bcab6489f5fce95b9d92a00a6a96ec98cadaf977cc1eebcd",
+        "block": 7619737,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0x78be69e7c5991db6bcab6489f5fce95b9d92a00a6a96ec98cadaf977cc1eebcd",
+        "block": 7619737,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "8000000000000000000",
+        "tx": "0x78be69e7c5991db6bcab6489f5fce95b9d92a00a6a96ec98cadaf977cc1eebcd",
+        "block": 7619737,
+        "amountFormatted": "8.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 800,
+          "formula": "8000000000000000000 = 100000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0x78be69e7c5991db6bcab6489f5fce95b9d92a00a6a96ec98cadaf977cc1eebcd",
+        "block": 7619737,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 2000,
+          "formula": "20000000000000000000 = 100000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "2000000000000000000",
+        "tx": "0x78be69e7c5991db6bcab6489f5fce95b9d92a00a6a96ec98cadaf977cc1eebcd",
+        "block": 7619737,
+        "amountFormatted": "2.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 200,
+          "formula": "2000000000000000000 = 100000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000001",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0x411023b951615cf59ffdbe24764fbe748922df93ea140090eddf63258528cc54",
+        "block": 7619742,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 6000,
+          "formula": "600000000000000000000 = 1000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000001",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0x411023b951615cf59ffdbe24764fbe748922df93ea140090eddf63258528cc54",
+        "block": 7619742,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000001",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0x411023b951615cf59ffdbe24764fbe748922df93ea140090eddf63258528cc54",
+        "block": 7619742,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000001",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "80000000000000000000",
+        "tx": "0x411023b951615cf59ffdbe24764fbe748922df93ea140090eddf63258528cc54",
+        "block": 7619742,
+        "amountFormatted": "80.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 800,
+          "formula": "80000000000000000000 = 1000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000001",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "200000000000000000000",
+        "tx": "0x411023b951615cf59ffdbe24764fbe748922df93ea140090eddf63258528cc54",
+        "block": 7619742,
+        "amountFormatted": "200.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 2000,
+          "formula": "200000000000000000000 = 1000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000001",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0x411023b951615cf59ffdbe24764fbe748922df93ea140090eddf63258528cc54",
+        "block": 7619742,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 200,
+          "formula": "20000000000000000000 = 1000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000001",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "1800000000000000000000",
+        "tx": "0x22848317b4b8fd6844e931d76843c1050993da786cdef5b398a396193f0a5162",
+        "block": 7619746,
+        "amountFormatted": "1800.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 6000,
+          "formula": "1800000000000000000000 = 3000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000001",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "150000000000000000000",
+        "tx": "0x22848317b4b8fd6844e931d76843c1050993da786cdef5b398a396193f0a5162",
+        "block": 7619746,
+        "amountFormatted": "150.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 500,
+          "formula": "150000000000000000000 = 3000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000001",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "150000000000000000000",
+        "tx": "0x22848317b4b8fd6844e931d76843c1050993da786cdef5b398a396193f0a5162",
+        "block": 7619746,
+        "amountFormatted": "150.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 500,
+          "formula": "150000000000000000000 = 3000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000001",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "240000000000000000000",
+        "tx": "0x22848317b4b8fd6844e931d76843c1050993da786cdef5b398a396193f0a5162",
+        "block": 7619746,
+        "amountFormatted": "240.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 800,
+          "formula": "240000000000000000000 = 3000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000001",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0x22848317b4b8fd6844e931d76843c1050993da786cdef5b398a396193f0a5162",
+        "block": 7619746,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 2000,
+          "formula": "600000000000000000000 = 3000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000001",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0x22848317b4b8fd6844e931d76843c1050993da786cdef5b398a396193f0a5162",
+        "block": 7619746,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "identityId": "1",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 200,
+          "formula": "60000000000000000000 = 3000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "3",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0x3b58d6503d33d782f87868eadf8cc8d6f91df22b30854346a3fb089f90859d54",
+        "block": 7619875,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 6000,
+          "formula": "60000000000000000000 = 100000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "3",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0x3b58d6503d33d782f87868eadf8cc8d6f91df22b30854346a3fb089f90859d54",
+        "block": 7619875,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "3",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0x3b58d6503d33d782f87868eadf8cc8d6f91df22b30854346a3fb089f90859d54",
+        "block": 7619875,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "3",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "8000000000000000000",
+        "tx": "0x3b58d6503d33d782f87868eadf8cc8d6f91df22b30854346a3fb089f90859d54",
+        "block": 7619875,
+        "amountFormatted": "8.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 800,
+          "formula": "8000000000000000000 = 100000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "3",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0x3b58d6503d33d782f87868eadf8cc8d6f91df22b30854346a3fb089f90859d54",
+        "block": 7619875,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 2000,
+          "formula": "20000000000000000000 = 100000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "3",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "2000000000000000000",
+        "tx": "0x3b58d6503d33d782f87868eadf8cc8d6f91df22b30854346a3fb089f90859d54",
+        "block": 7619875,
+        "amountFormatted": "2.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 200,
+          "formula": "2000000000000000000 = 100000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "4",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0xeb588dcb3dab12b84bc574edfba29ab1e3aa1ca0c31ba410ce5e84dceb57bd07",
+        "block": 7621303,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 6000,
+          "formula": "600000000000000000000 = 1000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "4",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0xeb588dcb3dab12b84bc574edfba29ab1e3aa1ca0c31ba410ce5e84dceb57bd07",
+        "block": 7621303,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "4",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0xeb588dcb3dab12b84bc574edfba29ab1e3aa1ca0c31ba410ce5e84dceb57bd07",
+        "block": 7621303,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "4",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "80000000000000000000",
+        "tx": "0xeb588dcb3dab12b84bc574edfba29ab1e3aa1ca0c31ba410ce5e84dceb57bd07",
+        "block": 7621303,
+        "amountFormatted": "80.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 800,
+          "formula": "80000000000000000000 = 1000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "4",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "200000000000000000000",
+        "tx": "0xeb588dcb3dab12b84bc574edfba29ab1e3aa1ca0c31ba410ce5e84dceb57bd07",
+        "block": 7621303,
+        "amountFormatted": "200.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 2000,
+          "formula": "200000000000000000000 = 1000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "4",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0xeb588dcb3dab12b84bc574edfba29ab1e3aa1ca0c31ba410ce5e84dceb57bd07",
+        "block": 7621303,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 200,
+          "formula": "20000000000000000000 = 1000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "5",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0xb460692e7c29152ed256660ffb248a4e22b8d05ecfbccc50af52d6ad57cf95b4",
+        "block": 7621330,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 6000,
+          "formula": "600000000000000000000 = 1000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "5",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0xb460692e7c29152ed256660ffb248a4e22b8d05ecfbccc50af52d6ad57cf95b4",
+        "block": 7621330,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "5",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0xb460692e7c29152ed256660ffb248a4e22b8d05ecfbccc50af52d6ad57cf95b4",
+        "block": 7621330,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "5",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "80000000000000000000",
+        "tx": "0xb460692e7c29152ed256660ffb248a4e22b8d05ecfbccc50af52d6ad57cf95b4",
+        "block": 7621330,
+        "amountFormatted": "80.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 800,
+          "formula": "80000000000000000000 = 1000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "5",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "200000000000000000000",
+        "tx": "0xb460692e7c29152ed256660ffb248a4e22b8d05ecfbccc50af52d6ad57cf95b4",
+        "block": 7621330,
+        "amountFormatted": "200.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 2000,
+          "formula": "200000000000000000000 = 1000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "5",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0xb460692e7c29152ed256660ffb248a4e22b8d05ecfbccc50af52d6ad57cf95b4",
+        "block": 7621330,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x7123a25d205190e6844712cb18e39d6dd5316143",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "sourceQuantity": "10",
+          "computedBps": 200,
+          "formula": "20000000000000000000 = 1000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000002",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0x8f19aec0a9d4f065ecc67c16c00eee7ff004254217c7116b8b059d2b35d8625b",
+        "block": 7626694,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 6000,
+          "formula": "600000000000000000000 = 1000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000002",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0x8f19aec0a9d4f065ecc67c16c00eee7ff004254217c7116b8b059d2b35d8625b",
+        "block": 7626694,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000002",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0x8f19aec0a9d4f065ecc67c16c00eee7ff004254217c7116b8b059d2b35d8625b",
+        "block": 7626694,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000002",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "80000000000000000000",
+        "tx": "0x8f19aec0a9d4f065ecc67c16c00eee7ff004254217c7116b8b059d2b35d8625b",
+        "block": 7626694,
+        "amountFormatted": "80.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 800,
+          "formula": "80000000000000000000 = 1000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000002",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "200000000000000000000",
+        "tx": "0x8f19aec0a9d4f065ecc67c16c00eee7ff004254217c7116b8b059d2b35d8625b",
+        "block": 7626694,
+        "amountFormatted": "200.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 2000,
+          "formula": "200000000000000000000 = 1000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000002",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0x8f19aec0a9d4f065ecc67c16c00eee7ff004254217c7116b8b059d2b35d8625b",
+        "block": 7626694,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 200,
+          "formula": "20000000000000000000 = 1000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000002",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "1800000000000000000000",
+        "tx": "0xceadae3781461fd09f620e852aca9575c1b27e339c311dada935ac645bedc912",
+        "block": 7626709,
+        "amountFormatted": "1800.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 6000,
+          "formula": "1800000000000000000000 = 3000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000002",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "150000000000000000000",
+        "tx": "0xceadae3781461fd09f620e852aca9575c1b27e339c311dada935ac645bedc912",
+        "block": 7626709,
+        "amountFormatted": "150.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 500,
+          "formula": "150000000000000000000 = 3000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000002",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "150000000000000000000",
+        "tx": "0xceadae3781461fd09f620e852aca9575c1b27e339c311dada935ac645bedc912",
+        "block": 7626709,
+        "amountFormatted": "150.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 500,
+          "formula": "150000000000000000000 = 3000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000002",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "240000000000000000000",
+        "tx": "0xceadae3781461fd09f620e852aca9575c1b27e339c311dada935ac645bedc912",
+        "block": 7626709,
+        "amountFormatted": "240.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 800,
+          "formula": "240000000000000000000 = 3000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000002",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0xceadae3781461fd09f620e852aca9575c1b27e339c311dada935ac645bedc912",
+        "block": 7626709,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 2000,
+          "formula": "600000000000000000000 = 3000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000002",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0xceadae3781461fd09f620e852aca9575c1b27e339c311dada935ac645bedc912",
+        "block": 7626709,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "identityId": "2",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 200,
+          "formula": "60000000000000000000 = 3000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "6",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0xd2e1247916312e28225e0dbea1cca006b399c1cc15a11a424806d0f332a1f1e5",
+        "block": 7630223,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 6000,
+          "formula": "60000000000000000000 = 100000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "6",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0xd2e1247916312e28225e0dbea1cca006b399c1cc15a11a424806d0f332a1f1e5",
+        "block": 7630223,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "6",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0xd2e1247916312e28225e0dbea1cca006b399c1cc15a11a424806d0f332a1f1e5",
+        "block": 7630223,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "6",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "8000000000000000000",
+        "tx": "0xd2e1247916312e28225e0dbea1cca006b399c1cc15a11a424806d0f332a1f1e5",
+        "block": 7630223,
+        "amountFormatted": "8.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 800,
+          "formula": "8000000000000000000 = 100000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "6",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0xd2e1247916312e28225e0dbea1cca006b399c1cc15a11a424806d0f332a1f1e5",
+        "block": 7630223,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 2000,
+          "formula": "20000000000000000000 = 100000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "6",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "2000000000000000000",
+        "tx": "0xd2e1247916312e28225e0dbea1cca006b399c1cc15a11a424806d0f332a1f1e5",
+        "block": 7630223,
+        "amountFormatted": "2.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 200,
+          "formula": "2000000000000000000 = 100000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "7",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0x7286226c98459fc0e66c30da7792bae4993861efc5919903c6748a75cd23b0ba",
+        "block": 7630569,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 6000,
+          "formula": "60000000000000000000 = 100000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "7",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0x7286226c98459fc0e66c30da7792bae4993861efc5919903c6748a75cd23b0ba",
+        "block": 7630569,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "7",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0x7286226c98459fc0e66c30da7792bae4993861efc5919903c6748a75cd23b0ba",
+        "block": 7630569,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "7",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "8000000000000000000",
+        "tx": "0x7286226c98459fc0e66c30da7792bae4993861efc5919903c6748a75cd23b0ba",
+        "block": 7630569,
+        "amountFormatted": "8.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 800,
+          "formula": "8000000000000000000 = 100000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "7",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0x7286226c98459fc0e66c30da7792bae4993861efc5919903c6748a75cd23b0ba",
+        "block": 7630569,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 2000,
+          "formula": "20000000000000000000 = 100000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "7",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "2000000000000000000",
+        "tx": "0x7286226c98459fc0e66c30da7792bae4993861efc5919903c6748a75cd23b0ba",
+        "block": 7630569,
+        "amountFormatted": "2.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceReferrer": "0x744447d8580eb900b199e852c132f626247a36f7",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 200,
+          "formula": "2000000000000000000 = 100000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000003",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0xebf69c218902606031be753c5fd57668b58c58849791f38278cfe0cbe69e74ed",
+        "block": 7631552,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 6000,
+          "formula": "600000000000000000000 = 1000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000003",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0xebf69c218902606031be753c5fd57668b58c58849791f38278cfe0cbe69e74ed",
+        "block": 7631552,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000003",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "50000000000000000000",
+        "tx": "0xebf69c218902606031be753c5fd57668b58c58849791f38278cfe0cbe69e74ed",
+        "block": 7631552,
+        "amountFormatted": "50.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 500,
+          "formula": "50000000000000000000 = 1000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000003",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "80000000000000000000",
+        "tx": "0xebf69c218902606031be753c5fd57668b58c58849791f38278cfe0cbe69e74ed",
+        "block": 7631552,
+        "amountFormatted": "80.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 800,
+          "formula": "80000000000000000000 = 1000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000003",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "200000000000000000000",
+        "tx": "0xebf69c218902606031be753c5fd57668b58c58849791f38278cfe0cbe69e74ed",
+        "block": 7631552,
+        "amountFormatted": "200.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 2000,
+          "formula": "200000000000000000000 = 1000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "1000000003",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0xebf69c218902606031be753c5fd57668b58c58849791f38278cfe0cbe69e74ed",
+        "block": 7631552,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "NodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "1000000000000000000000",
+          "computedBps": 200,
+          "formula": "20000000000000000000 = 1000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "8",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0xc8163e8992f750b3af4bc8c320e7e0237e060d6b15188ad46fcaf59c7959eb4a",
+        "block": 7631564,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "sourceReferrer": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 6000,
+          "formula": "60000000000000000000 = 100000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "8",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0xc8163e8992f750b3af4bc8c320e7e0237e060d6b15188ad46fcaf59c7959eb4a",
+        "block": 7631564,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "sourceReferrer": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "8",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "5000000000000000000",
+        "tx": "0xc8163e8992f750b3af4bc8c320e7e0237e060d6b15188ad46fcaf59c7959eb4a",
+        "block": 7631564,
+        "amountFormatted": "5.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "sourceReferrer": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 500,
+          "formula": "5000000000000000000 = 100000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "8",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "8000000000000000000",
+        "tx": "0xc8163e8992f750b3af4bc8c320e7e0237e060d6b15188ad46fcaf59c7959eb4a",
+        "block": 7631564,
+        "amountFormatted": "8.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "sourceReferrer": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 800,
+          "formula": "8000000000000000000 = 100000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "8",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "20000000000000000000",
+        "tx": "0xc8163e8992f750b3af4bc8c320e7e0237e060d6b15188ad46fcaf59c7959eb4a",
+        "block": 7631564,
+        "amountFormatted": "20.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "sourceReferrer": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 2000,
+          "formula": "20000000000000000000 = 100000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "8",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "2000000000000000000",
+        "tx": "0xc8163e8992f750b3af4bc8c320e7e0237e060d6b15188ad46fcaf59c7959eb4a",
+        "block": 7631564,
+        "amountFormatted": "2.0",
+        "basis": {
+          "sourceEvent": "MachinePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "sourceReferrer": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+          "sourceTotalAmountUSDT": "100000000000000000000",
+          "sourceQuantity": "1",
+          "computedBps": 200,
+          "formula": "2000000000000000000 = 100000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000003",
+        "poolType": 0,
+        "poolName": "Liquidity",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "1800000000000000000000",
+        "tx": "0xd6f183fa308863be171426c6367e63da34b4fdf9240b87b8e5ceff5289be8ea4",
+        "block": 7631583,
+        "amountFormatted": "1800.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 6000,
+          "formula": "1800000000000000000000 = 3000000000000000000000 * 6000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000003",
+        "poolType": 1,
+        "poolName": "Referral",
+        "recipient": "0x2f0549714e63b91d07c84100f1e753d4516bb9f0",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "150000000000000000000",
+        "tx": "0xd6f183fa308863be171426c6367e63da34b4fdf9240b87b8e5ceff5289be8ea4",
+        "block": 7631583,
+        "amountFormatted": "150.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 500,
+          "formula": "150000000000000000000 = 3000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000003",
+        "poolType": 2,
+        "poolName": "SuperNode",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "150000000000000000000",
+        "tx": "0xd6f183fa308863be171426c6367e63da34b4fdf9240b87b8e5ceff5289be8ea4",
+        "block": 7631583,
+        "amountFormatted": "150.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 500,
+          "formula": "150000000000000000000 = 3000000000000000000000 * 500/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000003",
+        "poolType": 3,
+        "poolName": "Node",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "240000000000000000000",
+        "tx": "0xd6f183fa308863be171426c6367e63da34b4fdf9240b87b8e5ceff5289be8ea4",
+        "block": 7631583,
+        "amountFormatted": "240.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 800,
+          "formula": "240000000000000000000 = 3000000000000000000000 * 800/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000003",
+        "poolType": 4,
+        "poolName": "Platform",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "600000000000000000000",
+        "tx": "0xd6f183fa308863be171426c6367e63da34b4fdf9240b87b8e5ceff5289be8ea4",
+        "block": 7631583,
+        "amountFormatted": "600.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 2000,
+          "formula": "600000000000000000000 = 3000000000000000000000 * 2000/10000 (floor by solidity)"
+        }
+      },
+      {
+        "orderId": "2000000003",
+        "poolType": 5,
+        "poolName": "Leaderboard",
+        "recipient": "0x744447d8580eb900b199e852c132f626247a36f7",
+        "token": "0xc4ea24dfc165fedb881783a84f44c2806cf7fbbd",
+        "amountUSDT": "60000000000000000000",
+        "tx": "0xd6f183fa308863be171426c6367e63da34b4fdf9240b87b8e5ceff5289be8ea4",
+        "block": 7631583,
+        "amountFormatted": "60.0",
+        "basis": {
+          "sourceEvent": "SuperNodePurchased",
+          "sourceUser": "0xdb426e194360a9aa178f4009190afc596a39375a",
+          "identityId": "3",
+          "sourceTotalAmountUSDT": "3000000000000000000000",
+          "computedBps": 200,
+          "formula": "60000000000000000000 = 3000000000000000000000 * 200/10000 (floor by solidity)"
+        }
+      }
+    ],
+    "poolRewardSettled": [],
+    "leaderboardSettled": [],
+    "leaderboardLuckySettled": [],
+    "rewardSettled": []
+  }
+}

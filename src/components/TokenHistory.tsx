@@ -1,13 +1,14 @@
 import { BrowserProvider, isAddress } from "ethers";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    CNC_MAINNET_BLOCK_EXPLORER_URL,
-    CORE_CONTRACT_ADDRESS,
-    ICO_TOKEN_ADDRESS,
-    LIGHT_TOKEN_ADDRESS,
-    OTC_CONTRACT_ADDRESS,
-    SWAP_POOL_ADDRESS,
-    USDT_CONTRACT_ADDRESS,
+  CNC_MAINNET_BLOCK_EXPLORER_URL,
+  CORE_CONTRACT_ADDRESS,
+  ICO_TOKEN_ADDRESS,
+  LIGHT_TOKEN_ADDRESS,
+  OTC_CONTRACT_ADDRESS,
+  PRIMARY_SWAP_CONTROLLER_ADDRESS,
+  SWAP_POOL_ADDRESS,
+  USDT_CONTRACT_ADDRESS,
 } from "../config";
 import { formatTokenAmount } from "../lib/tokenContract";
 import type { TxRecord } from "../lib/tokenHistory";
@@ -33,6 +34,39 @@ const TITLE: Record<TokenType, [string, string]> = {
   ICO: ["ICO钱包流水", "ICO History"],
   LIGHT: ["Light钱包流水", "Light History"],
   USDT: ["USDT钱包流水", "USDT History"],
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  "购买算力": "#4facfe",
+  "购买节点": "#7c3aed",
+  "购买超级节点": "#a855f7",
+  "算力直推奖": "#52c41a",
+  "节点推荐奖": "#13c2c2",
+  "超级节点推荐奖": "#722ed1",
+  "日结奖励": "#faad14",
+  "日榜奖励": "#fa8c16",
+  "幸运榜奖励": "#eb2f96",
+  "排行榜白名单": "#f759ab",
+  "池结算": "#1890ff",
+  "超级节点池结算": "#2f54eb",
+  "节点池结算": "#36cfc9",
+  "买入ICO": "#00b96b",
+  "卖出ICO": "#ff7a45",
+  "一级市场卖出": "#ff7a45",
+  "一级市场收款": "#52c41a",
+  "一级市场买入": "#4facfe",
+  "OTC付款": "#ff4d4f",
+  "OTC收款": "#52c41a",
+  "Light兑换": "#597ef7",
+  "ICO奖励": "#73d13d",
+  "Light收益": "#9254de",
+  "奖励发放": "#fadb14",
+  "转入": "#52c41a",
+  "转出": "#ff4d4f",
+  "转入ICO": "#52c41a",
+  "转出ICO": "#ff4d4f",
+  "Light转入": "#52c41a",
+  "Light转出": "#ff4d4f",
 };
 
 function formatAmount(amount: bigint, token: TokenType): string {
@@ -78,13 +112,18 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
   const [queryAddress, setQueryAddress] = useState(userAddress);
   const [records, setRecords] = useState<TxRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
   const [err, setErr] = useState("");
   const [page, setPage] = useState(1);
+  const [filterType, setFilterType] = useState("");
+  const didAutoLoad = useRef(false);
 
   const onQuery = useCallback(async () => {
     setErr("");
     setLoading(true);
+    setLoadingMsg(zh ? "准备查询…" : "Preparing…");
     setPage(1);
+    setFilterType("");
     try {
       const tokenAddress =
         tokenType === "ICO"
@@ -121,6 +160,7 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
         core: (CORE_CONTRACT_ADDRESS || "").toLowerCase(),
         swap: (SWAP_POOL_ADDRESS || "").toLowerCase(),
         otc: (OTC_CONTRACT_ADDRESS || "").toLowerCase(),
+        psc: (PRIMARY_SWAP_CONTROLLER_ADDRESS || "").toLowerCase(),
       };
 
       const result = await fetchTokenHistory(
@@ -131,14 +171,24 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
         refs,
         fromBlock,
         toBlock,
+        (phase) => setLoadingMsg(phase),
       );
       setRecords(result);
     } catch (e: unknown) {
       setErr(normalizeHistoryError(e, zh));
     } finally {
       setLoading(false);
+      setLoadingMsg("");
     }
   }, [tokenType, queryAddress, provider, startDT, endDT, zh]);
+
+  // Auto-load on mount
+  useEffect(() => {
+    if (!didAutoLoad.current) {
+      didAutoLoad.current = true;
+      onQuery();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onReset = () => {
     setStartDT(toDatetimeLocal(nowSec() - 7 * 24 * 3600));
@@ -147,13 +197,61 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
     setRecords([]);
     setPage(1);
     setErr("");
+    setFilterType("");
   };
 
-  const shown = records.slice(0, page * PAGE_SIZE);
-  const hasMore = shown.length < records.length;
+  // Derived data
+  const orderTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of records) set.add(r.orderType);
+    return Array.from(set).sort();
+  }, [records]);
+
+  const filtered = useMemo(
+    () => (filterType ? records.filter((r) => r.orderType === filterType) : records),
+    [records, filterType],
+  );
+
+  const summary = useMemo(() => {
+    let totalIn = 0n;
+    let totalOut = 0n;
+    for (const r of filtered) {
+      if (r.direction === "in") totalIn += r.amount;
+      else totalOut += r.amount;
+    }
+    return { totalIn, totalOut, count: filtered.length };
+  }, [filtered]);
+
+  const shown = filtered.slice(0, page * PAGE_SIZE);
+  const hasMore = shown.length < filtered.length;
 
   const [titleZh, titleEn] = TITLE[tokenType];
   const title = zh ? titleZh : titleEn;
+
+  const onExport = () => {
+    if (filtered.length === 0) return;
+    const head = "时间,订单ID,方向,数量,代币,类型,对手方\n";
+    const rows = filtered
+      .map((r) =>
+        [
+          formatDateTime(r.timestamp),
+          r.txHash,
+          r.direction === "in" ? "转入" : "转出",
+          formatAmount(r.amount, r.token),
+          r.token,
+          r.orderType,
+          r.counterparty,
+        ].join(","),
+      )
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + head + rows], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${tokenType}_history_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="history-page">
@@ -213,17 +311,64 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
               onClick={onQuery}
               disabled={loading}
             >
-              {loading ? (zh ? "查询中…" : "Loading…") : zh ? "查询" : "Query"}
+              {loading ? (loadingMsg || (zh ? "查询中…" : "Loading…")) : zh ? "查询" : "Query"}
             </button>
           </div>
         </div>
       </div>
 
+      {/* Summary + Filters */}
+      {records.length > 0 && (
+        <div className="history-summary-bar">
+          <div className="history-summary-stats">
+            <span className="hs-item">
+              <span className="hs-label">{zh ? "收入" : "In"}</span>
+              <span className="hs-val hi-pos">+{formatAmount(summary.totalIn, tokenType)}</span>
+            </span>
+            <span className="hs-item">
+              <span className="hs-label">{zh ? "支出" : "Out"}</span>
+              <span className="hs-val hi-neg">−{formatAmount(summary.totalOut, tokenType)}</span>
+            </span>
+            <span className="hs-item">
+              <span className="hs-label">{zh ? "笔数" : "Txns"}</span>
+              <span className="hs-val">{summary.count}</span>
+            </span>
+          </div>
+          {/* Type filter chips */}
+          {orderTypes.length > 1 && (
+            <div className="history-chips">
+              <button
+                type="button"
+                className={`history-chip ${filterType === "" ? "active" : ""}`}
+                onClick={() => { setFilterType(""); setPage(1); }}
+              >
+                {zh ? "全部" : "All"}
+              </button>
+              {orderTypes.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`history-chip ${filterType === t ? "active" : ""}`}
+                  style={filterType === t ? { borderColor: TYPE_COLORS[t] || "#4facfe" } : undefined}
+                  onClick={() => { setFilterType(t); setPage(1); }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
+          <button className="history-export-btn" type="button" onClick={onExport}>
+            {zh ? "导出 CSV" : "Export CSV"}
+          </button>
+        </div>
+      )}
+
       {/* List */}
       <div className="history-list">
+        {loading && <p className="history-msg">{loadingMsg || (zh ? "查询中…" : "Loading…")}</p>}
         {!loading && err && <p className="history-msg history-err">{err}</p>}
         {!loading && !err && records.length === 0 && (
-          <p className="history-msg">{zh ? "暂无记录，请点击查询。" : "No records. Click Query."}</p>
+          <p className="history-msg">{zh ? "暂无记录" : "No records found."}</p>
         )}
 
         {shown.map((r, i) => (
@@ -251,7 +396,23 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
             </div>
             <div className="hi-row">
               <span className="hi-label">{zh ? "订单类型：" : "Type:"}</span>
-              <span className="hi-type">{r.orderType}</span>
+              <span
+                className="hi-type-badge"
+                style={{ borderColor: TYPE_COLORS[r.orderType] || "#666", color: TYPE_COLORS[r.orderType] || "inherit" }}
+              >
+                {r.orderType}
+              </span>
+            </div>
+            <div className="hi-row">
+              <span className="hi-label">{zh ? "对手方：" : "Addr:"}</span>
+              <a
+                className="hi-hash"
+                href={`${CNC_MAINNET_BLOCK_EXPLORER_URL}/address/${r.counterparty}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {r.counterparty.slice(0, 8)}…{r.counterparty.slice(-6)}
+              </a>
             </div>
           </div>
         ))}

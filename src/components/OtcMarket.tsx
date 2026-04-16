@@ -1,7 +1,7 @@
 import { BrowserProvider } from "ethers";
 import React, { useEffect, useState } from "react";
 import { OTC_CONTRACT_ADDRESS } from "../config";
-import { isIdentityApproved } from "../lib/identityContract";
+import { approveIdentityForOtc, isIdentityApproved } from "../lib/identityContract";
 import {
   cancelOtcOrder,
   createOtcOrder,
@@ -12,7 +12,7 @@ import {
   getOtcFeeBps,
   type OtcOrder,
 } from "../lib/otcContract";
-import { formatUsdt, getUsdtBalance, parseUsdt } from "../lib/usdtContract";
+import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
 
 interface OtcMarketProps {
@@ -136,7 +136,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       }
 
       // Check price floor
-      const minPrice = Number(selectedIdentityId) === role ? lastNodePrice : lastSuperPrice;
+      const minPrice = role === 1 ? lastNodePrice : lastSuperPrice;
       if (price < minPrice) {
         onStatusChange(
           `${t.priceTooLow || "Price too low"}: minimum ${formatUsdt(minPrice)} USDT`
@@ -147,9 +147,8 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       // Ensure identity approval
       if (!identityApproved) {
         onStatusChange(t.approvingIdentity || "Approving identity...");
-        // Note: OTC_CONTRACT_ADDRESS should be passed as prop or fetched
-        // For now, we'll assume it's available globally
-        // await approveIdentityForOtc(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS);
+        await approveIdentityForOtc(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS);
+        setIdentityApproved(true);
       }
 
       onStatusChange(t.creatingListing || "Creating listing...");
@@ -184,6 +183,14 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       if (balance < order.priceUSDT) {
         onStatusChange(t.insufficientUsdtBalance || "Insufficient USDT balance");
         return;
+      }
+
+      // Ensure USDT allowance for OTC contract
+      const allowance = await getUsdtAllowance(provider, address, OTC_CONTRACT_ADDRESS);
+      if (allowance < order.priceUSDT) {
+        onStatusChange(t.approvingUsdt || "Approving USDT...");
+        const MAX_APPROVAL = 2n ** 256n - 1n;
+        await approveUsdt(provider, OTC_CONTRACT_ADDRESS, MAX_APPROVAL);
       }
 
       onStatusChange(`${t.fillingOrder || "Filling order"} #${orderId}...`);

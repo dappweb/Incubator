@@ -1,4 +1,4 @@
-import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
+import { AbstractSigner, BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { USDT_CONTRACT_ADDRESS } from "../config";
 
 const envDecimals = Number(import.meta.env.VITE_USDT_DECIMALS ?? "18");
@@ -29,10 +29,10 @@ export async function getUsdtAllowance(provider: BrowserProvider, owner: string,
   return contract.allowance(owner, spender) as Promise<bigint>;
 }
 
-export async function approveUsdt(provider: BrowserProvider, spender: string, amount: bigint) {
-  const signer = await provider.getSigner();
+export async function approveUsdt(provider: BrowserProvider, spender: string, amount: bigint, signer?: AbstractSigner) {
+  if (!signer) signer = await provider.getSigner();
   const contract = getUsdtContract(provider).connect(signer) as any;
-  const tx = await contract.approve(spender, amount);
+  const tx = await contract.approve(spender, amount, { gasLimit: 100_000n });
   return tx.wait();
 }
 

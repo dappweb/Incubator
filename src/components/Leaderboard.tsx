@@ -5,7 +5,7 @@ import { formatUsdt } from "../lib/usdtContract";
 
 interface Props {
   provider: BrowserProvider;
-  onBack: () => void;
+  onBack?: () => void;
   lang: "zh" | "en";
 }
 
@@ -115,6 +115,7 @@ function buildFomoRows(entries: FomoEntry[], showReward: boolean, lang: "zh" | "
 
 export function Leaderboard({ provider, onBack, lang }: Props) {
   const zh = lang === "zh";
+  const inline = !onBack;
   const [tab, setTab] = useState<LeaderTab>("today");
   const [todayData, setTodayData] = useState<LeaderboardDay | null>(null);
   const [yesterdayData, setYesterdayData] = useState<LeaderboardDay | null>(null);
@@ -157,11 +158,11 @@ export function Leaderboard({ provider, onBack, lang }: Props) {
   const isYesterday = tab === "yesterday";
 
   const top10Headers = isYesterday
-    ? [zh ? "名次" : "#", zh ? "地址" : "Address", zh ? "昨日入金总额" : "Volume", zh ? "奖励数量" : "Reward", zh ? "时间" : "Time"]
-    : [zh ? "名次" : "#", zh ? "地址" : "Address", zh ? "今日入金总额" : "Volume", zh ? "时间" : "Time"];
+    ? [zh ? "名次" : "#", zh ? "地址" : "Address", zh ? "入金总额" : "Volume", zh ? "奖励" : "Reward", zh ? "时间" : "Time"]
+    : [zh ? "名次" : "#", zh ? "地址" : "Address", zh ? "入金总额" : "Volume", zh ? "时间" : "Time"];
 
   const fomoHeaders = isYesterday
-    ? [zh ? "名次" : "#", zh ? "地址" : "Address", zh ? "入金" : "Amount", zh ? "奖励数量" : "Reward", zh ? "时间" : "Time"]
+    ? [zh ? "名次" : "#", zh ? "地址" : "Address", zh ? "入金" : "Amount", zh ? "奖励" : "Reward", zh ? "时间" : "Time"]
     : [zh ? "名次" : "#", zh ? "地址" : "Address", zh ? "入金" : "Amount", zh ? "时间" : "Time"];
 
   const top10Title = isYesterday
@@ -179,68 +180,65 @@ export function Leaderboard({ provider, onBack, lang }: Props) {
     ? buildFomoRows(activeData.last10, isYesterday, lang)
     : [];
 
-  const explainTitle = zh ? "排行榜说明" : "How Rankings Work";
-  const explainItems = zh
-    ? [
-        "今日排名为实时数据，名次会随入金动态变化。",
-        "昨日奖励发放为昨日最终结算结果。",
-        "排行榜奖池共 2%，其中日榜 1.5%，FOMO 榜 0.5%。",
-      ]
-    : [
-        "Today rankings are real-time and can change as new deposits arrive.",
-        "Yesterday rewards show the finalized settlement for the previous day.",
-        "Leaderboard pool is 2% in total: 1.5% daily ranking + 0.5% FOMO ranking.",
-      ];
-
-  const fieldNotes = zh
-    ? [
-        "入金总额/入金：参与排名的有效金额。",
-        "奖励数量：仅在昨日页显示，表示实际发放金额。",
-        "时间：链上记录时间。",
-      ]
-    : [
-        "Volume/Amount: effective amount counted for ranking.",
-        "Reward: shown on yesterday tab only, indicating actual distributed amount.",
-        "Time: on-chain recorded timestamp.",
-      ];
-
   return (
-    <div className="lb-page">
+    <div className={inline ? "lb-page lb-inline" : "lb-page"}>
       {/* Header */}
       <div className="lb-header">
         <div className="lb-header-top">
-          <button className="lb-back-btn" type="button" onClick={onBack}>
-            ‹ {zh ? "返回" : "Back"}
-          </button>
-          <div className="lb-tabs">
+          {onBack && (
+            <button className="lb-back-btn" type="button" onClick={onBack}>
+              ‹ {zh ? "返回" : "Back"}
+            </button>
+          )}
+          <div className={inline ? "lb-tabs lb-tabs-full" : "lb-tabs"}>
             <button
               className={`lb-tab ${tab === "today" ? "lb-tab-active" : ""}`}
               type="button"
               onClick={() => handleTab("today")}
             >
-              {zh ? "今日排名" : "Today"}
+              {zh ? "🏆 今日排名" : "🏆 Today"}
             </button>
             <button
               className={`lb-tab ${tab === "yesterday" ? "lb-tab-active" : ""}`}
               type="button"
               onClick={() => handleTab("yesterday")}
             >
-              {zh ? "昨日奖励发放" : "Yesterday Rewards"}
+              {zh ? "💰 昨日奖励" : "💰 Yesterday"}
             </button>
           </div>
         </div>
+        {inline && (
+          <p className="lb-header-subtitle">
+            {zh
+              ? "奖池 2%：日榜 1.5% + FOMO 0.5%　|　今日为实时排名"
+              : "Pool 2%: Daily 1.5% + FOMO 0.5% | Today is real-time"}
+          </p>
+        )}
       </div>
 
       {/* Content */}
       <div className="lb-body">
-        <div className="lb-explain" role="note" aria-label={explainTitle}>
-          <p className="lb-explain-title">{explainTitle}</p>
-          <ul className="lb-explain-list">
-            {explainItems.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
+        {!inline && (
+          <div className="lb-explain" role="note">
+            <p className="lb-explain-title">{zh ? "排行榜说明" : "How Rankings Work"}</p>
+            <ul className="lb-explain-list">
+              {(zh
+                ? [
+                    "今日排名为实时数据，名次会随入金动态变化。",
+                    "昨日奖励发放为昨日最终结算结果。",
+                    "排行榜奖池共 2%，其中日榜 1.5%，FOMO 榜 0.5%。",
+                  ]
+                : [
+                    "Today rankings are real-time and can change as new deposits arrive.",
+                    "Yesterday rewards show the finalized settlement for the previous day.",
+                    "Leaderboard pool is 2% in total: 1.5% daily ranking + 0.5% FOMO ranking.",
+                  ]
+              ).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {err && <p className="lb-err">{err}</p>}
         <RankTable
@@ -258,28 +256,40 @@ export function Leaderboard({ provider, onBack, lang }: Props) {
           lang={lang}
         />
 
-        <div className="lb-note" role="note" aria-label={zh ? "字段说明" : "Field Notes"}>
-          <p className="lb-note-title">{zh ? "字段说明" : "Field Notes"}</p>
-          <ul className="lb-note-list">
-            {fieldNotes.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-
-        {!loading && activeData && (
-          <button
-            className="lb-refresh-btn"
-            type="button"
-            onClick={() => {
-              if (tab === "today") setTodayData(null);
-              else setYesterdayData(null);
-              void load(tab);
-            }}
-          >
-            {zh ? "刷新" : "Refresh"}
-          </button>
+        {!inline && (
+          <div className="lb-note" role="note">
+            <p className="lb-note-title">{zh ? "字段说明" : "Field Notes"}</p>
+            <ul className="lb-note-list">
+              {(zh
+                ? [
+                    "入金总额/入金：参与排名的有效金额。",
+                    "奖励数量：仅在昨日页显示，表示实际发放金额。",
+                    "时间：链上记录时间。",
+                  ]
+                : [
+                    "Volume/Amount: effective amount counted for ranking.",
+                    "Reward: shown on yesterday tab only, indicating actual distributed amount.",
+                    "Time: on-chain recorded timestamp.",
+                  ]
+              ).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
         )}
+
+        <button
+          className="lb-refresh-btn"
+          type="button"
+          disabled={loading}
+          onClick={() => {
+            if (tab === "today") setTodayData(null);
+            else setYesterdayData(null);
+            void load(tab);
+          }}
+        >
+          {loading ? (zh ? "加载中…" : "Loading…") : (zh ? "🔄 刷新" : "🔄 Refresh")}
+        </button>
       </div>
     </div>
   );

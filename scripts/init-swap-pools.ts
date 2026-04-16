@@ -23,9 +23,11 @@ const LIGHT_ADDRESS = process.env.VITE_LIGHT_TOKEN_ADDRESS!;
 const USDT_LIQ = process.env.SWAP_USDT_ICO_USDT_LIQ || ethers.parseUnits("10000", USDT_DECIMALS).toString();
 const ICO_LIQ_0 = process.env.SWAP_USDT_ICO_ICO_LIQ || ethers.parseUnits("100000", 18).toString();
 
-// Pool 1: LIGHT/ICO — 200 000 LIGHT : 100 000 ICO  →  1 LIGHT ≈ 0.5 ICO
-const LIGHT_LIQ = process.env.SWAP_LIGHT_ICO_LIGHT_LIQ || ethers.parseUnits("200000", 18).toString();
-const ICO_LIQ_1 = process.env.SWAP_LIGHT_ICO_ICO_LIQ || ethers.parseUnits("100000", 18).toString();
+// Pool 1: LIGHT/ICO — fixed at 210 000 000 LIGHT : 5 000 000 ICO
+const FIXED_LIGHT_LIQ = ethers.parseUnits("210000000", 18).toString();
+const FIXED_ICO_LIQ_1 = ethers.parseUnits("5000000", 18).toString();
+const LIGHT_LIQ = FIXED_LIGHT_LIQ;
+const ICO_LIQ_1 = FIXED_ICO_LIQ_1;
 
 // createDefaultPools 参数（仅在池子尚未创建时使用）
 const FEE_USDT_ICO  = 50;   // 0.5 %
@@ -55,6 +57,13 @@ async function tryMint(token: any, deployerAddress: string, amount: bigint, symb
 }
 
 async function main() {
+  if (process.env.SWAP_LIGHT_ICO_LIGHT_LIQ && BigInt(process.env.SWAP_LIGHT_ICO_LIGHT_LIQ) !== BigInt(FIXED_LIGHT_LIQ)) {
+    throw new Error("SWAP_LIGHT_ICO_LIGHT_LIQ must stay fixed at 210000000 LIGHT");
+  }
+  if (process.env.SWAP_LIGHT_ICO_ICO_LIQ && BigInt(process.env.SWAP_LIGHT_ICO_ICO_LIQ) !== BigInt(FIXED_ICO_LIQ_1)) {
+    throw new Error("SWAP_LIGHT_ICO_ICO_LIQ must stay fixed at 5000000 ICO");
+  }
+
   const [deployer] = await ethers.getSigners();
   console.log("Deployer :", deployer.address);
   console.log("Swap     :", SWAP_ADDRESS);

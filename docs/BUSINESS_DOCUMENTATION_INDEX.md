@@ -1,7 +1,7 @@
 # 用户矿机购买业务逻辑 - 完整文档指南
 
 **编制日期**: 2026-04-05  
-**文档版本**: 1.0  
+**文档版本**: 1.0
 
 ---
 
@@ -11,34 +11,40 @@
 
 ### 📄 三份核心文档
 
-| 文档 | 路径 | 适合读者 | 内容 |
-|------|------|--------|------|
-| **业务逻辑完整版** | [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) | 产品经理、业务分析师、项目管理人员 | 完整的业务规则、流程说明、数据结构、常见问题 |
-| **流程可视化补充** | [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) | 所有人 (可视化理解) | 状态机、时序图、资金流、交互流、决策树等可视化 |
-| **技术实现参考** | [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md) | 开发工程师、架构师 | 合约 ABI、前端 API、配置参数、代码示例、错误处理 |
+| 文档               | 路径                                                                                             | 适合读者                           | 内容                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------ |
+| **业务逻辑完整版** | [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) | 产品经理、业务分析师、项目管理人员 | 完整的业务规则、流程说明、数据结构、常见问题     |
+| **流程可视化补充** | [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md)                                 | 所有人 (可视化理解)                | 状态机、时序图、资金流、交互流、决策树等可视化   |
+| **技术实现参考**   | [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md)                   | 开发工程师、架构师                 | 合约 ABI、前端 API、配置参数、代码示例、错误处理 |
 
 ---
 
 ## 🎯 快速导航
 
 ### 我是产品经理/业务人员，想了解整体流程 ➡️
+
 **阅读顺序**:
+
 1. 先看 [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) 中的概览图
 2. 再读 [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) 的 **一、二、三** 章节
 3. 查看 [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) 的 **十、常见问题**
 
 **关键术语速记**:
+
 - **推荐人绑定**: 一次性、永久、基于生态激励的邀请关系
 - **矿机购买**: 1-10 台灵活购买，支持多次下单，用于快速参与
 - **资金池**: 6 个分配池 (流动性 60% + 推荐 5% + 超级节点 5% + 节点 8% + 平台 20% + 排行榜 2%)
 
 ### 我是QA/测试人员，想验证功能流程 ➡️
+
 **阅读顺序**:
+
 1. [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) - **第 7 节**: 错误处理决策树
 2. [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) - **第 五、六、七** 章节: 异常场景、用户流程、数据查询
 3. [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) - **附录**: 测试用例
 
 **关键测试点**:
+
 - 推荐人绑定一次性不可改
 - 未绑定推荐人不能购买
 - 购买数量范围 1-10
@@ -46,13 +52,16 @@
 - 多笔订单的精确性
 
 ### 我是开发工程师，想实现相关功能 ➡️
+
 **阅读顺序**:
+
 1. [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md) - **第 一、二** 章节: 合约 ABI、前端 API
 2. [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md) - **第 四、五** 章节: 配置参数、状态管理
 3. [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md) - **第 六、七、八** 章节: 集成、错误处理、事件监听
 4. [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) - **第 2、3、4、5** 节: 合约交互时序、资金分配、推荐人选择、授权流程
 
 **核心代码位置**:
+
 ```
 src/
   ├─ App.tsx (主体逻辑，绑定和购买)
@@ -70,7 +79,9 @@ contracts/
 ```
 
 ### 我想快速查找特定问题 ➡️
+
 **按关键词快速定位**:
+
 - **"推荐人"** → [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) **2.2 节** + [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) **第 4 节**
 - **"授权"** → [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) **第 5 节** + [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md) **第 二节** (`approveUsdt`)
 - **"订单"** → [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) **2.3 节** + [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md) **第 二、三节**
@@ -153,30 +164,33 @@ contracts/
 
 ## 📊 三文档内容对标表
 
-| 功能需求 | 业务逻辑版 | 可视化版 | 技术版 |
-|---------|-----------|--------|-------|
-| **了解推荐人机制** | ✅ 2.2 节详细 | ✅ 第 4 节流程 | ✅ 第二节 API |
-| **理解资金分配** | ✅ 2.3.5 节表格 | ✅ 第 3 节图 | ✅ 四八节参数 |
-| **实现购买流程** | ✅ 2.3 节逻辑 | ✅ 第 6 节序列图 | ✅ 二五八节代码 |
-| **处理授权** | ✅ 附录常见问题 | ✅ 第 5 节决策树 | ✅ 二七节实现 |
-| **查询订单数据** | ✅ 七节数据查询 | ✅ 第 6 节 DB 流 | ✅ 二三节 API |
-| **测试验证** | ✅ 附录用例 | ✅ 第 8 节错误 | ✅ 七九十节 |
+| 功能需求           | 业务逻辑版      | 可视化版         | 技术版          |
+| ------------------ | --------------- | ---------------- | --------------- |
+| **了解推荐人机制** | ✅ 2.2 节详细   | ✅ 第 4 节流程   | ✅ 第二节 API   |
+| **理解资金分配**   | ✅ 2.3.5 节表格 | ✅ 第 3 节图     | ✅ 四八节参数   |
+| **实现购买流程**   | ✅ 2.3 节逻辑   | ✅ 第 6 节序列图 | ✅ 二五八节代码 |
+| **处理授权**       | ✅ 附录常见问题 | ✅ 第 5 节决策树 | ✅ 二七节实现   |
+| **查询订单数据**   | ✅ 七节数据查询 | ✅ 第 6 节 DB 流 | ✅ 二三节 API   |
+| **测试验证**       | ✅ 附录用例     | ✅ 第 8 节错误   | ✅ 七九十节     |
 
 ---
 
 ## 🎓 学习路径推荐
 
 ### 初级（入门理解）- 30 分钟
+
 1. 阅读 [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) **第 1 节**（状态机）
 2. 阅读 [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md) **一、二、三** 节概览
 3. 查看本文件的**核心业务规则一览**
 
 ### 中级（深入理解）- 2 小时
+
 1. 完整阅读 [USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md](USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md)
 2. 阅读 [BUSINESS_FLOW_VISUALIZATION.md](BUSINESS_FLOW_VISUALIZATION.md) **第 2-6 节**
 3. 查看 [TECHNICAL_IMPLEMENTATION_REFERENCE.md](TECHNICAL_IMPLEMENTATION_REFERENCE.md) **第 一、二** 节
 
 ### 高级（实现掌握）- 4 小时
+
 1. 完整学习所有三份文档
 2. 查看代码实现：`src/App.tsx`, `src/lib/coreContract.ts`, `contracts/IncubatorCore.sol`
 3. 做一遍 **附录测试用例**
@@ -185,26 +199,28 @@ contracts/
 
 ## 🔍 关键概念速查表
 
-| 概念 | 定义 | 关键属性 | 链上存储 |
-|------|------|--------|--------|
-| **推荐人** | 邀请用户进入生态的账户，基础为激励分配 | 一次性，永不修改，可为 Owner | `referralOf[user]` |
-| **矿机订单** | 用户购买矿机创建的链上记录 | 包含数量、金额、推荐人 | `machineOrders[orderId]` |
-| **身份** | 用户在生态中的等级 (None/Node/SuperNode) | 关系到奖励和交易权限 | `ownedIdentityId[user]` |
-| **资金池** | 订单金额的分配目的地 (6 种) | 按百分比自动分配 | 各池接收地址 |
-| **团队数据** | 用户作为推荐人的统计 | 直推数/人数/业绩 | `directRefCount`, `teamVolume` 等 |
-| **排行榜** | 日排名竞争，按业绩排序 | 前 10 名获得额外奖励 | `leaderboards[dayId]` |
+| 概念         | 定义                                     | 关键属性                     | 链上存储                          |
+| ------------ | ---------------------------------------- | ---------------------------- | --------------------------------- |
+| **推荐人**   | 邀请用户进入生态的账户，基础为激励分配   | 一次性，永不修改，可为 Owner | `referralOf[user]`                |
+| **矿机订单** | 用户购买矿机创建的链上记录               | 包含数量、金额、推荐人       | `machineOrders[orderId]`          |
+| **身份**     | 用户在生态中的等级 (None/Node/SuperNode) | 关系到奖励和交易权限         | `ownedIdentityId[user]`           |
+| **资金池**   | 订单金额的分配目的地 (6 种)              | 按百分比自动分配             | 各池接收地址                      |
+| **团队数据** | 用户作为推荐人的统计                     | 直推数/人数/业绩             | `directRefCount`, `teamVolume` 等 |
+| **排行榜**   | 日排名竞争，按业绩排序                   | 前 10 名获得额外奖励         | `leaderboards[dayId]`             |
 
 ---
 
 ## ✅ 完整检查清单
 
 ### 文档完整性检查
+
 - [x] 业务逻辑文档涵盖完整流程
 - [x] 可视化补充包含多种图示
 - [x] 技术参考提供代码示例
 - [x] 三份文档互补，无重复
 
 ### 内容准确性检查
+
 - [x] 推荐人规则 (一次性，不可修改)
 - [x] 购买数量限制 (1-10)
 - [x] 资金池分配 (6 池，共 100%)
@@ -212,6 +228,7 @@ contracts/
 - [x] 链上存储位置准确
 
 ### 代码参考准确性检查
+
 - [x] 合约 ABI 与实际部署一致
 - [x] 前端函数调用示例有效
 - [x] 环境变量配置完整
@@ -222,6 +239,7 @@ contracts/
 ## 🚀 快速开始
 
 ### 对于产品人员
+
 ```
 1. 读本文件的"核心业务规则一览"
 2. 打开 BUSINESS_FLOW_VISUALIZATION.md 看图
@@ -230,6 +248,7 @@ contracts/
 ```
 
 ### 对于开发人员
+
 ```
 1. 从 TECHNICAL_IMPLEMENTATION_REFERENCE.md 第二节开始
 2. 对照 src/lib/coreContract.ts 看实际代码
@@ -239,6 +258,7 @@ contracts/
 ```
 
 ### 对于测试人员
+
 ```
 1. 从 BUSINESS_FLOW_VISUALIZATION.md 第8节错误处理开始
 2. 用 USER_REGISTRATION_AND_MACHINE_PURCHASE_FLOW.md 附录的测试用例
@@ -252,6 +272,7 @@ contracts/
 ## 📞 技术支持
 
 遇到疑问时：
+
 1. 先在对应文档中搜索关键词
 2. 查看相关章节的"常见问题"
 3. 参考代码示例部分
@@ -261,9 +282,9 @@ contracts/
 
 ## 📝 更新日志
 
-| 版本 | 日期 | 作者 | 变更 |
-|------|------|------|------|
-| 1.0 | 2026-04-05 | Dev Team | 初始版本发布，涵盖用户注册、推荐人绑定、矿机购买完整流程 |
+| 版本 | 日期       | 作者     | 变更                                                     |
+| ---- | ---------- | -------- | -------------------------------------------------------- |
+| 1.0  | 2026-04-05 | Dev Team | 初始版本发布，涵盖用户注册、推荐人绑定、矿机购买完整流程 |
 
 ---
 

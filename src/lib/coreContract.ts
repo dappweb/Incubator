@@ -1,5 +1,5 @@
-import { BrowserProvider, Contract } from "ethers";
-import { CORE_CONTRACT_ADDRESS } from "../config";
+import { AbstractSigner, BrowserProvider, Contract } from "ethers";
+import { CORE_CONTRACT_ADDRESS, TEAM_STATS_INCLUDE_DIRECT_IN_TOTAL } from "../config";
 
 const coreAbi = [
   "function purchaseMachine(uint256 quantity) external",
@@ -9,7 +9,6 @@ const coreAbi = [
   "function approveIdentityOperator(uint256 identityId, address operator, bool approved) external",
   "function isIdentityOperatorApproved(uint256 identityId, address operator) view returns (bool)",
   "function machineUnitPrice() view returns (uint256)",
-  "function roles(address user) view returns (uint8)",
   "function nodePrice() view returns (uint256)",
   "function superNodePrice() view returns (uint256)",
   "function getUserIdentityId(address user) view returns (uint256)",
@@ -35,6 +34,10 @@ const coreAbi = [
   "function updateSuperNodePrice(uint256 newPrice) external",
   "function updatePoolRecipient(uint8 poolType, address newRecipient) external",
   "function updatePoolShare(uint8 poolType, uint16 newBps) external",
+  "function getLeaderboardWhitelist() view returns (address[])",
+  "function leaderboardWhitelistAdjustPct() view returns (uint8)",
+  "function setLeaderboardWhitelist(address[] accounts) external",
+  "function setLeaderboardWhitelistAdjustPct(uint8 adjustPct) external",
   "function pause() external",
   "function unpause() external",
   "function transferOwnership(address newOwner) external",
@@ -45,6 +48,30 @@ const coreAbi = [
   "event LeaderboardUpdated(uint256 indexed dayId, address indexed user, uint256 totalVolume)",
   "event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT)",
   "event PoolRewardSettled(uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT)",
+  // Settlement & admin
+  "function fundRewardPool(uint256 amount) external",
+  "function updateRewardConfig(uint16 newReleaseDailyBps, uint16 newImmediateBurnBps, uint16 newSecondaryBurnBps, uint16 newStaticBps, uint16 newDynamicBps, uint16 newRewardCapBps) external",
+  "function settleDailyRewardsManual(address[] participants, uint256 lightPriceInUsdt) external",
+  "function settleLeaderboard(uint256 dayId) external",
+  "function settlePoolRewards(uint8 poolType, address[] recipients, uint16[] shares) external",
+  "function setIdentityMarket(address market) external",
+  "function setRewardWeights(address[] accounts, uint256[] weights) external",
+  "function withdrawUSDT(address to, uint256 amount) external",
+  "function initLightRewardConfig(address lightToken, address swapPoolManager) external",
+  "function rewardPoolBalance() view returns (uint256)",
+  "function lightToken() view returns (address)",
+  "function swapPoolManager() view returns (address)",
+  "function orderRewardLedger(uint256 orderId) view returns (uint256 capAmount, uint256 staticPaid, uint256 dynamicPaid, bool exited)",
+  "function releaseDailyBps() view returns (uint16)",
+  "function releaseImmediateBurnBps() view returns (uint16)",
+  "function releaseSecondaryBurnBps() view returns (uint16)",
+  "function releaseStaticBps() view returns (uint16)",
+  "function releaseDynamicBps() view returns (uint16)",
+  "function rewardCapBps() view returns (uint16)",
+  "function rewardBurnAddress() view returns (address)",
+  "function identityMarket() view returns (address)",
+  "function getParticipantCount() view returns (uint256)",
+  "function getParticipantAt(uint256 index) view returns (address)",
 ];
 
 export type CorePoolConfig = {
@@ -94,8 +121,29 @@ export async function getSuperNodePrice(provider: BrowserProvider): Promise<bigi
 
 export async function getUserRole(provider: BrowserProvider, user: string): Promise<number> {
   const contract = getCoreContract(provider) as any;
-  const role = await contract.roles(user);
+  const role = await contract.getUserRole(user);
   return Number(role);
+}
+
+export type OrderRewardLedger = {
+  capAmount: bigint;
+  staticPaid: bigint;
+  dynamicPaid: bigint;
+  exited: boolean;
+};
+
+export async function getOrderRewardLedger(
+  provider: BrowserProvider,
+  orderId: bigint,
+): Promise<OrderRewardLedger> {
+  const contract = getCoreContract(provider) as any;
+  const row = await contract.orderRewardLedger(orderId);
+  return {
+    capAmount: row.capAmount as bigint,
+    staticPaid: row.staticPaid as bigint,
+    dynamicPaid: row.dynamicPaid as bigint,
+    exited: row.exited as boolean,
+  };
 }
 
 export async function getUserMachineOrderIds(
@@ -189,31 +237,32 @@ export async function getRewardRecordsByBeneficiary(
 export async function purchaseMachine(
   provider: BrowserProvider,
   quantity: number,
+  signer?: AbstractSigner,
 ) {
-  const signer = await provider.getSigner();
+  if (!signer) signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.purchaseMachine(quantity);
+  const tx = await contract.purchaseMachine(quantity, { gasLimit: 1_500_000n });
   return tx.wait();
 }
 
-export async function bindReferrer(provider: BrowserProvider, referrer: string) {
-  const signer = await provider.getSigner();
+export async function bindReferrer(provider: BrowserProvider, referrer: string, signer?: AbstractSigner) {
+  if (!signer) signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.bindReferrer(referrer);
+  const tx = await contract.bindReferrer(referrer, { gasLimit: 300_000n });
   return tx.wait();
 }
 
-export async function buyNode(provider: BrowserProvider) {
-  const signer = await provider.getSigner();
+export async function buyNode(provider: BrowserProvider, signer?: AbstractSigner) {
+  if (!signer) signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.buyNode();
+  const tx = await contract.buyNode({ gasLimit: 1_500_000n });
   return tx.wait();
 }
 
-export async function buySuperNode(provider: BrowserProvider) {
-  const signer = await provider.getSigner();
+export async function buySuperNode(provider: BrowserProvider, signer?: AbstractSigner) {
+  if (!signer) signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.buySuperNode();
+  const tx = await contract.buySuperNode({ gasLimit: 1_500_000n });
   return tx.wait();
 }
 
@@ -222,10 +271,11 @@ export async function approveIdentityOperator(
   identityId: bigint,
   operator: string,
   approved: boolean,
+  signer?: AbstractSigner,
 ) {
-  const signer = await provider.getSigner();
+  if (!signer) signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.approveIdentityOperator(identityId, operator, approved);
+  const tx = await contract.approveIdentityOperator(identityId, operator, approved, { gasLimit: 300_000n });
   return tx.wait();
 }
 
@@ -367,6 +417,31 @@ export async function updateCorePoolShare(provider: BrowserProvider, poolType: n
   return tx.wait();
 }
 
+export async function getLeaderboardWhitelist(provider: BrowserProvider): Promise<string[]> {
+  const contract = getCoreContract(provider) as any;
+  return contract.getLeaderboardWhitelist();
+}
+
+export async function getLeaderboardWhitelistAdjustPct(provider: BrowserProvider): Promise<number> {
+  const contract = getCoreContract(provider) as any;
+  const value: bigint = await contract.leaderboardWhitelistAdjustPct();
+  return Number(value);
+}
+
+export async function setLeaderboardWhitelist(provider: BrowserProvider, accounts: string[]) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setLeaderboardWhitelist(accounts);
+  return tx.wait();
+}
+
+export async function setLeaderboardWhitelistAdjustPct(provider: BrowserProvider, adjustPct: number) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setLeaderboardWhitelistAdjustPct(adjustPct);
+  return tx.wait();
+}
+
 export type TeamStats = {
   directCount: bigint;
   teamCount: bigint;
@@ -374,20 +449,146 @@ export type TeamStats = {
   teamVolume: bigint;
 };
 
+async function safeReadTeamMetric(contract: any, methodName: string, user: string): Promise<bigint> {
+  try {
+    const value = await contract[methodName](user);
+    return typeof value === "bigint" ? value : BigInt(value ?? 0);
+  } catch {
+    return 0n;
+  }
+}
+
 export async function getTeamStats(provider: BrowserProvider, user: string): Promise<TeamStats> {
   const contract = getCoreContract(provider) as any;
   const [directCount, teamCount, directVolume, teamVolume] = await Promise.all([
-    contract.directReferralCount(user),
-    contract.teamTotalMemberCount(user),
-    contract.directReferralVolume(user),
-    contract.teamTotalVolume(user),
+    safeReadTeamMetric(contract, "directReferralCount", user),
+    safeReadTeamMetric(contract, "teamTotalMemberCount", user),
+    safeReadTeamMetric(contract, "directReferralVolume", user),
+    safeReadTeamMetric(contract, "teamTotalVolume", user),
   ]);
-  return { directCount, teamCount, directVolume, teamVolume };
+  if (!TEAM_STATS_INCLUDE_DIRECT_IN_TOTAL) {
+    return { directCount, teamCount, directVolume, teamVolume };
+  }
+
+  return {
+    directCount,
+    teamCount: teamCount + directCount,
+    directVolume,
+    teamVolume: teamVolume + directVolume,
+  };
 }
 
 export async function transferCoreOwnership(provider: BrowserProvider, newOwner: string) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.transferOwnership(newOwner);
+  return tx.wait();
+}
+
+// ── Settlement & reward admin functions ──
+
+export type RewardConfig = {
+  releaseDailyBps: number;
+  releaseImmediateBurnBps: number;
+  releaseSecondaryBurnBps: number;
+  releaseStaticBps: number;
+  releaseDynamicBps: number;
+  rewardCapBps: number;
+};
+
+export async function getRewardConfig(provider: BrowserProvider): Promise<RewardConfig> {
+  const c = getCoreContract(provider) as any;
+  const [a, b, c2, d, e, f] = await Promise.all([
+    c.releaseDailyBps(), c.releaseImmediateBurnBps(), c.releaseSecondaryBurnBps(),
+    c.releaseStaticBps(), c.releaseDynamicBps(), c.rewardCapBps(),
+  ]);
+  return {
+    releaseDailyBps: Number(a), releaseImmediateBurnBps: Number(b), releaseSecondaryBurnBps: Number(c2),
+    releaseStaticBps: Number(d), releaseDynamicBps: Number(e), rewardCapBps: Number(f),
+  };
+}
+
+export async function getRewardPoolBalance(provider: BrowserProvider): Promise<bigint> {
+  const c = getCoreContract(provider) as any;
+  return c.rewardPoolBalance();
+}
+
+export async function getIdentityMarket(provider: BrowserProvider): Promise<string> {
+  const c = getCoreContract(provider) as any;
+  return c.identityMarket();
+}
+
+export async function getParticipantCount(provider: BrowserProvider): Promise<number> {
+  const c = getCoreContract(provider) as any;
+  return Number(await c.getParticipantCount());
+}
+
+export async function getParticipants(provider: BrowserProvider, max = 500): Promise<string[]> {
+  const count = await getParticipantCount(provider);
+  const c = getCoreContract(provider) as any;
+  const n = Math.min(count, max);
+  const results: string[] = [];
+  for (let i = 0; i < n; i++) {
+    results.push(await c.getParticipantAt(i) as string);
+  }
+  return results;
+}
+
+export async function fundRewardPool(provider: BrowserProvider, amount: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.fundRewardPool(amount, { gasLimit: 300_000n });
+  return tx.wait();
+}
+
+export async function updateRewardConfig(provider: BrowserProvider, config: RewardConfig) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.updateRewardConfig(
+    config.releaseDailyBps, config.releaseImmediateBurnBps, config.releaseSecondaryBurnBps,
+    config.releaseStaticBps, config.releaseDynamicBps, config.rewardCapBps,
+  );
+  return tx.wait();
+}
+
+export async function setRewardWeight(provider: BrowserProvider, account: string, weight: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setRewardWeights([account], [weight]);
+  return tx.wait();
+}
+
+export async function settleDailyRewardsManual(provider: BrowserProvider, participants: string[], lightPriceInUsdt: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.settleDailyRewardsManual(participants, lightPriceInUsdt, { gasLimit: 10_000_000n });
+  return tx.wait();
+}
+
+export async function settleLeaderboard(provider: BrowserProvider, dayId: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.settleLeaderboard(dayId, { gasLimit: 2_000_000n });
+  return tx.wait();
+}
+
+export async function settlePoolRewards(provider: BrowserProvider, poolType: number, recipients: string[], shares: number[]) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.settlePoolRewards(poolType, recipients, shares, { gasLimit: 2_000_000n });
+  return tx.wait();
+}
+
+export async function setIdentityMarket(provider: BrowserProvider, market: string) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setIdentityMarket(market);
+  return tx.wait();
+}
+
+export async function withdrawCoreUSDT(provider: BrowserProvider, to: string, amount: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.withdrawUSDT(to, amount);
   return tx.wait();
 }

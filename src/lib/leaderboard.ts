@@ -169,12 +169,27 @@ export async function fetchLeaderboardDay(
     contract.poolAccumulated(5),
   ]);
 
+  // Whitelist functions may not exist on older proxy versions — graceful fallback
+  let whitelistRaw: string[] = [];
+  let adjustPctRaw: bigint = 0n;
+  try {
+    [whitelistRaw, adjustPctRaw] = await Promise.all([
+      contract.getLeaderboardWhitelist() as Promise<string[]>,
+      contract.leaderboardWhitelistAdjustPct() as Promise<bigint>,
+    ]);
+  } catch {
+    // not available on this deployment — use defaults
+  }
+
   const topUsers: string[] = Array.from(lbResult.topUsers);
   const topVolumes: bigint[] = Array.from(lbResult.topVolumes);
   const topCount: number = Number(lbResult.topCount);
   const lastUsers: string[] = Array.from(lbResult.lastUsers);
   const lastCount: number = Number(lbResult.lastCount);
   const totalPool = BigInt(poolAcc);
+  const whitelist: string[] = Array.from(whitelistRaw);
+  const whitelistCount = whitelist.length;
+  const adjustPct = Number(adjustPctRaw);
 
   // Fetch events in parallel
   // Settle events are typically processed within days, limit to 1-2 days buffer
@@ -248,19 +263,37 @@ export async function fetchLeaderboardDay(
     purchaseMap.get(user)!.push({ amount: amountUSDT, blockNum: log.blockNumber, ts });
   }
 
-  // ── Top10 entries (1.5% pool) ──
-  // Estimate reward based on rankShares and current totalPool
-  const shareDenom = RANK_SHARES.slice(0, topCount).reduce((a, b) => a + b, 0);
+  // Pool split follows on-chain settle logic:
+  // both lists exist => top 75%, lucky 25%; otherwise winner takes all.
+  let topSegment = 0n;
+  let luckySegment = 0n;
+  if (topCount === 0) {
+    luckySegment = totalPool;
+  } else if (lastCount === 0) {
+    topSegment = totalPool;
+  } else {
+    topSegment = (totalPool * 7500n) / 10000n;
+    luckySegment = totalPool - topSegment;
+  }
+
+  const whitelistEnabled = whitelistCount > 0 && adjustPct > 0;
+  const adjustedFirstShare = Math.max(0, RANK_SHARES[0] - adjustPct * 100);
+
+  // ── Top10 entries ──
+  const topWhitelistAmount = whitelistEnabled ? (topSegment * BigInt(adjustPct)) / 100n : 0n;
+  const topRankTotal = topSegment - topWhitelistAmount;
+  const topShareDenom = RANK_SHARES
+    .slice(0, topCount)
+    .reduce((sum, share, index) => sum + (index === 0 ? adjustedFirstShare : share), 0);
+
   const top10: TopEntry[] = [];
   for (let i = 0; i < topCount; i++) {
     const addr = topUsers[i];
     if (!addr || addr === "0x0000000000000000000000000000000000000000") continue;
     const addrLow = addr.toLowerCase();
     const settled = settledMap.get(addrLow);
-    const estimatedReward =
-      shareDenom > 0
-        ? (totalPool * BigInt(RANK_SHARES[i])) / BigInt(shareDenom)
-        : 0n;
+    const rankShare = i === 0 ? adjustedFirstShare : RANK_SHARES[i];
+    const estimatedReward = topShareDenom > 0 ? (topRankTotal * BigInt(rankShare)) / BigInt(topShareDenom) : 0n;
     top10.push({
       rank: i + 1,
       address: addr,
@@ -270,7 +303,13 @@ export async function fetchLeaderboardDay(
     });
   }
 
-  // ── FOMO last10 entries (0.5% pool) ──
+  // ── FOMO last10 entries ──
+  const luckyWhitelistAmount = whitelistEnabled ? (luckySegment * BigInt(adjustPct)) / 100n : 0n;
+  const luckyRankTotal = luckySegment - luckyWhitelistAmount;
+  const luckyShareDenom = RANK_SHARES
+    .slice(0, lastCount)
+    .reduce((sum, share, index) => sum + (index === 0 ? adjustedFirstShare : share), 0);
+
   // lastUsers[lastCount-1] = most recent → rank 1
   const last10: FomoEntry[] = [];
   for (let i = lastCount - 1; i >= 0; i--) {
@@ -285,8 +324,8 @@ export async function fetchLeaderboardDay(
     const purchaseAmount = mostRecent?.amount ?? 0n;
     const ts = mostRecent?.ts ?? updatedTsMap.get(addrLow) ?? 0;
 
-    // FOMO estimated reward: 0.5/2.0 = 25% of leaderboard pool split equally among lastCount
-    const fomoShare = lastCount > 0 ? (totalPool / 4n) / BigInt(lastCount) : 0n;
+    const rankShare = rank === 1 ? adjustedFirstShare : RANK_SHARES[rank - 1];
+    const fomoShare = luckyShareDenom > 0 ? (luckyRankTotal * BigInt(rankShare)) / BigInt(luckyShareDenom) : 0n;
 
     last10.push({
       rank,

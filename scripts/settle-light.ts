@@ -6,6 +6,8 @@ dotenv.config({ path: ".env" });
 const swapAbi = [
   "function feeVault(uint8 pairId, address token) view returns (uint256)",
   "function settleLightFees() external",
+  "function settleLightFeesIfDue() external returns (bool)",
+  "function lastLightSettlementDay() view returns (uint256)",
   "function paused() view returns (bool)",
 ];
 
@@ -25,6 +27,7 @@ async function main() {
   const lightAddress = readEnv("LIGHT_TOKEN_ADDRESS", "VITE_LIGHT_TOKEN_ADDRESS");
   const lightPairId = Number(readEnv("LIGHT_PAIR_ID", "SWAP_LIGHT_PAIR_ID") || "1");
   const minSettleAmount = BigInt(readEnv("LIGHT_SETTLE_MIN_AMOUNT") || "0");
+  const manualSettle = (readEnv("LIGHT_SETTLE_MANUAL") || "false").toLowerCase() === "true";
 
   if (!ethers.isAddress(swapAddress)) {
     throw new Error("Missing or invalid SWAP_POOL_MANAGER_PROXY (or VITE_SWAP_POOL_ADDRESS)");
@@ -50,7 +53,9 @@ async function main() {
   }
 
   const pending: bigint = await swap.feeVault(lightPairId, lightAddress);
+  const lastDay: bigint = await swap.lastLightSettlementDay();
   console.log("[settle-light] pending light fee:", pending.toString());
+  console.log("[settle-light] last settled day:", lastDay.toString());
 
   if (pending <= 0n) {
     console.log("[settle-light] no pending fee, skip");
@@ -61,8 +66,16 @@ async function main() {
     return;
   }
 
-  const tx = await swap.settleLightFees();
-  console.log("[settle-light] tx sent:", tx.hash);
+  if (manualSettle) {
+    const tx = await swap.settleLightFees();
+    console.log("[settle-light] manual settle tx:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("[settle-light] confirmed in block:", receipt?.blockNumber ?? "unknown");
+    return;
+  }
+
+  const tx = await swap.settleLightFeesIfDue();
+  console.log("[settle-light] if-due tx:", tx.hash);
   const receipt = await tx.wait();
   console.log("[settle-light] confirmed in block:", receipt?.blockNumber ?? "unknown");
 }

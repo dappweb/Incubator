@@ -228,20 +228,33 @@ contract NodeOTCMarket is OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
         delete activeOrderPositions[order.id];
     }
 
+    /// @notice Public cleanup: cancel active orders below the last trade price for a role.
+    /// Anyone can call this to mop up residual low-price orders that exceeded the
+    /// per-fill maxCancels cap (50). Gas-safe: limited to `maxCancels` per call.
+    function cleanupLowerOrders(uint8 role, uint256 maxCancels) external {
+        require(role == 1 || role == 2, "invalid role");
+        require(maxCancels > 0 && maxCancels <= 200, "invalid maxCancels");
+
+        uint256 floorPrice = lastTradePriceByRole[role];
+        require(floorPrice > 0, "no trade price");
+
+        _cancelOrdersBelowPrice(role, floorPrice, maxCancels);
+    }
+
     function _autoCancelLowerOrders(uint8 role, uint256 filledPrice, uint256 filledOrderId) private {
+        filledOrderId; // consumed by event only; silence unused warning
+        _cancelOrdersBelowPrice(role, filledPrice, 50);
+    }
+
+    function _cancelOrdersBelowPrice(uint8 role, uint256 floorPrice, uint256 maxCancels) private {
         uint256 cursor = 0;
         uint256 cancelled = 0;
-        uint256 maxCancels = 50; // Gas safety: limit batch cancels per fill
 
         while (cursor < activeOrderIds.length && cancelled < maxCancels) {
             uint256 activeOrderId = activeOrderIds[cursor];
-            if (activeOrderId == filledOrderId) {
-                cursor += 1;
-                continue;
-            }
 
             Order storage candidate = orders[activeOrderId];
-            if (!candidate.active || candidate.role != role || candidate.priceUSDT >= filledPrice) {
+            if (!candidate.active || candidate.role != role || candidate.priceUSDT >= floorPrice) {
                 cursor += 1;
                 continue;
             }
@@ -250,7 +263,7 @@ contract NodeOTCMarket is OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
             address seller = candidate.seller;
             _removeActiveOrder(candidate);
             cancelled += 1;
-            emit OtcOrderAutoCancelled(activeOrderId, seller, role, filledPrice);
+            emit OtcOrderAutoCancelled(activeOrderId, seller, role, floorPrice);
         }
     }
 }

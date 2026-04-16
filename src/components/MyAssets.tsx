@@ -34,7 +34,7 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
   address,
   provider,
   identityId,
-  role,
+  role: _role,
   loading,
   onStatusChange,
   onLoadingChange,

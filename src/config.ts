@@ -26,6 +26,15 @@ function readEnv(primaryKey: string, ...fallbackKeys: string[]): string {
   return "";
 }
 
+function readEnvBoolean(primaryKey: string, ...fallbackKeys: string[]): boolean | undefined {
+  const value = readEnv(primaryKey, ...fallbackKeys);
+  if (!value) return undefined;
+  const normalized = value.toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return undefined;
+}
+
 function parseRpcUrls(raw: string): string[] {
   if (!raw) return [];
 
@@ -55,6 +64,22 @@ export const CNC_MAINNET_BLOCK_EXPLORER_URL = readEnv(
   "CNC_BLOCK_EXPLORER_URL",
 ) || "https://cncchainpro.com";
 
+export const JSONBIN_API_BASE_URL = readEnv(
+  "VITE_JSONBIN_API_BASE_URL",
+  "JSONBIN_API_BASE_URL",
+) || "https://api.jsonbin.io/v3";
+
+export const JSONBIN_ANNOUNCEMENTS_BIN_ID = readEnv(
+  "VITE_JSONBIN_ANNOUNCEMENTS_BIN_ID",
+  "JSONBIN_ANNOUNCEMENTS_BIN_ID",
+);
+
+// Optional read key for frontend announcement fetch.
+// Do NOT place master/write keys in VITE_ variables.
+export const JSONBIN_ANNOUNCEMENTS_ACCESS_KEY = readEnv(
+  "VITE_JSONBIN_ANNOUNCEMENTS_ACCESS_KEY",
+);
+
 export const USDT_CONTRACT_ADDRESS = readEnv(
   "VITE_USDT_CONTRACT_ADDRESS",
   "VITE_USDT_CONTRACT",
@@ -68,6 +93,10 @@ export const CORE_CONTRACT_ADDRESS = readEnv(
 );
 export const OTC_CONTRACT_ADDRESS = readEnv("VITE_OTC_CONTRACT_ADDRESS", "VITE_OTC_CONTRACT");
 export const SWAP_POOL_ADDRESS = readEnv("VITE_SWAP_POOL_ADDRESS", "VITE_SWAP_POOL");
+export const PRIMARY_SWAP_CONTROLLER_ADDRESS = readEnv(
+  "VITE_PRIMARY_SWAP_CONTROLLER_ADDRESS",
+  "VITE_PRIMARY_SWAP_CONTROLLER",
+);
 export const PANCAKE_V3_ROUTER_ADDRESS = readEnv(
   "VITE_PANCAKE_V2_ROUTER_ADDRESS",
   "VITE_PANCAKE_V3_ROUTER_ADDRESS",
@@ -86,5 +115,15 @@ export const PANCAKE_V3_PRIMARY_FEE_PPM = Number(
     "VITE_PANCAKE_V3_FEE_PPM",
   ) || "2500",
 );
+
+export const PANCAKE_V2_FACTORY_ADDRESS = readEnv(
+  "VITE_PANCAKE_V2_FACTORY_ADDRESS",
+  "VITE_PANCAKE_FACTORY",
+);
+
+// CNC current core deployment records team totals as indirect-only on-chain.
+// Keep this compatibility switch ON by default so UI shows total = direct + indirect.
+export const TEAM_STATS_INCLUDE_DIRECT_IN_TOTAL =
+  readEnvBoolean("VITE_TEAM_STATS_INCLUDE_DIRECT_IN_TOTAL", "TEAM_STATS_INCLUDE_DIRECT_IN_TOTAL") ?? true;
 
 
