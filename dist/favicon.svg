@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 116 116">
+  <rect x="-8" y="-8" width="116" height="116" rx="10" fill="white"/>
+  <!-- Blue L-shape (left) -->
+  <polygon points="0,0 38,0 38,62 62,62 62,100 0,100" fill="#6B7FD4"/>
+  <!-- Green L-shape (right) -->
+  <polygon points="38,0 100,0 100,100 62,100 62,62 38,62" fill="#86C232"/>
+</svg>

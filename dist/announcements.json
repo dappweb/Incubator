@@ -1,0 +1,12 @@
+[
+  {
+    "$id": "ann-welcome-001",
+    "title": "欢迎使用 Incubator 平台",
+    "summary": "Incubator DApp 已正式上线 CNC 主网，支持矿机购买、节点升级、OTC 交易及兑换功能。",
+    "content": "Incubator DApp 已正式上线 CNC 主网。当前支持功能：矿机购买、节点/超节点升级、身份 OTC 交易、USDT/ICO 及 LIGHT/ICO 兑换池。请使用 MetaMask 或 WalletConnect 连接钱包开始使用。如有问题请联系管理员。",
+    "category": "system",
+    "pin": true,
+    "priority": 100,
+    "createdAt": "2026-04-16T00:00:00.000Z"
+  }
+]
