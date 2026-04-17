@@ -1,7 +1,7 @@
 import {
-  JSONBIN_ANNOUNCEMENTS_ACCESS_KEY,
-  JSONBIN_ANNOUNCEMENTS_BIN_ID,
-  JSONBIN_API_BASE_URL,
+    JSONBIN_ANNOUNCEMENTS_ACCESS_KEY,
+    JSONBIN_ANNOUNCEMENTS_BIN_ID,
+    JSONBIN_API_BASE_URL,
 } from "../config";
 
 export type Announcement = {
@@ -83,12 +83,18 @@ async function fetchFromJsonBin(): Promise<Announcement[] | null> {
       `${JSONBIN_API_BASE_URL}/b/${JSONBIN_ANNOUNCEMENTS_BIN_ID}/latest`,
       { headers, cache: "no-store" },
     );
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`[announcements] JSONBin fetch failed: ${response.status}`);
+      return null;
+    }
 
     const data = (await response.json()) as JsonBinPayload | unknown;
     const payload = (data as JsonBinPayload)?.record ?? data;
-    return normalizeAnnouncements(payload);
-  } catch {
+    const rows = normalizeAnnouncements(payload);
+    console.info(`[announcements] JSONBin returned ${rows.length} announcements`);
+    return rows;
+  } catch (err) {
+    console.warn("[announcements] JSONBin fetch error:", err);
     return null;
   }
 }
@@ -99,19 +105,23 @@ async function fetchFromJsonBin(): Promise<Announcement[] | null> {
  */
 export async function fetchPublishedAnnouncements(): Promise<Announcement[]> {
   const jsonBinRows = await fetchFromJsonBin();
-  if (jsonBinRows) {
+  if (jsonBinRows && jsonBinRows.length > 0) {
     return jsonBinRows;
   }
 
   try {
     const response = await fetch("/announcements.json");
     if (!response.ok) {
-      return [];
+      console.warn(`[announcements] static file fetch failed: ${response.status}`);
+      return jsonBinRows ?? [];
     }
     const data: unknown = await response.json();
-    return normalizeAnnouncements(data);
-  } catch {
-    return [];
+    const staticRows = normalizeAnnouncements(data);
+    console.info(`[announcements] static fallback returned ${staticRows.length} announcements`);
+    return staticRows.length > 0 ? staticRows : (jsonBinRows ?? []);
+  } catch (err) {
+    console.warn("[announcements] static file fetch error:", err);
+    return jsonBinRows ?? [];
   }
 }
 
@@ -140,21 +150,22 @@ export async function publishAnnouncementsToJsonBin(
   if (!JSONBIN_ANNOUNCEMENTS_BIN_ID) throw new Error("JSONBIN bin ID 未配置");
   if (!masterKey) throw new Error("请输入 JSONBin Master Key");
 
-  const res = await fetch(
-    `${JSONBIN_API_BASE_URL}/b/${JSONBIN_ANNOUNCEMENTS_BIN_ID}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Master-Key": masterKey,
-      },
-      body: JSON.stringify({ announcements }),
+  const url = `${JSONBIN_API_BASE_URL}/b/${JSONBIN_ANNOUNCEMENTS_BIN_ID}`;
+  console.info(`[announcements] Publishing ${announcements.length} announcements to JSONBin...`);
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": masterKey,
     },
-  );
+    body: JSON.stringify({ announcements }),
+  });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    console.error(`[announcements] JSONBin publish failed (${res.status}):`, body);
     throw new Error(`JSONBin 更新失败 (${res.status}): ${body}`);
   }
+  console.info("[announcements] Published successfully.");
 }
 
 export function createEmptyAnnouncement(): Announcement {

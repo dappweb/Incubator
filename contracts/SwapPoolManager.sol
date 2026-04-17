@@ -75,6 +75,9 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     uint256 public lastLightSettlementDay;
     address public rewardController;
 
+    // === Settlement cycle config ===
+    uint256 public cycleDuration;  // seconds per cycle; 0 means default 1 day
+
     event PoolCreated(
         uint8 indexed pairId,
         address indexed token0,
@@ -116,6 +119,7 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     event LightSettlementTriggered(address indexed operator, uint256 indexed dayId, bool manual);
     event LightRewardWithdrawn(address indexed to, uint256 amount, uint256 remainingReserve);
     event RewardControllerUpdated(address indexed controller);
+    event CycleDurationUpdated(uint256 oldDuration, uint256 newDuration);
 
     function createDefaultPools(uint16 feeBpsUsdtIco, uint16 feeBpsLightIco, uint16 maxPriceImpactBps) external onlyOwner {
         _createPool(uint8(PairId.UsdtIco), address(usdt), address(ico), feeBpsUsdtIco, maxPriceImpactBps);
@@ -351,7 +355,8 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     }
 
     function _currentDay() private view returns (uint256) {
-        return block.timestamp / 1 days;
+        uint256 dur = cycleDuration == 0 ? 1 days : cycleDuration;
+        return block.timestamp / dur;
     }
 
     function updatePoolConfig(uint8 pairId, uint16 feeBps, uint16 maxPriceImpactBps) external onlyOwner {
@@ -406,6 +411,13 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     function setRewardController(address controller) external onlyOwner {
         rewardController = controller;
         emit RewardControllerUpdated(controller);
+    }
+
+    function setCycleDuration(uint256 newDuration) external onlyOwner {
+        require(newDuration >= 60 || newDuration == 0, "cycle too short");
+        uint256 old = cycleDuration;
+        cycleDuration = newDuration;
+        emit CycleDurationUpdated(old, newDuration);
     }
 
     function withdrawLightForRewards(uint256 amount) external whenNotPaused {

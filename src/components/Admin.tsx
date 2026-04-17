@@ -1,87 +1,89 @@
 import { BrowserProvider, formatUnits, isAddress, parseUnits } from "ethers";
 import React, { useEffect, useMemo, useState } from "react";
-import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
+import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, JSONBIN_MASTER_KEY, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
 import {
-  createEmptyAnnouncement,
-  fetchPublishedAnnouncements,
-  getStoredMasterKey,
-  publishAnnouncementsToJsonBin,
-  setStoredMasterKey,
-  type Announcement,
+    createEmptyAnnouncement,
+    fetchPublishedAnnouncements,
+    publishAnnouncementsToJsonBin,
+    type Announcement,
 } from "../lib/announcements";
 import type { CorePoolConfig } from "../lib/coreContract";
 import {
-  fundRewardPool,
-  getContractOwner,
-  getCorePoolConfig,
-  getIdentityMarket,
-  getLeaderboardWhitelist,
-  getLeaderboardWhitelistAdjustPct,
-  getMachineUnitPrice,
-  getNodePrice,
-  getRewardConfig,
-  getRewardPoolBalance,
-  getSubAdmins,
-  getSuperNodePrice,
-  isCorePaused,
-  pauseCore,
-  setCoreSubAdmin,
-  setIdentityMarket,
-  setLeaderboardWhitelist,
-  setLeaderboardWhitelistAdjustPct,
-  settleDailyRewardsManual,
-  settleLeaderboard,
-  settlePoolRewards,
-  transferCoreOwnership,
-  unpauseCore,
-  updateCoreNodePrice,
-  updateCorePoolRecipient,
-  updateCorePoolShare,
-  updateCoreSuperNodePrice,
-  updateMachinePrice,
-  updateRewardConfig,
-  withdrawCoreUSDT,
+    fundRewardPool,
+    getContractOwner,
+    getCorePoolConfig,
+    getCurrentDay,
+    getCycleDuration,
+    getIdentityMarket,
+    getLeaderboardWhitelist,
+    getLeaderboardWhitelistAdjustPct,
+    getMachineUnitPrice,
+    getNodePrice,
+    getRewardConfig,
+    getRewardPoolBalance,
+    getSubAdmins,
+    getSuperNodePrice,
+    isCorePaused,
+    pauseCore,
+    setCoreSubAdmin,
+    setCycleDuration,
+    setIdentityMarket,
+    setLeaderboardWhitelist,
+    setLeaderboardWhitelistAdjustPct,
+    settleDailyRewardsManual,
+    settleLeaderboard,
+    settlePoolRewards,
+    transferCoreOwnership,
+    unpauseCore,
+    updateCoreNodePrice,
+    updateCorePoolRecipient,
+    updateCorePoolShare,
+    updateCoreSuperNodePrice,
+    updateMachinePrice,
+    updateRewardConfig,
+    withdrawCoreUSDT,
 } from "../lib/coreContract";
 import { parseContractError } from "../lib/errorParser";
 import { cleanupLowerOrders, getOtcFeeConfig, updateOtcFeeConfig } from "../lib/otcContract";
 import {
-  addSwapLiquidity,
-  createDefaultPools,
-  disableSellUsdt,
-  distributeSwapFees,
-  enableSellUsdt,
-  getLightFeeConfig,
-  getPancakeV2PrimaryReserves,
-  getPrimarySwapConfig,
-  getSwapFeeVault,
-  getSwapPool,
-  getUsdtAddress,
-  isSwapPaused,
-  pauseSwap,
-  removeSwapLiquidity,
-  reportIcoHolderCount,
-  setPairTokens as setPairTokensOnChain,
-  setUsdtAddress as setUsdtAddressOnChain,
-  settleLightFees,
-  unpauseSwap,
-  updatePrimaryBuyFeeConfig,
-  updatePrimaryPair,
-  updatePrimaryRecipients,
-  updatePrimarySellConfig,
-  updatePrimaryThresholds,
-  updateSwapLightFeeConfig,
-  updateSwapPoolConfig,
-  withdrawPrimaryTreasury,
-  type LightFeeConfig,
-  type PrimarySwapConfig,
-  type SwapPool,
+    addSwapLiquidity,
+    createDefaultPools,
+    disableSellUsdt,
+    distributeSwapFees,
+    enableSellUsdt,
+    getLightFeeConfig,
+    getPancakeV2PrimaryReserves,
+    getPrimarySwapConfig,
+    getSwapCycleDuration,
+    getSwapFeeVault,
+    getSwapPool,
+    getUsdtAddress,
+    isSwapPaused,
+    pauseSwap,
+    removeSwapLiquidity,
+    reportIcoHolderCount,
+    setPairTokens as setPairTokensOnChain,
+    setUsdtAddress as setUsdtAddressOnChain,
+    settleLightFees,
+    unpauseSwap,
+    updatePrimaryBuyFeeConfig,
+    updatePrimaryPair,
+    updatePrimaryRecipients,
+    updatePrimarySellConfig,
+    updatePrimaryThresholds,
+    updateSwapLightFeeConfig,
+    updateSwapPoolConfig,
+    withdrawPrimaryTreasury,
+    type LightFeeConfig,
+    type PrimarySwapConfig,
+    type SwapPool
 } from "../lib/swapContract";
 import {
-  burnUnsold,
-  getIcoTokenInfo,
-  mintIcoToken,
-  setBurnExecutor,
-  setSaleAllocationWallet,
+    burnUnsold,
+    getIcoTokenInfo,
+    mintIcoToken,
+    setBurnExecutor,
+    setSaleAllocationWallet,
 } from "../lib/tokenContract";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
@@ -300,6 +302,10 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   const [rewardPoolBalance, setRewardPoolBalance] = useState<bigint>(0n);
   const [identityMarket, setIdentityMarketState] = useState("");
   const [rewardConfig, setRewardConfigState] = useState<import("../lib/coreContract").RewardConfig | null>(null);
+  const [coreCycleDuration, setCoreCycleDuration] = useState<bigint>(0n);
+  const [swapCycleDuration, setSwapCycleDuration] = useState<bigint>(0n);
+  const [currentDayId, setCurrentDayId] = useState<bigint>(0n);
+  const [cycleDurationInput, setCycleDurationInput] = useState("");
   const [settlementInputs, setSettlementInputs] = useState({
     fundAmount: "", identityMarket: "",
     dailyBps: "", immBurnBps: "", secBurnBps: "", staticBps: "", dynamicBps: "", capBps: "", burnAddr: "",
@@ -335,7 +341,6 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   // ── 公告管理 tab state ──
   const [annList, setAnnList] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState(false);
-  const [annMasterKey, setAnnMasterKey] = useState(() => getStoredMasterKey());
   const [annEditing, setAnnEditing] = useState<Announcement | null>(null);
   const [annPublishing, setAnnPublishing] = useState(false);
 
@@ -420,14 +425,21 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
       // Load settlement / primary / token data (best-effort)
       try {
-        const [rPoolBal, idMarket, rwdCfg] = await Promise.all([
+        const [rPoolBal, idMarket, rwdCfg, coreCycle, swapCycle, dayId] = await Promise.all([
           getRewardPoolBalance(provider),
           getIdentityMarket(provider),
           getRewardConfig(provider),
+          getCycleDuration(provider),
+          getSwapCycleDuration(provider),
+          getCurrentDay(provider),
         ]);
         setRewardPoolBalance(rPoolBal);
         setIdentityMarketState(idMarket);
         setRewardConfigState(rwdCfg);
+        setCoreCycleDuration(coreCycle);
+        setSwapCycleDuration(swapCycle);
+        setCurrentDayId(dayId);
+        setCycleDurationInput(String(coreCycle === 0n ? 86400n : coreCycle));
       } catch { /* optional data */ }
 
       try {
@@ -463,6 +475,27 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       setIsLoadingState(false);
     });
   }, [provider, lang, address]);
+
+  // 自动加载公告
+  useEffect(() => {
+    if (adminTab === "announcements" && annList.length === 0 && !annLoading) {
+      setAnnLoading(true);
+      fetchPublishedAnnouncements()
+        .then((rows) => {
+          setAnnList(rows);
+          const m = lang === "zh" ? `已加载 ${rows.length} 条公告` : `Loaded ${rows.length} announcements`;
+          setLocalStatus(m);
+          onStatusChange(m);
+        })
+        .catch((err) => {
+          console.error("[Admin] failed to autoload announcements:", err);
+          const m = lang === "zh" ? `公告加载失败: ${err?.message ?? err}` : `Failed to load announcements: ${err?.message ?? err}`;
+          setLocalStatus(m);
+          onStatusChange(m);
+        })
+        .finally(() => setAnnLoading(false));
+    }
+  }, [adminTab]);
 
   const executeAction = async (key: string, action: () => Promise<void>, successMessage = t.actionSuccess) => {
     if (!provider) {
@@ -1175,6 +1208,47 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               )}
             </Card>
 
+            <Card title={lang === "zh" ? "⏱ 结算周期" : "⏱ Settlement Cycle"} hint={lang === "zh" ? "设置结算周期（秒），0=默认1天。同步修改 Core 和 Swap 合约" : "Set cycle duration (seconds), 0=default 1 day. Updates both Core and Swap contracts"}>
+              <div className="admin-pool-echo">
+                <KVRow label={lang === "zh" ? "当前 Day ID" : "Current Day ID"} value={String(currentDayId)} />
+                <KVRow label={lang === "zh" ? "Core 周期" : "Core Cycle"} value={coreCycleDuration === 0n ? `86400s (${lang === "zh" ? "默认1天" : "default 1 day"})` : `${coreCycleDuration}s (${Math.round(Number(coreCycleDuration) / 60)} min)`} />
+                <KVRow label={lang === "zh" ? "Swap 周期" : "Swap Cycle"} value={swapCycleDuration === 0n ? `86400s (${lang === "zh" ? "默认1天" : "default 1 day"})` : `${swapCycleDuration}s (${Math.round(Number(swapCycleDuration) / 60)} min)`} />
+              </div>
+              <label className="field" style={{ marginTop: "12px" }}>
+                {lang === "zh" ? "新周期（秒）" : "New Cycle (seconds)"}
+                <input value={cycleDurationInput} onChange={e => setCycleDurationInput(e.target.value)} placeholder="600" />
+              </label>
+              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "4px 0 8px" }}>
+                {lang === "zh"
+                  ? "常用: 0=1天(生产), 300=5分钟, 600=10分钟, 3600=1小时。最小60秒"
+                  : "Common: 0=1day(prod), 300=5min, 600=10min, 3600=1hr. Min 60s"}
+              </p>
+              <div className="actions" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {[
+                  { label: "5 min", val: "300" },
+                  { label: "10 min", val: "600" },
+                  { label: "1 hr", val: "3600" },
+                  { label: lang === "zh" ? "1天(生产)" : "1 day(prod)", val: "0" },
+                ].map(preset => (
+                  <button key={preset.val} className="ghost-btn" type="button" style={{ fontSize: "12px", padding: "4px 10px", minHeight: "28px" }}
+                    onClick={() => setCycleDurationInput(preset.val)}>
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="actions" style={{ marginTop: "8px" }}>
+                <button className="primary-btn" type="button"
+                  onClick={() => void executeAction("set-cycle", async () => {
+                    const dur = BigInt(cycleDurationInput || "0");
+                    await setCycleDuration(provider!, dur);
+                    await setSwapCycleDuration(provider!, dur);
+                  }, lang === "zh" ? "结算周期已更新（Core + Swap）。" : "Settlement cycle updated (Core + Swap).")}
+                  disabled={actionKey !== ""}>
+                  {actionKey === "set-cycle" ? t.loading : lang === "zh" ? "设置周期" : "Set Cycle"}
+                </button>
+              </div>
+            </Card>
+
             <Card title={lang === "zh" ? "注入奖励池" : "Fund Reward Pool"} hint={lang === "zh" ? "向奖励池转入 LIGHT" : "Transfer LIGHT into reward pool"}>
               <label className="field">{lang === "zh" ? "金额 (LIGHT)" : "Amount (LIGHT)"}
                 <input value={settlementInputs.fundAmount} onChange={e => setSettlementInputs(p => ({ ...p, fundAmount: e.target.value }))} placeholder="100" />
@@ -1706,42 +1780,32 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         {/* ════ 公告管理 ════ */}
         {adminTab === "announcements" && (
           <section className="grid">
-            {/* Master Key 输入 */}
-            <Card title={lang === "zh" ? "🔑 JSONBin 授权" : "🔑 JSONBin Auth"} hint={lang === "zh" ? "输入 Master Key 后可发布公告（仅本次会话有效）" : "Enter Master Key to publish (session only)"} className="grid-full">
-              <div className="kv-grid">
-                <KVRow label="Master Key" value={annMasterKey ? "••••••••" + annMasterKey.slice(-8) : lang === "zh" ? "未设置" : "Not set"} />
-              </div>
-              <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                <input className="admin-input" type="password" placeholder="X-Master-Key" value={annMasterKey} onChange={(e) => { setAnnMasterKey(e.target.value); setStoredMasterKey(e.target.value); }} style={{ flex: 1 }} />
+            {/* 公告列表 */}
+            <Card title={lang === "zh" ? `📢 公告列表 (${annList.length})` : `📢 Announcements (${annList.length})`} hint={lang === "zh" ? "管理当前所有公告，修改后点击发布即可生效" : "Manage announcements, click Publish to apply"} className="grid-full">
+              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
                 <button className="ghost-btn" type="button" onClick={async () => {
                   setAnnLoading(true);
                   try {
                     const rows = await fetchPublishedAnnouncements();
                     setAnnList(rows);
-                    setMsg(lang === "zh" ? `已加载 ${rows.length} 条公告` : `Loaded ${rows.length} announcements`);
-                  } catch (e: any) { setMsg(`❌ ${e.message ?? e}`); }
+                    { const m = lang === "zh" ? `已加载 ${rows.length} 条公告` : `Loaded ${rows.length} announcements`; setLocalStatus(m); onStatusChange(m); }
+                  } catch (e: any) { const m = `❌ ${e.message ?? e}`; setLocalStatus(m); onStatusChange(m); }
                   finally { setAnnLoading(false); }
-                }}>{annLoading ? "…" : lang === "zh" ? "加载公告" : "Load"}</button>
-              </div>
-            </Card>
-
-            {/* 公告列表 */}
-            <Card title={lang === "zh" ? `📢 公告列表 (${annList.length})` : `📢 Announcements (${annList.length})`} hint={lang === "zh" ? "管理当前所有公告" : "Manage all announcements"} className="grid-full">
-              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                }}>{annLoading ? "…" : lang === "zh" ? "🔄 刷新" : "🔄 Refresh"}</button>
                 <button className="ghost-btn" type="button" onClick={() => setAnnEditing(createEmptyAnnouncement())}>
                   {lang === "zh" ? "➕ 新增公告" : "➕ New"}
                 </button>
-                <button className="ghost-btn" type="button" disabled={annPublishing || !annMasterKey}
+                <button className="ghost-btn" type="button" disabled={annPublishing || !JSONBIN_MASTER_KEY}
                   onClick={async () => {
-                    if (!annMasterKey) { setMsg(lang === "zh" ? "请先输入 Master Key" : "Enter Master Key first"); return; }
+                    if (!JSONBIN_MASTER_KEY) { const m = lang === "zh" ? "未配置 VITE_JSONBIN_MASTER_KEY" : "VITE_JSONBIN_MASTER_KEY not configured"; setLocalStatus(m); onStatusChange(m); return; }
                     setAnnPublishing(true);
                     try {
-                      await publishAnnouncementsToJsonBin(annList, annMasterKey);
-                      setMsg(lang === "zh" ? `✅ 已发布 ${annList.length} 条公告到 JSONBin` : `✅ Published ${annList.length} announcements`);
-                    } catch (e: any) { setMsg(`❌ ${e.message ?? e}`); }
+                      await publishAnnouncementsToJsonBin(annList, JSONBIN_MASTER_KEY);
+                      { const m = lang === "zh" ? `✅ 已发布 ${annList.length} 条公告` : `✅ Published ${annList.length} announcements`; setLocalStatus(m); onStatusChange(m); }
+                    } catch (e: any) { const m = `❌ ${e.message ?? e}`; setLocalStatus(m); onStatusChange(m); }
                     finally { setAnnPublishing(false); }
                   }}>
-                  {annPublishing ? "…" : lang === "zh" ? "🚀 发布到 JSONBin" : "🚀 Publish"}
+                  {annPublishing ? "…" : lang === "zh" ? "🚀 发布" : "🚀 Publish"}
                 </button>
               </div>
               {annList.length === 0 && <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{lang === "zh" ? "暂无公告，点击「新增」添加。" : "No announcements yet."}</p>}
@@ -1762,7 +1826,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                         </button>
                         <button className="ghost-btn" style={{ fontSize: "12px", padding: "4px 8px", minHeight: "28px", color: "#f87171" }} type="button" onClick={() => {
                           setAnnList((prev) => prev.filter((_, i) => i !== idx));
-                          setMsg(lang === "zh" ? "已删除（需点击「发布」同步到 JSONBin）" : "Deleted (click Publish to sync)");
+                          { const m = lang === "zh" ? "已删除（需点击「发布」同步到 JSONBin）" : "Deleted (click Publish to sync)"; setLocalStatus(m); onStatusChange(m); }
                         }}>
                           {lang === "zh" ? "删除" : "Del"}
                         </button>
@@ -1781,26 +1845,26 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             {annEditing && (
               <Card title={lang === "zh" ? "✏️ 编辑公告" : "✏️ Edit Announcement"} hint={annEditing.$id} className="grid-full">
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <input className="admin-input" placeholder={lang === "zh" ? "标题" : "Title"} value={annEditing.title} onChange={(e) => setAnnEditing({ ...annEditing, title: e.target.value })} />
-                  <input className="admin-input" placeholder={lang === "zh" ? "摘要" : "Summary"} value={annEditing.summary} onChange={(e) => setAnnEditing({ ...annEditing, summary: e.target.value })} />
-                  <textarea className="admin-input" placeholder={lang === "zh" ? "正文内容" : "Content"} rows={4} value={annEditing.content} onChange={(e) => setAnnEditing({ ...annEditing, content: e.target.value })} style={{ resize: "vertical", fontFamily: "inherit" }} />
+                  <input className="admin-input" placeholder={lang === "zh" ? "标题" : "Title"} value={annEditing.title} onChange={(e) => { const v = e.target.value; setAnnEditing((prev) => prev ? { ...prev, title: v } : prev); }} />
+                  <input className="admin-input" placeholder={lang === "zh" ? "摘要" : "Summary"} value={annEditing.summary} onChange={(e) => { const v = e.target.value; setAnnEditing((prev) => prev ? { ...prev, summary: v } : prev); }} />
+                  <textarea className="admin-input" placeholder={lang === "zh" ? "正文内容" : "Content"} rows={4} value={annEditing.content} onChange={(e) => { const v = e.target.value; setAnnEditing((prev) => prev ? { ...prev, content: v } : prev); }} style={{ resize: "vertical", fontFamily: "inherit" }} />
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <select className="admin-input" value={annEditing.category} onChange={(e) => setAnnEditing({ ...annEditing, category: e.target.value as Announcement["category"] })} style={{ flex: 1 }}>
+                    <select className="admin-input" value={annEditing.category} onChange={(e) => { const v = e.target.value as Announcement["category"]; setAnnEditing((prev) => prev ? { ...prev, category: v } : prev); }} style={{ flex: 1 }}>
                       <option value="system">{lang === "zh" ? "系统" : "System"}</option>
                       <option value="campaign">{lang === "zh" ? "活动" : "Campaign"}</option>
                       <option value="maintenance">{lang === "zh" ? "维护" : "Maintenance"}</option>
                       <option value="risk">{lang === "zh" ? "风险" : "Risk"}</option>
                     </select>
-                    <input className="admin-input" type="number" placeholder={lang === "zh" ? "优先级" : "Priority"} value={annEditing.priority} onChange={(e) => setAnnEditing({ ...annEditing, priority: Number(e.target.value) || 0 })} style={{ width: "100px" }} />
+                    <input className="admin-input" type="number" placeholder={lang === "zh" ? "优先级" : "Priority"} value={annEditing.priority} onChange={(e) => { const v = Number(e.target.value) || 0; setAnnEditing((prev) => prev ? { ...prev, priority: v } : prev); }} style={{ width: "100px" }} />
                     <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px" }}>
-                      <input type="checkbox" checked={annEditing.pin} onChange={(e) => setAnnEditing({ ...annEditing, pin: e.target.checked })} />
+                      <input type="checkbox" checked={annEditing.pin} onChange={(e) => { const v = e.target.checked; setAnnEditing((prev) => prev ? { ...prev, pin: v } : prev); }} />
                       📌 {lang === "zh" ? "置顶" : "Pin"}
                     </label>
                   </div>
                   <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                     <button className="ghost-btn" type="button" onClick={() => {
                       if (!annEditing.title.trim() || !annEditing.summary.trim() || !annEditing.content.trim()) {
-                        setMsg(lang === "zh" ? "标题、摘要、内容不能为空" : "Title, summary, and content are required");
+                        { const m = lang === "zh" ? "标题、摘要、内容不能为空" : "Title, summary, and content are required"; setLocalStatus(m); onStatusChange(m); }
                         return;
                       }
                       setAnnList((prev) => {
@@ -1813,7 +1877,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                         return [...prev, annEditing];
                       });
                       setAnnEditing(null);
-                      setMsg(lang === "zh" ? "已保存到本地（需点击「发布」同步到 JSONBin）" : "Saved locally (click Publish to sync)");
+                      { const m = lang === "zh" ? "已保存到本地（需点击「发布」同步到 JSONBin）" : "Saved locally (click Publish to sync)"; setLocalStatus(m); onStatusChange(m); }
                     }}>
                       {lang === "zh" ? "💾 保存" : "💾 Save"}
                     </button>

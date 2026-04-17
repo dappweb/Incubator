@@ -155,6 +155,9 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     address public swapPoolManager;
     uint256 private _transientLightPrice;
 
+    // === Settlement cycle config (appended after _transientLightPrice) ===
+    uint256 public cycleDuration;  // seconds per cycle; 0 means default 1 day
+
     event MachinePurchased(
         address indexed user,
         uint256 indexed orderId,
@@ -228,6 +231,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     event LeaderboardWhitelistSettled(uint256 indexed dayId, address indexed user, bool indexed isTopPool, uint256 amountUSDT);
     event UsdtDecimalsSynced(uint8 decimals);
     event PriceScaleMigrated(uint8 fromDecimals, uint8 toDecimals, uint256 machineUnitPrice, uint256 nodePrice, uint256 superNodePrice);
+    event CycleDurationUpdated(uint256 oldDuration, uint256 newDuration);
 
     constructor() {
         _disableInitializers();
@@ -500,7 +504,15 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function currentDay() public view returns (uint256) {
-        return block.timestamp / 1 days;
+        uint256 dur = cycleDuration == 0 ? 1 days : cycleDuration;
+        return block.timestamp / dur;
+    }
+
+    function setCycleDuration(uint256 newDuration) external onlyOwner {
+        require(newDuration >= 60 || newDuration == 0, "cycle too short");
+        uint256 old = cycleDuration;
+        cycleDuration = newDuration;
+        emit CycleDurationUpdated(old, newDuration);
     }
 
     function pause() external onlyOwner {

@@ -75,9 +75,13 @@ export const JSONBIN_ANNOUNCEMENTS_BIN_ID = readEnv(
 );
 
 // Optional read key for frontend announcement fetch.
-// Do NOT place master/write keys in VITE_ variables.
 export const JSONBIN_ANNOUNCEMENTS_ACCESS_KEY = readEnv(
   "VITE_JSONBIN_ANNOUNCEMENTS_ACCESS_KEY",
+);
+
+// Master key for admin announcement writes (only accessible to admin panel).
+export const JSONBIN_MASTER_KEY = readEnv(
+  "VITE_JSONBIN_MASTER_KEY",
 );
 
 export const USDT_CONTRACT_ADDRESS = readEnv(

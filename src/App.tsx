@@ -967,8 +967,11 @@ const App = () => {
   useEffect(() => {
     void (async () => {
       try {
-        setAnnouncements(await fetchPublishedAnnouncements());
-      } catch {
+        const rows = await fetchPublishedAnnouncements();
+        console.info(`[App] Loaded ${rows.length} announcements`);
+        setAnnouncements(rows);
+      } catch (err) {
+        console.error("[App] Failed to load announcements:", err);
         setAnnouncements([]);
       }
     })();

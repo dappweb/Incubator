@@ -72,6 +72,9 @@ const coreAbi = [
   "function identityMarket() view returns (address)",
   "function getParticipantCount() view returns (uint256)",
   "function getParticipantAt(uint256 index) view returns (address)",
+  "function cycleDuration() view returns (uint256)",
+  "function currentDay() view returns (uint256)",
+  "function setCycleDuration(uint256 newDuration) external",
 ];
 
 export type CorePoolConfig = {
@@ -590,5 +593,22 @@ export async function withdrawCoreUSDT(provider: BrowserProvider, to: string, am
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.withdrawUSDT(to, amount);
+  return tx.wait();
+}
+
+export async function getCycleDuration(provider: BrowserProvider): Promise<bigint> {
+  const contract = getCoreContract(provider);
+  return contract.cycleDuration() as Promise<bigint>;
+}
+
+export async function getCurrentDay(provider: BrowserProvider): Promise<bigint> {
+  const contract = getCoreContract(provider);
+  return contract.currentDay() as Promise<bigint>;
+}
+
+export async function setCycleDuration(provider: BrowserProvider, durationSeconds: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setCycleDuration(durationSeconds);
   return tx.wait();
 }

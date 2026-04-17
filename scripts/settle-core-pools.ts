@@ -18,6 +18,7 @@ const coreAbi = [
   "function settlePoolRewards(uint8 poolType, address[] recipients, uint16[] shares) external",
   "function settleLeaderboard(uint256 dayId) external",
   "function paused() view returns (bool)",
+  "function cycleDuration() view returns (uint256)",
   "event MachinePurchased(address indexed user, uint256 indexed orderId, uint256 quantity, uint256 amountUSDT, address indexed referrer)",
   "event NodePurchased(address indexed user, uint256 amountUSDT, uint256 indexed identityId)",
   "event SuperNodePurchased(address indexed user, uint256 amountUSDT, uint256 indexed identityId)",
@@ -411,8 +412,10 @@ function logWeightedPlan(tag: string, plan: WeightedSettlementPlan) {
 }
 
 function dayIdFromTimestamp(seconds: number) {
-  return Math.floor(seconds / 86400);
+  return Math.floor(seconds / _cycleDurationSeconds);
 }
+
+let _cycleDurationSeconds = 86400; // default; overridden by on-chain value
 
 function parseBool(value: string, defaultValue: boolean) {
   if (!value) return defaultValue;
@@ -491,6 +494,17 @@ async function main() {
   if (paused) {
     console.log("[settle-core] core contract is paused, skip");
     return;
+  }
+
+  // Read on-chain cycle duration (0 means default 86400)
+  try {
+    const onChainCycle: bigint = await core.cycleDuration();
+    if (onChainCycle > 0n) {
+      _cycleDurationSeconds = Number(onChainCycle);
+    }
+    console.log("[settle-core] cycleDuration:", _cycleDurationSeconds, "seconds");
+  } catch {
+    console.log("[settle-core] cycleDuration() not available, using default 86400s");
   }
 
   const enableNode = parseBool(readEnv("ENABLE_NODE_SETTLEMENT"), true);

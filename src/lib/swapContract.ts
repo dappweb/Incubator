@@ -1,12 +1,12 @@
 import { AbstractSigner, BrowserProvider, Contract } from "ethers";
 import {
-  ICO_TOKEN_ADDRESS,
-  PANCAKE_V2_FACTORY_ADDRESS,
-  PANCAKE_V3_PRIMARY_FEE_PPM,
-  PANCAKE_V3_ROUTER_ADDRESS,
-  PRIMARY_SWAP_CONTROLLER_ADDRESS,
-  SWAP_POOL_ADDRESS,
-  USDT_CONTRACT_ADDRESS,
+    ICO_TOKEN_ADDRESS,
+    PANCAKE_V2_FACTORY_ADDRESS,
+    PANCAKE_V3_PRIMARY_FEE_PPM,
+    PANCAKE_V3_ROUTER_ADDRESS,
+    PRIMARY_SWAP_CONTROLLER_ADDRESS,
+    SWAP_POOL_ADDRESS,
+    USDT_CONTRACT_ADDRESS,
 } from "../config";
 
 const swapAbi = [
@@ -34,6 +34,8 @@ const swapAbi = [
   "function removeLiquidity(uint8 pairId, uint256 amount0, uint256 amount1, address to) external",
   "function distributeFees(uint8 pairId, address token, address[] recipients, uint16[] bps) external",
   "function createDefaultPools(uint16 feeBpsUsdtIco, uint16 feeBpsLightIco, uint16 maxPriceImpactBps) external",
+  "function cycleDuration() view returns (uint256)",
+  "function setCycleDuration(uint256 newDuration) external",
 ];
 
 const pancakeRouterV2Abi = [
@@ -622,4 +624,16 @@ export async function updatePrimaryPair(provider: BrowserProvider, newPair: stri
 export async function withdrawPrimaryTreasury(provider: BrowserProvider, token: string, to: string, amount: bigint) {
   const signer = await provider.getSigner();
   return (await (getPrimarySwapController(provider).connect(signer) as any).withdrawTreasury(token, to, amount)).wait();
+}
+
+export async function getSwapCycleDuration(provider: BrowserProvider): Promise<bigint> {
+  const contract = getSwapContract(provider);
+  return contract.cycleDuration() as Promise<bigint>;
+}
+
+export async function setSwapCycleDuration(provider: BrowserProvider, durationSeconds: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getSwapContract(provider).connect(signer) as any;
+  const tx = await contract.setCycleDuration(durationSeconds);
+  return tx.wait();
 }
