@@ -1686,22 +1686,37 @@
   width: 100%;
   appearance: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   padding: 12px 40px 12px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(12, 18, 50, 0.78);
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  color-scheme: dark;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23a0aec0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+.swap-direction-select:hover {
+  border-color: rgba(95, 216, 127, 0.32);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+    rgba(12, 18, 50, 0.84);
 }
 .swap-direction-select:focus {
   outline: none;
-  border-color: rgba(79, 172, 254, 0.4);
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px rgba(95, 216, 127, 0.18);
+}
+.swap-direction-select option {
+  color: var(--text-primary);
+  background-color: #0f183a;
 }
 
 /* Quote details */

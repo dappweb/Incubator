@@ -95,6 +95,38 @@ describe("IncubatorCore — Admin & Settlement", function () {
     assert.equal(await core.isOwnerOrSubAdmin(bob.address), false);
   });
 
+  it("allows owner/sub-admin to manage manager role", async function () {
+    const { core, owner, alice, bob, carol } = await deployFixture();
+
+    await core.connect(owner).setSubAdmin(alice.address, true);
+
+    await core.connect(alice).setManager(bob.address, true);
+    assert.equal(await core.isOwnerOrSubAdmin(bob.address), true);
+
+    await core.connect(owner).setManager(carol.address, true);
+    assert.equal(await core.isOwnerOrSubAdmin(carol.address), true);
+
+    await core.connect(alice).setManager(bob.address, false);
+    assert.equal(await core.isOwnerOrSubAdmin(bob.address), false);
+
+    await assert.rejects(core.connect(bob).setManager(carol.address, false));
+  });
+
+  it("allows manager to update prices but blocks high-risk owner-only actions", async function () {
+    const { core, owner, alice, bob } = await deployFixture();
+
+    await core.connect(owner).setSubAdmin(alice.address, true);
+    await core.connect(alice).setManager(bob.address, true);
+
+    await core.connect(bob).updateMachineUnitPrice(101_000000n);
+    await core.connect(bob).updateNodePrice(1001_000000n);
+    await assert.rejects(core.connect(bob).updateSuperNodePrice(3001_000000n));
+
+    await assert.rejects(core.connect(bob).withdrawUSDT(bob.address, 1n));
+    await assert.rejects(core.connect(bob).setSubAdmin(bob.address, true));
+    await assert.rejects(core.connect(bob).transferOwnership(bob.address));
+  });
+
   // ── C-13: getUserMachineOrders ──
   it("returns correct order ID list for getUserMachineOrders", async function () {
     const { core, alice } = await deployFixture();

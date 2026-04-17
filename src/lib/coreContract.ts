@@ -25,6 +25,7 @@ const coreAbi = [
   "function subAdmins(address user) view returns (bool)",
   "function getSubAdmins() view returns (address[])",
   "function setSubAdmin(address account, bool enabled) external",
+  "function setManager(address account, bool enabled) external",
   "function isOwnerOrSubAdmin(address account) view returns (bool)",
   "function paused() view returns (bool)",
   "function getPoolConfig(uint8 poolType) view returns (address recipient, uint16 bps)",
@@ -349,6 +350,13 @@ export async function setCoreSubAdmin(provider: BrowserProvider, account: string
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.setSubAdmin(account, enabled);
+  return tx.wait();
+}
+
+export async function setCoreManager(provider: BrowserProvider, account: string, enabled: boolean) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setManager(account, enabled);
   return tx.wait();
 }
 

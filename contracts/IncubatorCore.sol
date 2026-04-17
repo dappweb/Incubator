@@ -158,6 +158,9 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     // === Settlement cycle config (appended after _transientLightPrice) ===
     uint256 public cycleDuration;  // seconds per cycle; 0 means default 1 day
 
+    // Manager access control (appended at storage tail for upgrade safety).
+    mapping(address => bool) private managers;
+
     event MachinePurchased(
         address indexed user,
         uint256 indexed orderId,
@@ -491,7 +494,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function isOwnerOrSubAdmin(address account) public view returns (bool) {
-        return account == owner() || subAdmins[account];
+        return account == owner() || subAdmins[account] || managers[account];
     }
 
     function getLeaderboard(uint256 dayId)
@@ -548,19 +551,26 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit SubAdminUpdated(account, false);
     }
 
+    function setManager(address account, bool enabled) external {
+        require(isOwnerOrSubAdmin(msg.sender));
+        managers[account] = enabled;
+    }
+
     function unpause() external onlyOwner {
         _unpause();
     }
 
-    function updateMachineUnitPrice(uint256 newPrice) external onlyOwner {
-        require(newPrice > 0 && newPrice <= _maxMachineUnitPrice(), "invalid price");
+    function updateMachineUnitPrice(uint256 newPrice) external {
+        _requirePriceAdmin();
+        require(newPrice > 0 && newPrice <= _maxMachineUnitPrice());
         uint256 old = machineUnitPrice;
         machineUnitPrice = newPrice;
         emit PriceUpdated("MACHINE", old, newPrice);
     }
 
-    function updateNodePrice(uint256 newPrice) external onlyOwner {
-        require(newPrice > 0 && newPrice <= _maxNodePrice(), "invalid price");
+    function updateNodePrice(uint256 newPrice) external {
+        _requirePriceAdmin();
+        require(newPrice > 0 && newPrice <= _maxNodePrice());
         uint256 old = nodePrice;
         nodePrice = newPrice;
         emit PriceUpdated("NODE", old, newPrice);
@@ -599,6 +609,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
     function _maxSuperNodePrice() internal view returns (uint256) {
         return 300_000 * _usdtUnit();
+    }
+
+    function _requirePriceAdmin() internal view {
+        require(isOwnerOrSubAdmin(msg.sender));
     }
 
     function updatePoolRecipient(uint8 poolType, address newRecipient) external onlyOwner {

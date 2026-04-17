@@ -23,8 +23,10 @@ import {
     getRewardPoolBalance,
     getSubAdmins,
     getSuperNodePrice,
+    isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
     isCorePaused,
     pauseCore,
+    setCoreManager,
     setCoreSubAdmin,
     setCycleDuration,
     setIdentityMarket,
@@ -115,10 +117,10 @@ type EditableSwapPool = SwapPool & {
 const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, onRefresh, onStatusChange }) => {
   const t = {
     adminTitle: lang === "zh" ? "管理后台" : "Admin Panel",
-    adminHint: lang === "zh" ? "仅合约 Owner 或链上授权子管理员可访问此页面。" : "Only contract owner or on-chain authorized sub-admins can access this page.",
+    adminHint: lang === "zh" ? "仅合约 Owner、链上授权子管理员或经理可访问此页面。" : "Only contract owner, on-chain authorized sub-admins, or managers can access this page.",
     ownerAddress: lang === "zh" ? "合约 Owner" : "Contract Owner",
     currentAddress: lang === "zh" ? "当前地址" : "Current Address",
-    notOwner: lang === "zh" ? "权限不足，只有合约 Owner 或链上授权子管理员可访问此页面。" : "Insufficient permissions. Only the contract owner or on-chain authorized sub-admins can access this page.",
+    notOwner: lang === "zh" ? "权限不足，只有合约 Owner、链上授权子管理员或经理可访问此页面。" : "Insufficient permissions. Only the contract owner, on-chain authorized sub-admins, or managers can access this page.",
     userManagement: lang === "zh" ? "用户管理" : "User Management",
     contractManagement: lang === "zh" ? "合约管理" : "Contract Management",
     statisticsAnalysis: lang === "zh" ? "统计分析" : "Statistics & Analytics",
@@ -226,6 +228,16 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     adminAdded: lang === "zh" ? "子管理员已添加。" : "Sub-admin added.",
     adminRemoved: lang === "zh" ? "子管理员已移除。" : "Sub-admin removed.",
     adminAlreadyExists: lang === "zh" ? "该地址已是管理员。" : "Address is already an admin.",
+    managerTitle: lang === "zh" ? "经理管理" : "Manager Management",
+    managerHint: lang === "zh" ? "Owner 与 SubAdmin 可增删经理。经理仅可管理矿机/节点价格与公告。" : "Owner and sub-admins can add/remove managers. Managers can only manage machine/node prices and announcements.",
+    managerList: lang === "zh" ? "当前经理列表" : "Current Managers",
+    noManagers: lang === "zh" ? "暂无经理" : "No managers",
+    addManager: lang === "zh" ? "添加经理" : "Add Manager",
+    removeManager: lang === "zh" ? "移除经理" : "Remove Manager",
+    newManagerAddress: lang === "zh" ? "新经理地址" : "New Manager Address",
+    managerAdded: lang === "zh" ? "经理已添加。" : "Manager added.",
+    managerRemoved: lang === "zh" ? "经理已移除。" : "Manager removed.",
+    managerAlreadyExists: lang === "zh" ? "该地址已是经理。" : "Address is already a manager.",
 
     // Owner 转让
     ownerTransferTitle: lang === "zh" ? "Owner 转让" : "Transfer Ownership",
@@ -294,6 +306,8 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   // 多管理员
   const [subAdmins, setSubAdmins] = useState<string[]>([]);
   const [newAdminInput, setNewAdminInput] = useState("");
+  const [currentHasAdminRole, setCurrentHasAdminRole] = useState(false);
+  const [newManagerInput, setNewManagerInput] = useState("");
 
   // Owner 转让
   const [newOwnerInput, setNewOwnerInput] = useState("");
@@ -345,7 +359,12 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   const [annPublishing, setAnnPublishing] = useState(false);
 
   const isOwner = Boolean(address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase());
-  const isAdmin = isOwner || subAdmins.some((a) => a.toLowerCase() === address?.toLowerCase());
+  const isSubAdmin = subAdmins.some((a) => a.toLowerCase() === address?.toLowerCase());
+  const isManager = currentHasAdminRole && !isOwner && !isSubAdmin;
+  const isAdmin = isOwner || isSubAdmin || isManager;
+  const canManageSystem = isOwner || isSubAdmin;
+  const canManagePrices = isAdmin;
+  const canManageAnnouncements = isAdmin;
 
   const loadAdminState = async () => {
     if (!provider) {
@@ -422,6 +441,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       setPairTokensState(nextSwapPools.map(pool => ({ token0: pool.token0, token1: pool.token1 })));
       setPairTokensInputs(nextSwapPools.map(pool => ({ token0Input: pool.token0, token1Input: pool.token1 })));
       setSubAdmins(nextSubAdmins);
+      setCurrentHasAdminRole(address ? await isCoreOwnerOrSubAdmin(provider, address) : false);
 
       // Load settlement / primary / token data (best-effort)
       try {
@@ -639,6 +659,25 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     }, t.adminRemoved);
   };
 
+  const addManager = () => {
+    const normalized = newManagerInput.trim();
+    if (!isAddress(normalized)) {
+      setLocalStatus(t.invalidAddress);
+      onStatusChange(t.invalidAddress);
+      return;
+    }
+    void executeAction("add-manager", async () => {
+      await setCoreManager(provider!, normalized, true);
+      setNewManagerInput("");
+    }, t.managerAdded);
+  };
+
+  const removeManager = (target: string) => {
+    void executeAction(`remove-manager-${target.toLowerCase()}`, async () => {
+      await setCoreManager(provider!, target, false);
+    }, t.managerRemoved);
+  };
+
   if (!isAdmin) {
     return (
       <section className="grid-full">
@@ -666,11 +705,24 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     { key: "guide",       label: lang === "zh" ? "说明" : "Guide",         icon: "📖" },
   ];
 
+  const visibleAdminTabs = ADMIN_TABS.filter((tab) => {
+    if (tab.key === "overview" || tab.key === "guide") return true;
+    if (tab.key === "prices") return canManagePrices;
+    if (tab.key === "announcements") return canManageAnnouncements;
+    return canManageSystem;
+  });
+
+  useEffect(() => {
+    if (!visibleAdminTabs.some((tab) => tab.key === adminTab)) {
+      setAdminTab("overview");
+    }
+  }, [adminTab, visibleAdminTabs]);
+
   return (
     <div className="admin-layout">
       {/* ── 顶部 Tab 导航 ── */}
       <nav className="admin-top-nav">
-        {ADMIN_TABS.map((tab) => (
+        {visibleAdminTabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -848,7 +900,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 价格配置 ════ */}
-        {adminTab === "prices" && (
+        {adminTab === "prices" && canManagePrices && (
           <section className="grid">
             <Card title={t.corePrices} hint={t.corePricesHint} className="grid-full">
               {/* 当前链上价格回显 */}
@@ -916,7 +968,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 资金池 ════ */}
-        {adminTab === "pools" && (
+        {adminTab === "pools" && canManageSystem && (
           <section className="grid">
             <Card title={t.poolConfigTitle} hint={t.poolConfigHint} className="grid-full">
               <div className="admin-pool-list">
@@ -1029,7 +1081,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 市场 / 兑换 ════ */}
-        {adminTab === "market" && (
+        {adminTab === "market" && canManageSystem && (
           <section className="grid">
             {/* OTC 配置 */}
             <Card title={t.otcConfigTitle} hint={t.contractManagement}>
@@ -1191,7 +1243,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 结算 ════ */}
-        {adminTab === "settlement" && (
+        {adminTab === "settlement" && canManageSystem && (
           <section className="grid">
             <Card title={lang === "zh" ? "奖励池概况" : "Reward Pool Overview"} hint={lang === "zh" ? "查看奖励池余额及配置参数" : "View reward pool balance and config"}>
               <KVRow label={lang === "zh" ? "奖励池余额 (LIGHT)" : "Reward Pool (LIGHT)"} value={formatUsdt(rewardPoolBalance)} />
@@ -1422,7 +1474,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 一级市场 (PrimarySwapController) ════ */}
-        {adminTab === "primary" && (
+        {adminTab === "primary" && canManageSystem && (
           <section className="grid">
             <Card title={lang === "zh" ? "一级市场概况" : "Primary Swap Overview"} hint={lang === "zh" ? "PrimarySwapController 当前配置" : "Current PrimarySwapController config"}>
               {primaryConfig ? (
@@ -1567,7 +1619,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 代币管理 ════ */}
-        {adminTab === "token" && (
+        {adminTab === "token" && canManageSystem && (
           <section className="grid">
             <Card title={lang === "zh" ? "ICO Token 概况" : "ICO Token Overview"} hint={lang === "zh" ? "IncubatorToken 基本信息" : "IncubatorToken basic info"}>
               <KVRow label={lang === "zh" ? "合约地址" : "Address"} value={ICO_TOKEN_ADDRESS || "-"} />
@@ -1710,7 +1762,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 权限 / 系统 ════ */}
-        {adminTab === "system" && (
+        {adminTab === "system" && canManageSystem && (
           <section className="grid">
             {/* 多管理员 */}
             <Card title={t.multiAdminTitle} hint={t.multiAdminHint}>
@@ -1746,6 +1798,24 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               )}
             </Card>
 
+            <Card title={t.managerTitle} hint={t.managerHint}>
+              <p className="hint-text" style={{ marginBottom: "0.75rem" }}>
+                {lang === "zh" ? "按地址直接授权或移除经理角色。" : "Grant or remove manager role by address."}
+              </p>
+              <label className="field">
+                {t.newManagerAddress}
+                <input value={newManagerInput} onChange={(event) => setNewManagerInput(event.target.value)} placeholder="0x..." />
+              </label>
+              <div className="actions">
+                <button className="primary-btn" type="button" onClick={addManager} disabled={!newManagerInput.trim()}>
+                  {t.addManager}
+                </button>
+                <button className="ghost-btn" type="button" onClick={() => removeManager(newManagerInput.trim())} disabled={!newManagerInput.trim()}>
+                  {t.removeManager}
+                </button>
+              </div>
+            </Card>
+
             {/* Owner 转让 */}
             {isOwner && (
               <Card title={t.ownerTransferTitle} hint={t.ownerTransferHint}>
@@ -1778,7 +1848,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         )}
 
         {/* ════ 公告管理 ════ */}
-        {adminTab === "announcements" && (
+        {adminTab === "announcements" && canManageAnnouncements && (
           <section className="grid">
             {/* 公告列表 */}
             <Card title={lang === "zh" ? `📢 公告列表 (${annList.length})` : `📢 Announcements (${annList.length})`} hint={lang === "zh" ? "管理当前所有公告，修改后点击发布即可生效" : "Manage announcements, click Publish to apply"} className="grid-full">

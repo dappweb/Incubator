@@ -39,6 +39,7 @@ import {
     getTeamStats,
     getUserMachineOrderIds,
     getUserRole,
+    isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
     isSubAdmin as isCoreSubAdmin,
     purchaseMachine,
     type MachineOrder,
@@ -1139,15 +1140,15 @@ const App = () => {
       setDirectReferrals([]);
     }
 
-    // 合约 Owner、子管理员与推荐人状态（单独 try/catch，失败不影响整体刷新）
+    // 合约 Owner、子管理员、经理与推荐人状态（单独 try/catch，失败不影响整体刷新）
     try {
-      const [owner, subAdmin, currentReferrer] = await Promise.all([
+      const [owner, subAdminOrManager, currentReferrer] = await Promise.all([
         getContractOwner(connectedProvider),
-        isCoreSubAdmin(connectedProvider, wallet),
+        isCoreOwnerOrSubAdmin(connectedProvider, wallet),
         getReferrer(connectedProvider, wallet),
       ]);
       setContractOwner(owner);
-      setHasChainSubAdminRole(Boolean(subAdmin));
+      setHasChainSubAdminRole(Boolean(subAdminOrManager));
 
       const zeroAddr = "0x0000000000000000000000000000000000000000";
       if (!currentReferrer || currentReferrer === zeroAddr) {
@@ -1169,7 +1170,7 @@ const App = () => {
         setReferrerSource("onchain");
       }
     } catch (e) {
-      console.error("Failed to fetch owner / sub-admin / referrer", e);
+      console.error("Failed to fetch owner / admin-role / referrer", e);
       setHasChainSubAdminRole(false);
     }
 
