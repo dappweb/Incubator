@@ -194,7 +194,7 @@ git pull origin main
 npm install
 
 # 一键升级 (推荐)
-bash scripts/deploy-cnc-full.sh
+bash deploy-cnc-full.sh
 
 # 或分步执行:
 # 1) 编译
@@ -216,25 +216,25 @@ sudo systemctl reload caddy
 
 ## 5. 一键部署脚本
 
-项目提供一键部署脚本 `scripts/deploy-cnc-full.sh`，整合合约升级 + 前端发布 + Cron 安装。
+项目提供一键部署脚本 `deploy-cnc-full.sh`，整合合约升级 + 前端发布 + Cron 安装。
 
 ### 用法
 
 ```bash
 # 全量部署（合约升级 + 前端 + Cron）
-bash scripts/deploy-cnc-full.sh
+bash deploy-cnc-full.sh
 
 # 仅升级合约
-bash scripts/deploy-cnc-full.sh --chain-only
+bash deploy-cnc-full.sh --chain-only
 
 # 仅构建前端并发布
-bash scripts/deploy-cnc-full.sh --web-only
+bash deploy-cnc-full.sh --web-only
 
 # 仅安装 Cron
-bash scripts/deploy-cnc-full.sh --cron-only
+bash deploy-cnc-full.sh --cron-only
 
 # 预览计划但不执行
-bash scripts/deploy-cnc-full.sh --dry-run
+bash deploy-cnc-full.sh --dry-run
 ```
 
 ### 脚本执行流程
@@ -426,13 +426,13 @@ sudo cp -r /var/www/incubator/dist /var/www/incubator/dist.bak.$(date +%Y%m%d)
 
 ```bash
 # === 一键全量部署 ===
-bash scripts/deploy-cnc-full.sh
+bash deploy-cnc-full.sh
 
 # === 仅合约升级 ===
-bash scripts/deploy-cnc-full.sh --chain-only
+bash deploy-cnc-full.sh --chain-only
 
 # === 仅前端发布 ===
-bash scripts/deploy-cnc-full.sh --web-only
+bash deploy-cnc-full.sh --web-only
 
 # === 手动结算 ===
 npm run settle:all:cncMainnet

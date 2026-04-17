@@ -5,11 +5,11 @@
 # 功能: 合约编译/升级 + 前端构建 + Caddy 发布 + 结算 Cron 安装
 #
 # Usage:
-#   bash scripts/deploy-cnc-full.sh               # 全量部署
-#   bash scripts/deploy-cnc-full.sh --web-only     # 仅前端
-#   bash scripts/deploy-cnc-full.sh --chain-only   # 仅合约升级
-#   bash scripts/deploy-cnc-full.sh --cron-only    # 仅安装 Cron
-#   bash scripts/deploy-cnc-full.sh --dry-run      # 仅打印计划，不执行
+#   bash deploy-cnc-full.sh               # 全量部署
+#   bash deploy-cnc-full.sh --web-only     # 仅前端
+#   bash deploy-cnc-full.sh --chain-only   # 仅合约升级
+#   bash deploy-cnc-full.sh --cron-only    # 仅安装 Cron
+#   bash deploy-cnc-full.sh --dry-run      # 仅打印计划，不执行
 # ============================================================
 
 set -euo pipefail
@@ -21,7 +21,7 @@ ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; exit 1; }
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="$PROJECT_ROOT/.env"
 LOG_DIR="$PROJECT_ROOT/deploy/logs"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
