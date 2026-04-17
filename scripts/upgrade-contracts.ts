@@ -3,7 +3,7 @@ import { ethers, upgrades } from "hardhat";
 type UpgradeTarget = {
   label: string;
   envKey: string;
-  contractName: "IncubatorCore" | "NodeOTCMarket" | "SwapPoolManager" | "IdentityNFT";
+  contractName: "IncubatorCore" | "NodeOTCMarket" | "SwapPoolManager" | "IdentityNFT" | "PrimarySwapController";
 };
 
 function resolveProxyAddress(envKey: string): string | null {
@@ -28,6 +28,7 @@ async function main() {
     { label: "NodeOTCMarket", envKey: "NODE_OTC_MARKET_PROXY", contractName: "NodeOTCMarket" },
     { label: "SwapPoolManager", envKey: "SWAP_POOL_MANAGER_PROXY", contractName: "SwapPoolManager" },
     { label: "IdentityNFT", envKey: "IDENTITY_NFT_PROXY", contractName: "IdentityNFT" },
+    { label: "PrimarySwapController", envKey: "PRIMARY_SWAP_CONTROLLER_PROXY", contractName: "PrimarySwapController" },
   ];
 
   try {

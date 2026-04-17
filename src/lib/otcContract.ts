@@ -2,6 +2,7 @@ import { AbstractSigner, BrowserProvider, Contract } from "ethers";
 import { OTC_CONTRACT_ADDRESS } from "../config";
 
 const otcAbi = [
+  "function usdt() view returns (address)",
   "function createOrder(uint256 identityId, uint256 priceUSDT)",
   "function cancelOrder(uint256 orderId)",
   "function fillOrder(uint256 orderId)",
@@ -12,6 +13,7 @@ const otcAbi = [
   "function feeBps() view returns (uint256)",
   "function feeRecipient() view returns (address)",
   "function updateFeeConfig(uint256 newFeeBps, address newRecipient) external",
+  "function setUsdtAddress(address newUsdtAddress) external",
   "function cleanupLowerOrders(uint8 role, uint256 maxCancels) external",
   "function getActiveOrdersCount() view returns (uint256)",
 ];
@@ -119,4 +121,16 @@ export async function cleanupLowerOrders(provider: BrowserProvider, role: number
 export async function getActiveOrdersCount(provider: BrowserProvider): Promise<number> {
   const contract = getOtcContract(provider) as any;
   return Number(await contract.getActiveOrdersCount());
+}
+
+export async function getOtcUsdtAddress(provider: BrowserProvider): Promise<string> {
+  const contract = getOtcContract(provider) as any;
+  return contract.usdt();
+}
+
+export async function setOtcUsdtAddress(provider: BrowserProvider, newUsdtAddress: string) {
+  const signer = await provider.getSigner();
+  const contract = getOtcContract(provider).connect(signer) as any;
+  const tx = await contract.setUsdtAddress(newUsdtAddress);
+  return tx.wait();
 }

@@ -1,6 +1,6 @@
 import { BrowserProvider, formatUnits, isAddress, parseUnits } from "ethers";
 import React, { useEffect, useMemo, useState } from "react";
-import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, JSONBIN_MASTER_KEY, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
+import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, JSONBIN_MASTER_KEY, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, PRIMARY_SWAP_CONTROLLER_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
 import {
     createEmptyAnnouncement,
     fetchPublishedAnnouncements,
@@ -12,6 +12,7 @@ import {
     fundRewardPool,
     getContractOwner,
     getCorePoolConfig,
+    getCoreUsdtAddress,
     getCurrentDay,
     getCycleDuration,
     getIdentityMarket,
@@ -43,19 +44,19 @@ import {
     updateCoreSuperNodePrice,
     updateMachinePrice,
     updateRewardConfig,
-    withdrawCoreUSDT,
+    withdrawCoreUSDT
 } from "../lib/coreContract";
 import { parseContractError } from "../lib/errorParser";
-import { cleanupLowerOrders, getOtcFeeConfig, updateOtcFeeConfig } from "../lib/otcContract";
+import { cleanupLowerOrders, getOtcFeeConfig, getOtcUsdtAddress, updateOtcFeeConfig } from "../lib/otcContract";
 import {
     addSwapLiquidity,
     createDefaultPools,
-    disableSellUsdt,
     distributeSwapFees,
-    enableSellUsdt,
+    forceSetSellEnabled,
     getLightFeeConfig,
     getPancakeV2PrimaryReserves,
     getPrimarySwapConfig,
+    getPrimaryUsdtAddress,
     getSwapCycleDuration,
     getSwapFeeVault,
     getSwapPool,
@@ -210,11 +211,15 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
     // 地址设置
     addressSettingsTitle: lang === "zh" ? "链上地址管理" : "On-Chain Address Settings",
-    addressSettingsHint: lang === "zh" ? "设置 Swap 合约中的 USDT 地址和交易池 Token 对。" : "Set USDT address and token pairs in Swap contract.",
+    addressSettingsHint: lang === "zh" ? "可一键同步替换 Swap / Core / OTC / Primary 四个合约的 USDT 地址，并设置交易池 Token 对。" : "Sync USDT address across Swap / Core / OTC / Primary in one action, and configure pair tokens.",
     pairLabel: lang === "zh" ? "交易池" : "Trading Pair",
     token0Address: lang === "zh" ? "Token 0 地址" : "Token 0 Address",
     token1Address: lang === "zh" ? "Token 1 地址" : "Token 1 Address",
-    saveUsdtAddress: lang === "zh" ? "保存 USDT 地址" : "Save USDT Address",
+    saveUsdtAddress: lang === "zh" ? "一键同步所有 USDT 地址" : "Sync All USDT Addresses",
+    swapUsdtAddress: lang === "zh" ? "Swap USDT" : "Swap USDT",
+    coreUsdtAddress: lang === "zh" ? "Core USDT" : "Core USDT",
+    otcUsdtAddress: lang === "zh" ? "OTC USDT" : "OTC USDT",
+    primaryUsdtAddress: lang === "zh" ? "Primary USDT" : "Primary USDT",
     savePairTokens: lang === "zh" ? "保存交易池" : "Save Pair",
 
     // 多管理员
@@ -296,6 +301,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
   // 地址设置
   const [usdtAddress, setUsdtAddress] = useState("");
+  const [coreUsdtAddress, setCoreUsdtAddressState] = useState("");
+  const [otcUsdtAddress, setOtcUsdtAddressState] = useState("");
+  const [primaryUsdtAddress, setPrimaryUsdtAddressState] = useState("");
   const [usdtAddressInput, setUsdtAddressInput] = useState("");
   const [pairTokens, setPairTokensState] = useState<Array<{ token0: string; token1: string }>>([]);
   const [pairTokensInputs, setPairTokensInputs] = useState<Array<{ token0Input: string; token1Input: string }>>([]);
@@ -374,7 +382,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
     setIsLoadingState(true);
     try {
-      const [owner, nextCorePaused, nextSwapPaused, nextMachinePrice, nextNodePrice, nextSuperPrice, nextOtcConfig, nextLightConfig, nextLightVault, nextUsdtAddress, nextSubAdmins, nextWhitelist, nextAdjustPct] = await Promise.all([
+      const [owner, nextCorePaused, nextSwapPaused, nextMachinePrice, nextNodePrice, nextSuperPrice, nextOtcConfig, nextLightConfig, nextLightVault, nextUsdtAddress, nextCoreUsdtAddress, nextOtcUsdtAddress, nextPrimaryUsdtAddress, nextSubAdmins, nextWhitelist, nextAdjustPct] = await Promise.all([
         getContractOwner(provider),
         isCorePaused(provider),
         isSwapPaused(provider),
@@ -385,6 +393,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         getLightFeeConfig(provider),
         LIGHT_TOKEN_ADDRESS ? getSwapFeeVault(provider, 1, LIGHT_TOKEN_ADDRESS) : Promise.resolve(0n),
         getUsdtAddress(provider),
+        CORE_CONTRACT_ADDRESS ? getCoreUsdtAddress(provider) : Promise.resolve(""),
+        OTC_CONTRACT_ADDRESS ? getOtcUsdtAddress(provider) : Promise.resolve(""),
+        PRIMARY_SWAP_CONTROLLER_ADDRESS ? getPrimaryUsdtAddress(provider) : Promise.resolve(""),
         getSubAdmins(provider),
         getLeaderboardWhitelist(provider),
         getLeaderboardWhitelistAdjustPct(provider),
@@ -437,6 +448,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         superNodeRecipient: nextLightConfig.superNodeRecipient,
       });
       setUsdtAddress(nextUsdtAddress);
+      setCoreUsdtAddressState(nextCoreUsdtAddress);
+      setOtcUsdtAddressState(nextOtcUsdtAddress);
+      setPrimaryUsdtAddressState(nextPrimaryUsdtAddress);
       setUsdtAddressInput(nextUsdtAddress);
       setPairTokensState(nextSwapPools.map(pool => ({ token0: pool.token0, token1: pool.token1 })));
       setPairTokensInputs(nextSwapPools.map(pool => ({ token0Input: pool.token0, token1Input: pool.token1 })));
@@ -777,14 +791,20 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <KVRow label={t.otcAddress}   value={OTC_CONTRACT_ADDRESS   || "-"} />
               <KVRow label={t.swapAddress}  value={SWAP_POOL_ADDRESS      || "-"} />
               <KVRow label={t.lightAddress} value={LIGHT_TOKEN_ADDRESS    || "-"} />
-              <KVRow label={t.usdtAddress}  value={USDT_CONTRACT_ADDRESS  || "-"} />
+              <KVRow label={t.swapUsdtAddress} value={usdtAddress || USDT_CONTRACT_ADDRESS || "-"} />
+              <KVRow label={t.coreUsdtAddress} value={coreUsdtAddress || "-"} />
+              <KVRow label={t.otcUsdtAddress} value={otcUsdtAddress || "-"} />
+              <KVRow label={t.primaryUsdtAddress} value={primaryUsdtAddress || "-"} />
             </Card>
 
             <Card title={t.addressSettingsTitle} hint={t.addressSettingsHint} className="grid-full">
               {/* USDT 地址 */}
               <div className="admin-setting-section">
                 <div className="admin-pool-echo">
-                  <KVRow label={t.usdtAddress} value={usdtAddress || "-"} />
+                  <KVRow label={t.swapUsdtAddress} value={usdtAddress || "-"} />
+                  <KVRow label={t.coreUsdtAddress} value={coreUsdtAddress || "-"} />
+                  <KVRow label={t.otcUsdtAddress} value={otcUsdtAddress || "-"} />
+                  <KVRow label={t.primaryUsdtAddress} value={primaryUsdtAddress || "-"} />
                 </div>
                 <label className="field" style={{ marginTop: "12px" }}>
                   {t.usdtAddress}
@@ -798,8 +818,18 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   <button className="primary-btn" type="button"
                     onClick={() => void executeAction("set-usdt", async () => {
                       validateAddress(usdtAddressInput);
-                      await setUsdtAddressOnChain(provider!, usdtAddressInput.trim());
-                    }, lang === "zh" ? "USDT 地址已更新。" : "USDT address updated.")}
+                      const nextUsdt = usdtAddressInput.trim();
+                      await setUsdtAddressOnChain(provider!, nextUsdt);
+                      if (CORE_CONTRACT_ADDRESS) {
+                        await setCoreUsdtAddress(provider!, nextUsdt);
+                      }
+                      if (OTC_CONTRACT_ADDRESS) {
+                        await setOtcUsdtAddress(provider!, nextUsdt);
+                      }
+                      if (PRIMARY_SWAP_CONTROLLER_ADDRESS) {
+                        await setPrimaryUsdtAddress(provider!, nextUsdt);
+                      }
+                    }, lang === "zh" ? "已同步更新 Swap/Core/OTC/Primary 的 USDT 地址。" : "USDT address synced across Swap/Core/OTC/Primary.")}
                     disabled={actionKey !== ""}>
                     {actionKey === "set-usdt" ? t.loading : t.saveUsdtAddress}
                   </button>
@@ -1591,15 +1621,13 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
             <Card title={lang === "zh" ? "卖出开关 / 资金提取" : "Sell Toggle / Treasury Withdraw"} hint={lang === "zh" ? "启用/禁用 USDT 卖出，或提取资金" : "Enable/disable sell USDT or withdraw treasury"}>
               <div className="actions" style={{ marginBottom: "16px" }}>
-                <button className="primary-btn" type="button"
-                  onClick={() => void executeAction("pri-enable-sell", () => enableSellUsdt(provider!), lang === "zh" ? "卖出已启用。" : "Sell enabled.")}
-                  disabled={actionKey !== "" || (primaryConfig?.sellUsdtEnabled ?? false)}>
-                  {actionKey === "pri-enable-sell" ? t.loading : lang === "zh" ? "启用卖出" : "Enable Sell"}
-                </button>
-                <button className="ghost-btn" type="button"
-                  onClick={() => void executeAction("pri-disable-sell", () => disableSellUsdt(provider!), lang === "zh" ? "卖出已禁用。" : "Sell disabled.")}
-                  disabled={actionKey !== "" || !(primaryConfig?.sellUsdtEnabled ?? false)}>
-                  {actionKey === "pri-disable-sell" ? t.loading : lang === "zh" ? "禁用卖出" : "Disable Sell"}
+                <button className={primaryConfig?.sellUsdtEnabled ? "ghost-btn" : "primary-btn"} type="button"
+                  onClick={() => {
+                    const next = !(primaryConfig?.sellUsdtEnabled ?? false);
+                    void executeAction("pri-force-sell-toggle", () => forceSetSellEnabled(provider!, next), next ? (lang === "zh" ? "卖出已启用。" : "Sell enabled.") : (lang === "zh" ? "卖出已禁用。" : "Sell disabled."));
+                  }}
+                  disabled={actionKey !== ""}>
+                  {actionKey === "pri-force-sell-toggle" ? t.loading : primaryConfig?.sellUsdtEnabled ? (lang === "zh" ? "关闭卖出" : "Disable Sell") : (lang === "zh" ? "开启卖出" : "Enable Sell")}
                 </button>
               </div>
               <label className="field">{lang === "zh" ? "提取 Token 地址" : "Token Address"}<input value={primaryInputs.treasuryToken} onChange={e => setPrimaryInputs(p => ({ ...p, treasuryToken: e.target.value }))} placeholder="0x..." /></label>

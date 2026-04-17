@@ -7,6 +7,7 @@ dotenv.config({ path: ".env" });
 
 const cncMainnetRpcUrl = process.env.CNC_MAINNET_RPC_URL || "https://rpc.cncchainpro.com";
 const optimizerRuns = Number(process.env.SOLC_OPTIMIZER_RUNS ?? "0");
+const viaIREnabled = process.env.SOLC_VIA_IR !== "false";
 const deployerAccounts = process.env.DEPLOYER_PRIVATE_KEY
   ? [process.env.DEPLOYER_PRIVATE_KEY]
   : [];
@@ -20,7 +21,7 @@ const config: HardhatUserConfig = {
         runs: Number.isFinite(optimizerRuns) ? optimizerRuns : 0,
       },
       evmVersion: "paris",
-      viaIR: true,
+      viaIR: viaIREnabled,
       metadata: {
         bytecodeHash: "none",
         appendCBOR: false,

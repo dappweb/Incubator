@@ -40,7 +40,6 @@ import {
     getUserMachineOrderIds,
     getUserRole,
     isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
-    isSubAdmin as isCoreSubAdmin,
     purchaseMachine,
     type MachineOrder,
     type RewardRecord,
@@ -68,7 +67,7 @@ import {
 } from "./lib/swapContract";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { fetchTokenHistory, type TxRecord } from "./lib/tokenHistory";
-import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance } from "./lib/usdtContract";
+import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, resolveUsdtAddress } from "./lib/usdtContract";
 import {
     checkConnection,
     ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
@@ -989,7 +988,7 @@ const App = () => {
     const activeDirection = isLightPair ? "forward" : direction;
 
     if (!isLightPair) {
-      const { tokenIn, tokenOut } = resolvePrimarySwapTokens(activeDirection);
+      const { tokenIn, tokenOut } = await resolvePrimarySwapTokens(connectedProvider, activeDirection);
       const primarySpender = getPrimarySwapSpender();
       const [tokenInMeta, tokenOutMeta, tokenInBalance, tokenInAllowance] = await Promise.all([
         getTokenMeta(connectedProvider, tokenIn),
@@ -1217,10 +1216,11 @@ const App = () => {
         otc: (OTC_CONTRACT_ADDRESS || "").toLowerCase(),
       };
 
+      const currentUsdtAddress = await resolveUsdtAddress(connectedProvider).catch(() => USDT_CONTRACT_ADDRESS);
       const tokenConfigs: Array<{ token: TokenType; address?: string }> = [
         { token: "ICO", address: ICO_TOKEN_ADDRESS },
         { token: "LIGHT", address: LIGHT_TOKEN_ADDRESS },
-        { token: "USDT", address: USDT_CONTRACT_ADDRESS },
+        { token: "USDT", address: currentUsdtAddress },
       ];
 
       const grouped = await Promise.all(

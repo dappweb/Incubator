@@ -1,19 +1,18 @@
 import { BrowserProvider, isAddress } from "ethers";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CNC_MAINNET_BLOCK_EXPLORER_URL,
-  CORE_CONTRACT_ADDRESS,
-  ICO_TOKEN_ADDRESS,
-  LIGHT_TOKEN_ADDRESS,
-  OTC_CONTRACT_ADDRESS,
-  PRIMARY_SWAP_CONTROLLER_ADDRESS,
-  SWAP_POOL_ADDRESS,
-  USDT_CONTRACT_ADDRESS,
+    CNC_MAINNET_BLOCK_EXPLORER_URL,
+    CORE_CONTRACT_ADDRESS,
+    ICO_TOKEN_ADDRESS,
+    LIGHT_TOKEN_ADDRESS,
+    OTC_CONTRACT_ADDRESS,
+    PRIMARY_SWAP_CONTROLLER_ADDRESS,
+    SWAP_POOL_ADDRESS,
 } from "../config";
 import { formatTokenAmount } from "../lib/tokenContract";
 import type { TxRecord } from "../lib/tokenHistory";
 import { fetchTokenHistory } from "../lib/tokenHistory";
-import { formatUsdt } from "../lib/usdtContract";
+import { formatUsdt, resolveUsdtAddress } from "../lib/usdtContract";
 
 export type TokenType = "ICO" | "LIGHT" | "USDT";
 
@@ -130,7 +129,7 @@ export function TokenHistory({ tokenType, userAddress, provider, onBack, lang }:
           ? ICO_TOKEN_ADDRESS
           : tokenType === "LIGHT"
             ? LIGHT_TOKEN_ADDRESS
-            : USDT_CONTRACT_ADDRESS;
+            : await resolveUsdtAddress(provider);
       if (!tokenAddress) throw new Error(zh ? "代币地址未配置" : "Token address not configured");
       if (!isAddress(queryAddress)) {
         throw new Error(zh ? "查询地址格式不正确" : "Invalid query address");

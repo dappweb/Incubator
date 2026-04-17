@@ -63,6 +63,7 @@ contract NodeOTCMarket is OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     event OtcOrderCancelled(uint256 indexed orderId, address indexed seller);
     event OtcOrderAutoCancelled(uint256 indexed orderId, address indexed seller, uint8 indexed role, uint256 referencePriceUSDT);
     event FeeConfigUpdated(uint256 feeBps, address feeRecipient);
+    event UsdtAddressUpdated(address indexed oldUsdt, address indexed newUsdt);
 
     constructor() {
         _disableInitializers();
@@ -159,6 +160,13 @@ contract NodeOTCMarket is OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
         feeBps = newFeeBps;
         feeRecipient = newRecipient;
         emit FeeConfigUpdated(newFeeBps, newRecipient);
+    }
+
+    function setUsdtAddress(address newUsdtAddress) external onlyOwner {
+        require(newUsdtAddress != address(0), "invalid usdt");
+        address oldUsdt = address(usdt);
+        usdt = IERC20(newUsdtAddress);
+        emit UsdtAddressUpdated(oldUsdt, newUsdtAddress);
     }
 
     function getOrder(uint256 orderId) external view returns (Order memory) {

@@ -81,6 +81,7 @@ contract PrimarySwapController is OwnableUpgradeable, ReentrancyGuard, UUPSUpgra
     event PairUpdated(address indexed pair);
     event IcoHolderCountReported(uint256 holderCount);
     event SellUsdtEnabledUpdated(bool enabled);
+    event UsdtAddressUpdated(address indexed oldUsdt, address indexed newUsdt, address indexed pair);
     event PrimaryBuyExecuted(address indexed buyer, uint256 amountInUsdt, uint256 feeUsdt, uint256 amountOutIco);
     event PrimarySellExecuted(
         address indexed seller,
@@ -238,6 +239,11 @@ contract PrimarySwapController is OwnableUpgradeable, ReentrancyGuard, UUPSUpgra
         emit SellUsdtEnabledUpdated(false);
     }
 
+    function forceSetSellEnabled(bool enabled) external onlyOwner {
+        sellUsdtEnabled = enabled;
+        emit SellUsdtEnabledUpdated(enabled);
+    }
+
     function reportIcoHolderCount(uint256 holderCount) external onlyOwner {
         reportedIcoHolderCount = holderCount;
         emit IcoHolderCountReported(holderCount);
@@ -280,6 +286,21 @@ contract PrimarySwapController is OwnableUpgradeable, ReentrancyGuard, UUPSUpgra
     function updatePair(address newPair) external onlyOwner {
         pair = newPair;
         emit PairUpdated(newPair);
+    }
+
+    function setUsdtAddress(address newUsdtAddress) external onlyOwner {
+        require(newUsdtAddress != address(0), "invalid usdt");
+
+        uint8 currentDecimals = IERC20Metadata(address(usdt)).decimals();
+        uint8 nextDecimals = IERC20Metadata(newUsdtAddress).decimals();
+        require(nextDecimals == currentDecimals, "usdt decimals mismatch");
+
+        address oldUsdt = address(usdt);
+        usdt = IERC20(newUsdtAddress);
+        pair = factory.getPair(newUsdtAddress, address(ico));
+
+        emit UsdtAddressUpdated(oldUsdt, newUsdtAddress, pair);
+        emit PairUpdated(pair);
     }
 
     function getPairUsdtReserve() public view returns (uint256) {

@@ -232,9 +232,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     event LeaderboardWhitelistUpdated(address[] accounts);
     event LeaderboardWhitelistAdjustUpdated(uint8 adjustPct);
     event LeaderboardWhitelistSettled(uint256 indexed dayId, address indexed user, bool indexed isTopPool, uint256 amountUSDT);
-    event UsdtDecimalsSynced(uint8 decimals);
-    event PriceScaleMigrated(uint8 fromDecimals, uint8 toDecimals, uint256 machineUnitPrice, uint256 nodePrice, uint256 superNodePrice);
-    event CycleDurationUpdated(uint256 oldDuration, uint256 newDuration);
 
     constructor() {
         _disableInitializers();
@@ -513,9 +510,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
     function setCycleDuration(uint256 newDuration) external onlyOwner {
         require(newDuration >= 60 || newDuration == 0, "cycle too short");
-        uint256 old = cycleDuration;
         cycleDuration = newDuration;
-        emit CycleDurationUpdated(old, newDuration);
     }
 
     function pause() external onlyOwner {
@@ -523,7 +518,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function setSubAdmin(address account, bool enabled) external onlyOwner {
-        require(account != address(0), "invalid account");
+        require(account != address(0));
 
         bool exists = subAdmins[account];
         if (enabled) {
@@ -560,6 +555,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         _unpause();
     }
 
+    function setUsdtAddress(address newUsdtAddress) external onlyOwner {
+        usdt = IERC20(newUsdtAddress);
+    }
+
     function updateMachineUnitPrice(uint256 newPrice) external {
         _requirePriceAdmin();
         require(newPrice > 0 && newPrice <= _maxMachineUnitPrice());
@@ -577,7 +576,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function updateSuperNodePrice(uint256 newPrice) external onlyOwner {
-        require(newPrice > 0 && newPrice <= _maxSuperNodePrice(), "invalid price");
+        require(newPrice > 0 && newPrice <= _maxSuperNodePrice());
         uint256 old = superNodePrice;
         superNodePrice = newPrice;
         emit PriceUpdated("SUPER_NODE", old, newPrice);
@@ -590,13 +589,8 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return usdtTokenDecimals == 0 ? 6 : usdtTokenDecimals;
     }
 
-    function _pow10(uint8 exponent) internal pure returns (uint256) {
-        require(exponent <= 77, "decimals too large");
-        return 10 ** uint256(exponent);
-    }
-
     function _usdtUnit() internal view returns (uint256) {
-        return _pow10(_effectiveUsdtDecimals());
+        return 10 ** uint256(_effectiveUsdtDecimals());
     }
 
     function _maxMachineUnitPrice() internal view returns (uint256) {

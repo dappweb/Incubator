@@ -52,6 +52,7 @@ async function main() {
     { label: "NodeOTCMarket", envKey: "NODE_OTC_MARKET_PROXY" },
     { label: "SwapPoolManager", envKey: "SWAP_POOL_MANAGER_PROXY" },
     { label: "IdentityNFT", envKey: "IDENTITY_NFT_PROXY" },
+    { label: "PrimarySwapController", envKey: "PRIMARY_SWAP_CONTROLLER_PROXY" },
   ];
 
   const results: CheckResult[] = [];

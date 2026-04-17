@@ -1,4 +1,4 @@
-import { AbstractSigner, BrowserProvider, Contract } from "ethers";
+import { AbstractSigner, BrowserProvider, Contract, isAddress } from "ethers";
 import {
     ICO_TOKEN_ADDRESS,
     PANCAKE_V2_FACTORY_ADDRESS,
@@ -54,6 +54,7 @@ const pancakePairAbi = [
 ];
 
 const primarySwapControllerAbi = [
+  "function usdt() view returns (address)",
   "function buyFeeBps() view returns (uint16)",
   "function sellFeeBps() view returns (uint16)",
   "function superNodeFeeBps() view returns (uint16)",
@@ -80,7 +81,9 @@ const primarySwapControllerAbi = [
   "function updateThresholds(uint256 newMinUsdtReserve, uint256 newMinIcoHolderCount) external",
   "function enableSellUsdt() external",
   "function disableSellUsdt() external",
+  "function forceSetSellEnabled(bool enabled) external",
   "function reportIcoHolderCount(uint256 holderCount) external",
+  "function setUsdtAddress(address newUsdtAddress) external",
   "function updatePair(address newPair) external",
   "function withdrawTreasury(address token, address to, uint256 amount) external",
   "function canEnableSellUsdt() view returns (bool)",
@@ -138,6 +141,18 @@ function getPrimarySwapController(provider: BrowserProvider) {
   return new Contract(PRIMARY_SWAP_CONTROLLER_ADDRESS, primarySwapControllerAbi, provider);
 }
 
+export async function getPrimaryUsdtAddress(provider: BrowserProvider): Promise<string> {
+  const controller = getPrimarySwapController(provider) as any;
+  return controller.usdt();
+}
+
+export async function setPrimaryUsdtAddress(provider: BrowserProvider, newUsdtAddress: string) {
+  const signer = await provider.getSigner();
+  const controller = getPrimarySwapController(provider).connect(signer) as any;
+  const tx = await controller.setUsdtAddress(newUsdtAddress);
+  return tx.wait();
+}
+
 function hasPrimarySwapController() {
   return Boolean(PRIMARY_SWAP_CONTROLLER_ADDRESS);
 }
@@ -154,14 +169,46 @@ export function getPrimarySwapSpender() {
   return PANCAKE_V3_ROUTER_ADDRESS;
 }
 
-export function resolvePrimarySwapTokens(direction: PrimarySwapDirection) {
-  if (!USDT_CONTRACT_ADDRESS || !ICO_TOKEN_ADDRESS) {
-    throw new Error("缺少 VITE_USDT_CONTRACT_ADDRESS 或 VITE_ICO_TOKEN_ADDRESS 配置");
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+export async function resolvePrimaryUsdtAddress(provider: BrowserProvider): Promise<string> {
+  if (hasPrimarySwapController()) {
+    try {
+      const controller = getPrimarySwapController(provider) as any;
+      const usdtAddress = await controller.usdt();
+      if (isAddress(usdtAddress) && usdtAddress.toLowerCase() !== ZERO_ADDRESS) {
+        return usdtAddress;
+      }
+    } catch {
+      // Ignore and continue fallback.
+    }
+  }
+
+  try {
+    const swapUsdtAddress = await getUsdtAddress(provider);
+    if (isAddress(swapUsdtAddress) && swapUsdtAddress.toLowerCase() !== ZERO_ADDRESS) {
+      return swapUsdtAddress;
+    }
+  } catch {
+    // Ignore and continue fallback.
+  }
+
+  if (!USDT_CONTRACT_ADDRESS) {
+    throw new Error("缺少 VITE_USDT_CONTRACT_ADDRESS 配置");
+  }
+
+  return USDT_CONTRACT_ADDRESS;
+}
+
+export async function resolvePrimarySwapTokens(provider: BrowserProvider, direction: PrimarySwapDirection) {
+  const usdtAddress = await resolvePrimaryUsdtAddress(provider);
+  if (!ICO_TOKEN_ADDRESS) {
+    throw new Error("缺少 VITE_ICO_TOKEN_ADDRESS 配置");
   }
 
   return direction === "forward"
-    ? { tokenIn: USDT_CONTRACT_ADDRESS, tokenOut: ICO_TOKEN_ADDRESS }
-    : { tokenIn: ICO_TOKEN_ADDRESS, tokenOut: USDT_CONTRACT_ADDRESS };
+    ? { tokenIn: usdtAddress, tokenOut: ICO_TOKEN_ADDRESS }
+    : { tokenIn: ICO_TOKEN_ADDRESS, tokenOut: usdtAddress };
 }
 
 export async function quotePrimarySwapExactIn(
@@ -191,7 +238,7 @@ export async function quotePrimarySwapExactIn(
     return { amountOut, fee, priceImpactBps };
   }
 
-  const { tokenIn, tokenOut } = resolvePrimarySwapTokens(direction);
+  const { tokenIn, tokenOut } = await resolvePrimarySwapTokens(provider, direction);
   const router = getPancakeRouterContract(provider) as any;
   const feePpm = Number.isFinite(PANCAKE_V3_PRIMARY_FEE_PPM) ? PANCAKE_V3_PRIMARY_FEE_PPM : 2500;
   const path = [tokenIn, tokenOut];
@@ -225,7 +272,7 @@ export async function swapPrimaryExactIn(
     return tx.wait();
   }
 
-  const { tokenIn, tokenOut } = resolvePrimarySwapTokens(direction);
+  const { tokenIn, tokenOut } = await resolvePrimarySwapTokens(provider, direction);
   if (!signer) signer = await provider.getSigner();
   const router = getPancakeRouterContract(provider).connect(signer) as any;
   const path = [tokenIn, tokenOut];
@@ -365,13 +412,14 @@ export async function unpauseSwap(provider: BrowserProvider) {
 /** 从 PancakeV2 pair 读取 USDT/ICO 储备量 */
 export async function getPancakeV2PrimaryReserves(provider: BrowserProvider): Promise<SwapPool> {
   const empty: SwapPool = { token0: "", token1: "", reserve0: 0n, reserve1: 0n, feeBps: 0, maxPriceImpactBps: 0, exists: false };
-  if (!PANCAKE_V2_FACTORY_ADDRESS || !USDT_CONTRACT_ADDRESS || !ICO_TOKEN_ADDRESS) {
+  if (!PANCAKE_V2_FACTORY_ADDRESS || !ICO_TOKEN_ADDRESS) {
     return empty;
   }
 
   try {
+    const usdtAddress = await resolvePrimaryUsdtAddress(provider);
     const factory = new Contract(PANCAKE_V2_FACTORY_ADDRESS, pancakeFactoryAbi, provider as any);
-    const pairAddr: string = await (factory as any).getPair(USDT_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS);
+    const pairAddr: string = await (factory as any).getPair(usdtAddress, ICO_TOKEN_ADDRESS);
     if (!pairAddr || pairAddr === "0x0000000000000000000000000000000000000000") {
       return empty;
     }
@@ -382,10 +430,10 @@ export async function getPancakeV2PrimaryReserves(provider: BrowserProvider): Pr
       (pair as any).getReserves(),
     ]);
 
-    const isToken0Usdt = token0.toLowerCase() === USDT_CONTRACT_ADDRESS.toLowerCase();
+    const isToken0Usdt = token0.toLowerCase() === usdtAddress.toLowerCase();
     return {
-      token0: isToken0Usdt ? USDT_CONTRACT_ADDRESS : ICO_TOKEN_ADDRESS,
-      token1: isToken0Usdt ? ICO_TOKEN_ADDRESS : USDT_CONTRACT_ADDRESS,
+      token0: isToken0Usdt ? usdtAddress : ICO_TOKEN_ADDRESS,
+      token1: isToken0Usdt ? ICO_TOKEN_ADDRESS : usdtAddress,
       reserve0: isToken0Usdt ? BigInt(reserves[0]) : BigInt(reserves[1]),
       reserve1: isToken0Usdt ? BigInt(reserves[1]) : BigInt(reserves[0]),
       feeBps: Math.floor(PANCAKE_V3_PRIMARY_FEE_PPM / 100),
@@ -455,7 +503,7 @@ async function _estimatePrimaryImpact(
 ): Promise<number> {
   try {
     const router = getPancakeRouterContract(provider) as any;
-    const { tokenIn, tokenOut } = resolvePrimarySwapTokens(direction);
+    const { tokenIn, tokenOut } = await resolvePrimarySwapTokens(provider, direction);
     const path = [tokenIn, tokenOut];
     const netIn = amountIn - fee;
     if (netIn <= 0n) return 0;
@@ -492,7 +540,8 @@ async function _estimatePrimaryImpactSell(
   try {
     if (liquidityAmountIco <= 0n) return 0;
     const router = getPancakeRouterContract(provider) as any;
-    const path = [ICO_TOKEN_ADDRESS, USDT_CONTRACT_ADDRESS];
+    const usdtAddress = await resolvePrimaryUsdtAddress(provider);
+    const path = [ICO_TOKEN_ADDRESS, usdtAddress];
 
     const spotUnit = liquidityAmountIco < 1_000_000_000_000_000_000n
       ? liquidityAmountIco / 100n || 1n
@@ -609,6 +658,11 @@ export async function enableSellUsdt(provider: BrowserProvider) {
 export async function disableSellUsdt(provider: BrowserProvider) {
   const signer = await provider.getSigner();
   return (await (getPrimarySwapController(provider).connect(signer) as any).disableSellUsdt()).wait();
+}
+
+export async function forceSetSellEnabled(provider: BrowserProvider, enabled: boolean) {
+  const signer = await provider.getSigner();
+  return (await (getPrimarySwapController(provider).connect(signer) as any).forceSetSellEnabled(enabled)).wait();
 }
 
 export async function reportIcoHolderCount(provider: BrowserProvider, count: bigint) {

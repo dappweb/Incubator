@@ -22,6 +22,7 @@ const coreAbi = [
   "function teamTotalVolume(address user) view returns (uint256)",
   "function referralOf(address user) view returns (address)",
   "function owner() view returns (address)",
+  "function usdt() view returns (address)",
   "function subAdmins(address user) view returns (bool)",
   "function getSubAdmins() view returns (address[])",
   "function setSubAdmin(address account, bool enabled) external",
@@ -58,6 +59,7 @@ const coreAbi = [
   "function setIdentityMarket(address market) external",
   "function setRewardWeights(address[] accounts, uint256[] weights) external",
   "function withdrawUSDT(address to, uint256 amount) external",
+  "function setUsdtAddress(address newUsdtAddress) external",
   "function initLightRewardConfig(address lightToken, address swapPoolManager) external",
   "function rewardPoolBalance() view returns (uint256)",
   "function lightToken() view returns (address)",
@@ -601,6 +603,18 @@ export async function withdrawCoreUSDT(provider: BrowserProvider, to: string, am
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.withdrawUSDT(to, amount);
+  return tx.wait();
+}
+
+export async function getCoreUsdtAddress(provider: BrowserProvider): Promise<string> {
+  const contract = getCoreContract(provider) as any;
+  return contract.usdt();
+}
+
+export async function setCoreUsdtAddress(provider: BrowserProvider, newUsdtAddress: string) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setUsdtAddress(newUsdtAddress);
   return tx.wait();
 }
 
