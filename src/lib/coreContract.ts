@@ -56,6 +56,13 @@ const coreAbi = [
   "function settleDailyRewardsManual(address[] participants, uint256 lightPriceInUsdt) external",
   "function settleLeaderboard(uint256 dayId) external",
   "function settlePoolRewards(uint8 poolType, address[] recipients, uint16[] shares) external",
+  "function settleNodePoolOnChain(address[] candidates) external",
+  "function settleSuperNodePoolOnChain(address[] candidates) external",
+  "function backfillTeamPowerFromOrders(address[] users) external",
+  "function teamPower(address user) view returns (uint256)",
+  "function teamPowerBackfilled(address user) view returns (bool)",
+  "event PoolRewardWeightSnapshot(uint8 indexed poolType, address indexed beneficiary, uint256 teamPower, uint256 totalWeight)",
+  "event TeamPowerBackfilled(address indexed user, uint256 totalQuantity)",
   "function setIdentityMarket(address market) external",
   "function setRewardWeights(address[] accounts, uint256[] weights) external",
   "function withdrawUSDT(address to, uint256 amount) external",
@@ -634,6 +641,45 @@ export async function settlePoolRewards(provider: BrowserProvider, poolType: num
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.settlePoolRewards(poolType, recipients, shares, { gasLimit: 2_000_000n });
   return tx.wait();
+}
+
+export async function settleNodePoolOnChain(provider: BrowserProvider, candidates: string[]) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.settleNodePoolOnChain(candidates, { gasLimit: 3_000_000n });
+  return tx.wait();
+}
+
+export async function settleSuperNodePoolOnChain(provider: BrowserProvider, candidates: string[]) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.settleSuperNodePoolOnChain(candidates, { gasLimit: 3_000_000n });
+  return tx.wait();
+}
+
+export async function backfillTeamPowerFromOrders(provider: BrowserProvider, users: string[]) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.backfillTeamPowerFromOrders(users, { gasLimit: 5_000_000n });
+  return tx.wait();
+}
+
+export async function getTeamPower(provider: BrowserProvider, user: string): Promise<bigint> {
+  const contract = getCoreContract(provider) as any;
+  return (await contract.teamPower(user)) as bigint;
+}
+
+export async function isTeamPowerBackfilled(provider: BrowserProvider, user: string): Promise<boolean> {
+  const contract = getCoreContract(provider) as any;
+  return (await contract.teamPowerBackfilled(user)) as boolean;
+}
+
+/**
+ * Fetch teamPower for multiple candidates in parallel (for admin preview / audit).
+ */
+export async function getTeamPowers(provider: BrowserProvider, users: string[]): Promise<bigint[]> {
+  const contract = getCoreContract(provider) as any;
+  return Promise.all(users.map((u) => contract.teamPower(u) as Promise<bigint>));
 }
 
 export async function setIdentityMarket(provider: BrowserProvider, market: string) {

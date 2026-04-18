@@ -16,6 +16,9 @@ const coreAbi = [
   "function settleDailyRewardsIfDue(address[] participants, uint256 lightPriceInUsdt) external returns (bool)",
   "function settleDailyRewardsManual(address[] participants, uint256 lightPriceInUsdt) external",
   "function settlePoolRewards(uint8 poolType, address[] recipients, uint16[] shares) external",
+  "function settleNodePoolOnChain(address[] candidates) external",
+  "function settleSuperNodePoolOnChain(address[] candidates) external",
+  "function teamPower(address user) view returns (uint256)",
   "function settleLeaderboard(uint256 dayId) external",
   "function paused() view returns (bool)",
   "function cycleDuration() view returns (uint256)",
@@ -552,6 +555,26 @@ async function settleNodePool(core: any) {
     return;
   }
 
+  if (onChainMode()) {
+    const candidates = await buildOnChainCandidates(core, ROLE_NODE, true);
+    auditStep("node_pool", {
+      balance: balance.toString(),
+      action: dryRunMode ? "onchain_dry_run" : "onchain_settle",
+      candidatesCount: candidates.length,
+      mode: "onchain",
+    });
+    if (candidates.length === 0) {
+      console.log("[settle-core] node onchain candidates empty, skip");
+      return;
+    }
+    if (dryRunMode) return;
+    const tx = await core.settleNodePoolOnChain(candidates);
+    console.log("[settle-core] node on-chain settle tx:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("[settle-core] node on-chain settled block:", receipt?.blockNumber ?? "unknown");
+    return;
+  }
+
   const recipients = parseAddressList(readEnv("NODE_REWARD_RECIPIENTS"));
   const shares = parseShareList(readEnv("NODE_REWARD_SHARES"));
   if (recipients.length > 0 || shares.length > 0) {
@@ -610,6 +633,26 @@ async function settleSuperNodePool(core: any) {
   if (balance <= 0n) {
     console.log("[settle-core] super-node pool empty, skip");
     auditStep("super_node_pool", { balance: balance.toString(), action: "skip_empty" });
+    return;
+  }
+
+  if (onChainMode()) {
+    const candidates = await buildOnChainCandidates(core, ROLE_SUPER_NODE, false);
+    auditStep("super_node_pool", {
+      balance: balance.toString(),
+      action: dryRunMode ? "onchain_dry_run" : "onchain_settle",
+      candidatesCount: candidates.length,
+      mode: "onchain",
+    });
+    if (candidates.length === 0) {
+      console.log("[settle-core] super-node onchain candidates empty, skip");
+      return;
+    }
+    if (dryRunMode) return;
+    const tx = await core.settleSuperNodePoolOnChain(candidates);
+    console.log("[settle-core] super-node on-chain settle tx:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("[settle-core] super-node on-chain settled block:", receipt?.blockNumber ?? "unknown");
     return;
   }
 
@@ -696,6 +739,31 @@ async function settleLeaderboardPool(core: any) {
   console.log("[settle-core] leaderboard settle tx:", tx.hash, "dayId:", dayId);
   const receipt = await tx.wait();
   console.log("[settle-core] leaderboard settled block:", receipt?.blockNumber ?? "unknown");
+}
+
+function onChainMode(): boolean {
+  return parseBool(readEnv("SETTLEMENT_ONCHAIN_MODE"), false);
+}
+
+async function buildOnChainCandidates(
+  core: any,
+  primaryRole: SettlementRole,
+  allowSuperNode: boolean
+): Promise<string[]> {
+  const envList = parseAddressList(readEnv(primaryRole === ROLE_NODE ? "NODE_ONCHAIN_CANDIDATES" : "SUPER_NODE_ONCHAIN_CANDIDATES"));
+  if (envList.length > 0) {
+    return envList;
+  }
+  const ctx = await loadSettlementContext(core);
+  const out: string[] = [];
+  for (const addr of ctx.candidates) {
+    const role = ctx.roles.get(normalizeAddress(addr)) ?? 0;
+    if (role === primaryRole || (allowSuperNode && role === ROLE_SUPER_NODE)) {
+      const tp = (await core.teamPower(addr).catch(() => 0n)) as bigint;
+      if (tp > 0n) out.push(addr);
+    }
+  }
+  return out;
 }
 
 async function computeLightPriceInUsdt(): Promise<bigint> {

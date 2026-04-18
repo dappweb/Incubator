@@ -161,6 +161,15 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     // Manager access control (appended at storage tail for upgrade safety).
     mapping(address => bool) private managers;
 
+    // === Team power (subtree personal machine quantity) appended for on-chain node/super-node settlement ===
+    // teamPower[user] = Σ personalPower of all descendants in referral subtree (excluding `user` itself).
+    // Maintained via _updateTeamPower on every machine purchase, bounded to 20 upline levels.
+    mapping(address => uint256) public teamPower;
+
+    // Users whose historical machine orders have already been replayed into teamPower.
+    // Guards against double-counting when owner runs backfillTeamPowerFromOrders in batches.
+    mapping(address => bool) public teamPowerBackfilled;
+
     event MachinePurchased(
         address indexed user,
         uint256 indexed orderId,
@@ -199,6 +208,13 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT);
     event LeaderboardLuckySettled(uint256 indexed dayId, address indexed user, uint8 luckyRank, uint256 amountUSDT);
     event PoolRewardSettled(uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT);
+    /// @notice Snapshot of the on-chain weight used when settling Node/SuperNode pools via teamPower.
+    event PoolRewardWeightSnapshot(
+        uint8 indexed poolType,
+        address indexed beneficiary,
+        uint256 teamPower,
+        uint256 totalWeight
+    );
     event RewardPoolFunded(address indexed operator, uint256 amountUSDT, uint256 newPoolBalance);
     event RewardConfigUpdated(
         uint16 releaseDailyBps,
@@ -232,6 +248,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     event LeaderboardWhitelistUpdated(address[] accounts);
     event LeaderboardWhitelistAdjustUpdated(uint8 adjustPct);
     event LeaderboardWhitelistSettled(uint256 indexed dayId, address indexed user, bool indexed isTopPool, uint256 amountUSDT);
+    event TeamPowerBackfilled(address indexed user, uint256 totalQuantity);
 
     constructor() {
         _disableInitializers();
@@ -289,6 +306,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
         directReferralVolume[currentReferrer] += amountUSDT;
         _updateTeamVolume(currentReferrer, amountUSDT);
+        _updateTeamPower(currentReferrer, quantity);
 
         machineOrders[orderId] = MachineOrder({
             id: orderId,
@@ -1407,6 +1425,111 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
             if (current == address(0)) break;
             teamTotalVolume[current] += amount;
             current = referralOf[current];
+        }
+    }
+
+    /// @notice Propagate personal machine power (quantity) upward the referral chain up to 20 levels.
+    /// Used as the on-chain basis for Node / SuperNode reward settlement.
+    /// NOTE: The caller passes the buyer's direct referrer; iteration starts from that referrer
+    ///       (inclusive) and walks up the chain, so every upline (including the direct referrer)
+    ///       receives credit for the buyer's personalPower.
+    function _updateTeamPower(address referrer, uint256 quantity) private {
+        if (quantity == 0) return;
+        address current = referrer;
+        for (uint256 i = 0; i < 20; i++) {
+            if (current == address(0)) break;
+            teamPower[current] += quantity;
+            current = referralOf[current];
+        }
+    }
+
+    // ============ On-chain Node / SuperNode Settlement ============
+
+    /// @notice One-time (per user) backfill of teamPower from historical machine orders.
+    /// Intended to be called by owner in batches right after an upgrade that introduced
+    /// teamPower tracking. For each user in `users`, sums up `quantity` across all
+    /// `userOrderIds[user]` and propagates that total upward the referral chain once.
+    /// A user can only be backfilled a single time to prevent double counting.
+    function backfillTeamPowerFromOrders(address[] calldata users) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            require(user != address(0), "invalid user");
+            if (teamPowerBackfilled[user]) continue;
+
+            uint256 totalQty = 0;
+            uint256[] storage orderIds = userOrderIds[user];
+            for (uint256 j = 0; j < orderIds.length; j++) {
+                totalQty += machineOrders[orderIds[j]].quantity;
+            }
+
+            teamPowerBackfilled[user] = true;
+            if (totalQty > 0) {
+                address directReferrer = referralOf[user];
+                if (directReferrer != address(0)) {
+                    _updateTeamPower(directReferrer, totalQty);
+                }
+            }
+            emit TeamPowerBackfilled(user, totalQty);
+        }
+    }
+
+    /// @notice Settle the SuperNode pool (PoolType.SuperNode) fully on-chain.
+    /// Distribution basis per account = teamPower[account] / Σ teamPower(candidates).
+    /// `candidates` is a whitelist supplied by owner but amounts come entirely from chain state.
+    /// Revert unless every candidate currently holds SuperNode role.
+    function settleSuperNodePoolOnChain(address[] calldata candidates) external onlyOwner {
+        _settleRolePoolOnChain(PoolType.SuperNode, Role.SuperNode, Role.SuperNode, candidates);
+    }
+
+    /// @notice Settle the Node pool (PoolType.Node) fully on-chain.
+    /// Per the business formula the 8% node pool is shared across both Node and SuperNode holders
+    /// weighted by teamPower. Owner therefore supplies a candidate list containing either role.
+    function settleNodePoolOnChain(address[] calldata candidates) external onlyOwner {
+        _settleRolePoolOnChain(PoolType.Node, Role.Node, Role.SuperNode, candidates);
+    }
+
+    function _settleRolePoolOnChain(
+        PoolType poolType,
+        Role allowedRoleA,
+        Role allowedRoleB,
+        address[] calldata candidates
+    ) private {
+        require(candidates.length > 0, "empty candidates");
+        uint256 balance = poolAccumulated[uint8(poolType)];
+        require(balance > 0, "no pool balance");
+
+        uint256 totalWeight = 0;
+        for (uint256 i = 0; i < candidates.length; i++) {
+            address c = candidates[i];
+            require(c != address(0), "invalid candidate");
+            Role r = _getRole(c);
+            require(r == allowedRoleA || r == allowedRoleB, "role not eligible");
+            // Ensure uniqueness: a simple O(n^2) guard is acceptable for the expected small list.
+            for (uint256 j = 0; j < i; j++) {
+                require(candidates[j] != c, "duplicate candidate");
+            }
+            totalWeight += teamPower[c];
+        }
+        require(totalWeight > 0, "zero team power");
+
+        poolAccumulated[uint8(poolType)] = 0;
+
+        uint256 distributed = 0;
+        for (uint256 i = 0; i < candidates.length; i++) {
+            address c = candidates[i];
+            uint256 weight = teamPower[c];
+            uint256 amount;
+            if (i == candidates.length - 1) {
+                amount = balance - distributed;
+            } else {
+                amount = (balance * weight) / totalWeight;
+            }
+            if (amount > 0) {
+                usdt.safeTransfer(c, amount);
+                distributed += amount;
+                emit PoolRewardSettled(uint8(poolType), c, amount);
+                emit PoolRewardWeightSnapshot(uint8(poolType), c, weight, totalWeight);
+            }
         }
     }
 }
