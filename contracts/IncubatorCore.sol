@@ -1212,6 +1212,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function _allocateIdentityPurchase(uint256 identityId, uint256 totalAmount, address referrer, bool isNode) private {
+        // Node / SuperNode purchase split:
+        //   1) Direct referrer takes a referral share (dynamic for node, fixed 20% for super node).
+        //   2) ALL remaining USDT is forwarded to the Platform pool recipient.
+        // No funds are routed to Liquidity / Leaderboard / Node / SuperNode pools on identity purchases.
         uint16 referralBps;
         if (isNode) {
             referralBps = _getDynamicReferralBps(directNodeReferralCount[referrer] + 1);
@@ -1219,12 +1223,8 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
             referralBps = 2000;
         }
         uint256 referralAmount = (totalAmount * referralBps) / BPS_DENOMINATOR;
-
-        uint256 platformAmount = _poolAmount(totalAmount, uint8(PoolType.Platform));
-        uint256 leaderboardAmount = _poolAmount(totalAmount, uint8(PoolType.Leaderboard));
-
-        uint256 fixedAllocated = referralAmount + platformAmount + leaderboardAmount;
-        require(totalAmount >= fixedAllocated, "invalid referral share");
+        require(totalAmount >= referralAmount, "invalid referral share");
+        uint256 platformAmount = totalAmount - referralAmount;
 
         if (referrer != address(0)) {
             if (isNode) {
@@ -1236,13 +1236,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
         uint256 trackingId = isNode ? (1_000_000_000 + identityId) : (2_000_000_000 + identityId);
 
-        _transferPool(trackingId, PoolType.Liquidity, poolConfigs[uint8(PoolType.Liquidity)].recipient, totalAmount - fixedAllocated);
-
         address referralRecipient = referrer != address(0) ? referrer : poolConfigs[uint8(PoolType.Referral)].recipient;
         _transferPool(trackingId, PoolType.Referral, referralRecipient, referralAmount);
 
         _transferPool(trackingId, PoolType.Platform, poolConfigs[uint8(PoolType.Platform)].recipient, platformAmount);
-        _transferPool(trackingId, PoolType.Leaderboard, poolConfigs[uint8(PoolType.Leaderboard)].recipient, leaderboardAmount);
     }
 
     function _updateLeaderboard(uint256 dayId, address user, uint256 amount) private {
