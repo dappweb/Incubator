@@ -8467,7 +8467,7 @@
             "label": "usdt",
             "offset": 0,
             "slot": "0",
-            "type": "t_contract(IERC20)2141",
+            "type": "t_contract(IERC20)1341",
             "contract": "IncubatorCore",
             "src": "contracts/IncubatorCore.sol:74"
           },
@@ -8515,7 +8515,7 @@
             "label": "identities",
             "offset": 0,
             "slot": "6",
-            "type": "t_mapping(t_uint256,t_struct(IdentityAccount)3608_storage)",
+            "type": "t_mapping(t_uint256,t_struct(IdentityAccount)2732_storage)",
             "contract": "IncubatorCore",
             "src": "contracts/IncubatorCore.sol:88"
           },
@@ -8539,7 +8539,7 @@
             "label": "machineOrders",
             "offset": 0,
             "slot": "9",
-            "type": "t_mapping(t_uint256,t_struct(MachineOrder)3584_storage)",
+            "type": "t_mapping(t_uint256,t_struct(MachineOrder)2708_storage)",
             "contract": "IncubatorCore",
             "src": "contracts/IncubatorCore.sol:92"
           },
@@ -8555,7 +8555,7 @@
             "label": "poolConfigs",
             "offset": 0,
             "slot": "11",
-            "type": "t_array(t_struct(PoolConfig)3598_storage)6_storage",
+            "type": "t_array(t_struct(PoolConfig)2722_storage)6_storage",
             "contract": "IncubatorCore",
             "src": "contracts/IncubatorCore.sol:94"
           },
@@ -8643,7 +8643,7 @@
             "label": "leaderboards",
             "offset": 0,
             "slot": "27",
-            "type": "t_mapping(t_uint256,t_struct(LeaderboardState)3625_storage)",
+            "type": "t_mapping(t_uint256,t_struct(LeaderboardState)2749_storage)",
             "contract": "IncubatorCore",
             "src": "contracts/IncubatorCore.sol:111"
           },
@@ -8787,7 +8787,7 @@
             "label": "orderRewardLedger",
             "offset": 0,
             "slot": "39",
-            "type": "t_mapping(t_uint256,t_struct(OrderRewardLedger)3593_storage)",
+            "type": "t_mapping(t_uint256,t_struct(OrderRewardLedger)2717_storage)",
             "contract": "IncubatorCore",
             "src": "contracts/IncubatorCore.sol:141"
           },
@@ -8851,7 +8851,7 @@
             "label": "lightToken",
             "offset": 0,
             "slot": "47",
-            "type": "t_contract(IERC20)2141",
+            "type": "t_contract(IERC20)1341",
             "contract": "IncubatorCore",
             "src": "contracts/IncubatorCore.sol:154"
           },
@@ -8897,7 +8897,7 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_struct(InitializableStorage)452_storage": {
+          "t_struct(InitializableStorage)365_storage": {
             "label": "struct Initializable.InitializableStorage",
             "members": [
               {
@@ -8951,7 +8951,7 @@
             "label": "address[]",
             "numberOfBytes": "32"
           },
-          "t_array(t_struct(PoolConfig)3598_storage)6_storage": {
+          "t_array(t_struct(PoolConfig)2722_storage)6_storage": {
             "label": "struct IncubatorCore.PoolConfig[6]",
             "numberOfBytes": "192"
           },
@@ -8967,11 +8967,11 @@
             "label": "uint256[]",
             "numberOfBytes": "32"
           },
-          "t_contract(IERC20)2141": {
+          "t_contract(IERC20)1341": {
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
-          "t_enum(Role)3564": {
+          "t_enum(Role)2688": {
             "label": "enum IncubatorCore.Role",
             "members": [
               "None",
@@ -9004,19 +9004,19 @@
             "label": "mapping(uint256 => mapping(address => uint256))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(IdentityAccount)3608_storage)": {
+          "t_mapping(t_uint256,t_struct(IdentityAccount)2732_storage)": {
             "label": "mapping(uint256 => struct IncubatorCore.IdentityAccount)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(LeaderboardState)3625_storage)": {
+          "t_mapping(t_uint256,t_struct(LeaderboardState)2749_storage)": {
             "label": "mapping(uint256 => struct IncubatorCore.LeaderboardState)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(MachineOrder)3584_storage)": {
+          "t_mapping(t_uint256,t_struct(MachineOrder)2708_storage)": {
             "label": "mapping(uint256 => struct IncubatorCore.MachineOrder)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(OrderRewardLedger)3593_storage)": {
+          "t_mapping(t_uint256,t_struct(OrderRewardLedger)2717_storage)": {
             "label": "mapping(uint256 => struct IncubatorCore.OrderRewardLedger)",
             "numberOfBytes": "32"
           },
@@ -9028,7 +9028,7 @@
             "label": "mapping(uint8 => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(IdentityAccount)3608_storage": {
+          "t_struct(IdentityAccount)2732_storage": {
             "label": "struct IncubatorCore.IdentityAccount",
             "members": [
               {
@@ -9045,7 +9045,7 @@
               },
               {
                 "label": "role",
-                "type": "t_enum(Role)3564",
+                "type": "t_enum(Role)2688",
                 "offset": 20,
                 "slot": "1"
               },
@@ -9058,7 +9058,7 @@
             ],
             "numberOfBytes": "96"
           },
-          "t_struct(LeaderboardState)3625_storage": {
+          "t_struct(LeaderboardState)2749_storage": {
             "label": "struct IncubatorCore.LeaderboardState",
             "members": [
               {
@@ -9094,7 +9094,7 @@
             ],
             "numberOfBytes": "1024"
           },
-          "t_struct(MachineOrder)3584_storage": {
+          "t_struct(MachineOrder)2708_storage": {
             "label": "struct IncubatorCore.MachineOrder",
             "members": [
               {
@@ -9136,7 +9136,7 @@
             ],
             "numberOfBytes": "192"
           },
-          "t_struct(OrderRewardLedger)3593_storage": {
+          "t_struct(OrderRewardLedger)2717_storage": {
             "label": "struct IncubatorCore.OrderRewardLedger",
             "members": [
               {
@@ -9166,7 +9166,7 @@
             ],
             "numberOfBytes": "128"
           },
-          "t_struct(PoolConfig)3598_storage": {
+          "t_struct(PoolConfig)2722_storage": {
             "label": "struct IncubatorCore.PoolConfig",
             "members": [
               {

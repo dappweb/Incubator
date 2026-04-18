@@ -161,14 +161,33 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     // Manager access control (appended at storage tail for upgrade safety).
     mapping(address => bool) private managers;
 
-    // === Team power (subtree personal machine quantity) appended for on-chain node/super-node settlement ===
-    // teamPower[user] = Σ personalPower of all descendants in referral subtree (excluding `user` itself).
-    // Maintained via _updateTeamPower on every machine purchase, bounded to 20 upline levels.
-    mapping(address => uint256) public teamPower;
+    // === On-chain settlement for Node / SuperNode / Leaderboard pools ===
+    // Role lists maintained on identity purchase / upgrade / OTC transfer.
+    address[] private nodeList;
+    address[] private superNodeList;
+    mapping(address => uint256) private nodeIndexPlusOne;
+    mapping(address => uint256) private superNodeIndexPlusOne;
 
-    // Users whose historical machine orders have already been replayed into teamPower.
-    // Guards against double-counting when owner runs backfillTeamPowerFromOrders in batches.
-    mapping(address => bool) public teamPowerBackfilled;
+    // Daily idempotency locks for on-chain pool settlement.
+    uint256 public lastNodePoolSettleDay;
+    uint256 public lastSuperNodePoolSettleDay;
+    mapping(uint256 => bool) public leaderboardSettledDay;
+
+    // Minimum pool balance required to run a settlement (dust protection).
+    uint256 public minPoolSettleAmount;
+
+    // When true, settle*OnChain functions are callable by any address.
+    // Otherwise only owner/sub-admin/manager may trigger.
+    bool public publicSettleEnabled;
+
+    // One-time flag for bootstrap migration of pre-existing identities.
+    bool public roleListsBootstrapped;
+
+    event NodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount);
+    event SuperNodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount);
+    event LeaderboardPoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance);
+    event RoleListUpdated(address indexed account, uint8 indexed role, bool added);
+    event SettlementConfigUpdated(uint256 minPoolSettleAmount, bool publicSettleEnabled);
 
     event MachinePurchased(
         address indexed user,
@@ -208,13 +227,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT);
     event LeaderboardLuckySettled(uint256 indexed dayId, address indexed user, uint8 luckyRank, uint256 amountUSDT);
     event PoolRewardSettled(uint8 indexed poolType, address indexed beneficiary, uint256 amountUSDT);
-    /// @notice Snapshot of the on-chain weight used when settling Node/SuperNode pools via teamPower.
-    event PoolRewardWeightSnapshot(
-        uint8 indexed poolType,
-        address indexed beneficiary,
-        uint256 teamPower,
-        uint256 totalWeight
-    );
     event RewardPoolFunded(address indexed operator, uint256 amountUSDT, uint256 newPoolBalance);
     event RewardConfigUpdated(
         uint16 releaseDailyBps,
@@ -248,7 +260,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     event LeaderboardWhitelistUpdated(address[] accounts);
     event LeaderboardWhitelistAdjustUpdated(uint8 adjustPct);
     event LeaderboardWhitelistSettled(uint256 indexed dayId, address indexed user, bool indexed isTopPool, uint256 amountUSDT);
-    event TeamPowerBackfilled(address indexed user, uint256 totalQuantity);
 
     constructor() {
         _disableInitializers();
@@ -306,7 +317,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
         directReferralVolume[currentReferrer] += amountUSDT;
         _updateTeamVolume(currentReferrer, amountUSDT);
-        _updateTeamPower(currentReferrer, quantity);
 
         machineOrders[orderId] = MachineOrder({
             id: orderId,
@@ -359,6 +369,9 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         address referrer = referralOf[msg.sender];
         _registerParticipant(msg.sender);
 
+        // Maintain role list for on-chain settlement.
+        _addToNodeList(msg.sender);
+
         // Update team stats and leaderboard for node purchase
         directReferralVolume[referrer] += nodePrice;
         _updateTeamVolume(referrer, nodePrice);
@@ -396,6 +409,12 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         
         address referrer = referralOf[msg.sender];
         _registerParticipant(msg.sender);
+
+        // Maintain role list: if previously Node, move to SuperNode; else just add.
+        if (currentRole == Role.Node) {
+            _removeFromNodeList(msg.sender);
+        }
+        _addToSuperNodeList(msg.sender);
 
         // Update team stats and leaderboard for super-node purchase
         directReferralVolume[referrer] += superNodePrice;
@@ -445,6 +464,9 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         // referral binding so they can continue purchasing machines and
         // participating in the ecosystem after selling their identity.
         delete identityOperatorApproval[identityId][msg.sender];
+
+        // Sync role lists so settlement reflects the new owner immediately.
+        _transferRoleList(from, to, identity.role);
 
         emit IdentityTransferred(identityId, from, to, uint8(identity.role));
     }
@@ -744,120 +766,9 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return true;
     }
 
-    /// @notice Emitted whenever the owner moves contract-held USDT out.
-    event TreasuryUSDTWithdrawn(address indexed to, uint256 amount, bool emergency);
-    /// @notice Emitted when owner manually disburses an accumulated pool ledger entry.
-    event PoolAccumulatedWithdrawn(uint8 indexed poolType, address indexed to, uint256 amount);
-    /// @notice Emitted when owner rescues LIGHT tokens sitting in the contract.
-    event TreasuryLightWithdrawn(address indexed to, uint256 amount, bool emergency);
-
-    /// @notice Aggregate view of on-chain assets under admin custody.
-    /// @return usdtBalance Raw USDT balance of the contract.
-    /// @return reservedForPools Sum of all `poolAccumulated` entries (self-custodied pool ledger).
-    /// @return freeUSDT Balance not earmarked for any pool ledger (`usdtBalance - reservedForPools`).
-    /// @return lightBalance Raw LIGHT balance of the contract.
-    /// @return lightRewardReserve Portion of LIGHT already committed to daily reward pool.
-    /// @return freeLight LIGHT not earmarked for daily reward pool.
-    function getTreasuryStatus()
-        external
-        view
-        returns (
-            uint256 usdtBalance,
-            uint256 reservedForPools,
-            uint256 freeUSDT,
-            uint256 lightBalance,
-            uint256 lightRewardReserve,
-            uint256 freeLight
-        )
-    {
-        usdtBalance = usdt.balanceOf(address(this));
-        for (uint8 i = 0; i < poolConfigs.length; i++) {
-            reservedForPools += poolAccumulated[i];
-        }
-        freeUSDT = usdtBalance > reservedForPools ? usdtBalance - reservedForPools : 0;
-
-        if (address(lightToken) != address(0)) {
-            lightBalance = lightToken.balanceOf(address(this));
-        }
-        lightRewardReserve = rewardPoolBalance;
-        freeLight = lightBalance > lightRewardReserve ? lightBalance - lightRewardReserve : 0;
-    }
-
-    /// @notice Withdraw USDT that is NOT earmarked for any self-custodied pool ledger.
-    /// Use this for routine withdraws (e.g. sweep incidental deposits).
-    /// Reverts if `amount` would dip into `Σ poolAccumulated`.
     function withdrawUSDT(address to, uint256 amount) external onlyOwner {
         require(to != address(0), "invalid to");
-        require(amount > 0, "invalid amount");
-
-        uint256 reserved;
-        for (uint8 i = 0; i < poolConfigs.length; i++) {
-            reserved += poolAccumulated[i];
-        }
-        uint256 balance = usdt.balanceOf(address(this));
-        require(balance >= reserved, "inconsistent reserve");
-        require(amount <= balance - reserved, "exceeds free balance");
-
         usdt.safeTransfer(to, amount);
-        emit TreasuryUSDTWithdrawn(to, amount, false);
-    }
-
-    /// @notice Manually disburse accumulated pool funds to an arbitrary address.
-    /// Useful to forward a pool balance to a multisig/treasury or to remediate without running
-    /// the full weighted settlement. Decreases `poolAccumulated[poolType]` by `amount`.
-    function withdrawAccumulatedPool(uint8 poolType, address to, uint256 amount) external onlyOwner {
-        require(poolType < poolConfigs.length, "invalid pool");
-        require(to != address(0), "invalid to");
-        require(amount > 0, "invalid amount");
-        require(amount <= poolAccumulated[poolType], "exceeds pool balance");
-
-        poolAccumulated[poolType] -= amount;
-        usdt.safeTransfer(to, amount);
-        emit PoolAccumulatedWithdrawn(poolType, to, amount);
-        emit PoolRewardSettled(poolType, to, amount);
-    }
-
-    /// @notice Emergency escape hatch that ignores the pool-ledger guard.
-    /// Can only be called when the contract is paused, forcing explicit operator intent.
-    function emergencyWithdrawUSDT(address to, uint256 amount) external onlyOwner whenPaused {
-        require(to != address(0), "invalid to");
-        require(amount > 0, "invalid amount");
-        usdt.safeTransfer(to, amount);
-        emit TreasuryUSDTWithdrawn(to, amount, true);
-    }
-
-    /// @notice Withdraw LIGHT that is NOT part of `rewardPoolBalance`.
-    function withdrawLight(address to, uint256 amount) external onlyOwner {
-        require(address(lightToken) != address(0), "light not set");
-        require(to != address(0), "invalid to");
-        require(amount > 0, "invalid amount");
-
-        uint256 balance = lightToken.balanceOf(address(this));
-        require(balance >= rewardPoolBalance, "inconsistent reserve");
-        require(amount <= balance - rewardPoolBalance, "exceeds free light");
-
-        IERC20(address(lightToken)).safeTransfer(to, amount);
-        emit TreasuryLightWithdrawn(to, amount, false);
-    }
-
-    /// @notice Emergency LIGHT withdraw; requires paused state. Can dip into reward reserve.
-    /// If it touches `rewardPoolBalance`, that ledger is reduced accordingly so accounting stays honest.
-    function emergencyWithdrawLight(address to, uint256 amount) external onlyOwner whenPaused {
-        require(address(lightToken) != address(0), "light not set");
-        require(to != address(0), "invalid to");
-        require(amount > 0, "invalid amount");
-
-        uint256 balance = lightToken.balanceOf(address(this));
-        require(amount <= balance, "exceeds balance");
-
-        uint256 free = balance > rewardPoolBalance ? balance - rewardPoolBalance : 0;
-        if (amount > free) {
-            uint256 fromReserve = amount - free;
-            rewardPoolBalance -= fromReserve;
-        }
-
-        IERC20(address(lightToken)).safeTransfer(to, amount);
-        emit TreasuryLightWithdrawn(to, amount, true);
     }
 
     function _settleDailyRewards(address[] calldata participants, bool manual, uint256 lightPriceInUsdt) private {
@@ -1120,12 +1031,16 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     /// @notice Distribute accumulated leaderboard pool to top and lucky rankings of a given day.
     /// 2% leaderboard pool is split as: 1.5% (top ranking) + 0.5% (lucky ranking).
     /// Only works when the Leaderboard pool recipient was set to address(this).
-    function settleLeaderboard(uint256 dayId) external onlyOwner {
+    function settleLeaderboard(uint256 dayId) external {
+        _requireSettlementAuth();
+        require(!leaderboardSettledDay[dayId], "already settled");
         uint256 total = poolAccumulated[uint8(PoolType.Leaderboard)];
         require(total > 0, "no leaderboard balance");
 
         LeaderboardState storage board = leaderboards[dayId];
         require(board.topCount > 0 || board.lastCount > 0, "no board data for day");
+
+        leaderboardSettledDay[dayId] = true;
 
         poolAccumulated[uint8(PoolType.Leaderboard)] = 0;
 
@@ -1147,6 +1062,8 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         if (luckyAmount > 0) {
             _settleLeaderboardRanking(dayId, board, luckyAmount, false);
         }
+
+        emit LeaderboardPoolSettledOnChain(dayId, total);
     }
 
     function _settleLeaderboardRanking(
@@ -1539,108 +1456,225 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         }
     }
 
-    /// @notice Propagate personal machine power (quantity) upward the referral chain up to 20 levels.
-    /// Used as the on-chain basis for Node / SuperNode reward settlement.
-    /// NOTE: The caller passes the buyer's direct referrer; iteration starts from that referrer
-    ///       (inclusive) and walks up the chain, so every upline (including the direct referrer)
-    ///       receives credit for the buyer's personalPower.
-    function _updateTeamPower(address referrer, uint256 quantity) private {
-        if (quantity == 0) return;
-        address current = referrer;
-        for (uint256 i = 0; i < 20; i++) {
-            if (current == address(0)) break;
-            teamPower[current] += quantity;
-            current = referralOf[current];
+    // ============ On-chain pool settlement ============
+
+    function _requireSettlementAuth() private view {
+        if (publicSettleEnabled) return;
+        require(isOwnerOrSubAdmin(msg.sender), "not authorized");
+    }
+
+    function _addToNodeList(address account) private {
+        if (nodeIndexPlusOne[account] != 0) return;
+        nodeList.push(account);
+        nodeIndexPlusOne[account] = nodeList.length;
+        emit RoleListUpdated(account, uint8(Role.Node), true);
+    }
+
+    function _removeFromNodeList(address account) private {
+        uint256 indexPlusOne = nodeIndexPlusOne[account];
+        if (indexPlusOne == 0) return;
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = nodeList.length - 1;
+        if (index != lastIndex) {
+            address last = nodeList[lastIndex];
+            nodeList[index] = last;
+            nodeIndexPlusOne[last] = index + 1;
+        }
+        nodeList.pop();
+        delete nodeIndexPlusOne[account];
+        emit RoleListUpdated(account, uint8(Role.Node), false);
+    }
+
+    function _addToSuperNodeList(address account) private {
+        if (superNodeIndexPlusOne[account] != 0) return;
+        superNodeList.push(account);
+        superNodeIndexPlusOne[account] = superNodeList.length;
+        emit RoleListUpdated(account, uint8(Role.SuperNode), true);
+    }
+
+    function _removeFromSuperNodeList(address account) private {
+        uint256 indexPlusOne = superNodeIndexPlusOne[account];
+        if (indexPlusOne == 0) return;
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = superNodeList.length - 1;
+        if (index != lastIndex) {
+            address last = superNodeList[lastIndex];
+            superNodeList[index] = last;
+            superNodeIndexPlusOne[last] = index + 1;
+        }
+        superNodeList.pop();
+        delete superNodeIndexPlusOne[account];
+        emit RoleListUpdated(account, uint8(Role.SuperNode), false);
+    }
+
+    function _transferRoleList(address from, address to, Role role) private {
+        if (role == Role.Node) {
+            _removeFromNodeList(from);
+            _addToNodeList(to);
+        } else if (role == Role.SuperNode) {
+            _removeFromSuperNodeList(from);
+            _addToSuperNodeList(to);
         }
     }
 
-    // ============ On-chain Node / SuperNode Settlement ============
+    function setMinPoolSettleAmount(uint256 amount) external onlyOwner {
+        minPoolSettleAmount = amount;
+        emit SettlementConfigUpdated(amount, publicSettleEnabled);
+    }
 
-    /// @notice One-time (per user) backfill of teamPower from historical machine orders.
-    /// Intended to be called by owner in batches right after an upgrade that introduced
-    /// teamPower tracking. For each user in `users`, sums up `quantity` across all
-    /// `userOrderIds[user]` and propagates that total upward the referral chain once.
-    /// A user can only be backfilled a single time to prevent double counting.
-    function backfillTeamPowerFromOrders(address[] calldata users) external onlyOwner {
-        for (uint256 i = 0; i < users.length; i++) {
-            address user = users[i];
-            require(user != address(0), "invalid user");
-            if (teamPowerBackfilled[user]) continue;
+    function setPublicSettleEnabled(bool enabled) external onlyOwner {
+        publicSettleEnabled = enabled;
+        emit SettlementConfigUpdated(minPoolSettleAmount, enabled);
+    }
 
-            uint256 totalQty = 0;
-            uint256[] storage orderIds = userOrderIds[user];
-            for (uint256 j = 0; j < orderIds.length; j++) {
-                totalQty += machineOrders[orderIds[j]].quantity;
+    /// @notice One-time bootstrap to populate role lists from existing identities.
+    /// @dev Iterates rewardParticipants and classifies by current role.
+    function bootstrapRoleLists() external onlyOwner {
+        require(!roleListsBootstrapped, "already bootstrapped");
+        roleListsBootstrapped = true;
+        uint256 n = rewardParticipants.length;
+        for (uint256 i = 0; i < n; i++) {
+            address account = rewardParticipants[i];
+            Role r = _getRole(account);
+            if (r == Role.Node) {
+                _addToNodeList(account);
+            } else if (r == Role.SuperNode) {
+                _addToSuperNodeList(account);
             }
-
-            teamPowerBackfilled[user] = true;
-            if (totalQty > 0) {
-                address directReferrer = referralOf[user];
-                if (directReferrer != address(0)) {
-                    _updateTeamPower(directReferrer, totalQty);
-                }
-            }
-            emit TeamPowerBackfilled(user, totalQty);
         }
     }
 
-    /// @notice Settle the SuperNode pool (PoolType.SuperNode) fully on-chain.
-    /// Distribution basis per account = teamPower[account] / Σ teamPower(candidates).
-    /// `candidates` is a whitelist supplied by owner but amounts come entirely from chain state.
-    /// Revert unless every candidate currently holds SuperNode role.
-    function settleSuperNodePoolOnChain(address[] calldata candidates) external onlyOwner {
-        _settleRolePoolOnChain(PoolType.SuperNode, Role.SuperNode, Role.SuperNode, candidates);
+    function getNodeList() external view returns (address[] memory) {
+        return nodeList;
     }
 
-    /// @notice Settle the Node pool (PoolType.Node) fully on-chain.
-    /// Per the business formula the 8% node pool is shared across both Node and SuperNode holders
-    /// weighted by teamPower. Owner therefore supplies a candidate list containing either role.
-    function settleNodePoolOnChain(address[] calldata candidates) external onlyOwner {
-        _settleRolePoolOnChain(PoolType.Node, Role.Node, Role.SuperNode, candidates);
+    function getSuperNodeList() external view returns (address[] memory) {
+        return superNodeList;
     }
 
-    function _settleRolePoolOnChain(
+    function getNodeListLength() external view returns (uint256) {
+        return nodeList.length;
+    }
+
+    function getSuperNodeListLength() external view returns (uint256) {
+        return superNodeList.length;
+    }
+
+    /// @notice Effective team weight = directReferralVolume + teamTotalVolume.
+    /// (directReferralVolume holds first-level volume; teamTotalVolume holds 2+ levels.)
+    function _teamWeight(address acc) private view returns (uint256) {
+        return directReferralVolume[acc] + teamTotalVolume[acc];
+    }
+
+    /// @notice Distribute a pool on-chain weighted by team volume over the
+    /// combined recipient list. Used by both Node and SuperNode pools.
+    function _distributePoolByWeight(
         PoolType poolType,
-        Role allowedRoleA,
-        Role allowedRoleB,
-        address[] calldata candidates
-    ) private {
-        require(candidates.length > 0, "empty candidates");
-        uint256 balance = poolAccumulated[uint8(poolType)];
-        require(balance > 0, "no pool balance");
+        address[] storage listA,
+        address[] storage listB
+    ) private returns (bool) {
+        uint256 pool = poolAccumulated[uint8(poolType)];
+        if (pool < minPoolSettleAmount || pool == 0) return false;
 
-        uint256 totalWeight = 0;
-        for (uint256 i = 0; i < candidates.length; i++) {
-            address c = candidates[i];
-            require(c != address(0), "invalid candidate");
-            Role r = _getRole(c);
-            require(r == allowedRoleA || r == allowedRoleB, "role not eligible");
-            // Ensure uniqueness: a simple O(n^2) guard is acceptable for the expected small list.
-            for (uint256 j = 0; j < i; j++) {
-                require(candidates[j] != c, "duplicate candidate");
-            }
-            totalWeight += teamPower[c];
+        uint256 lenA = listA.length;
+        uint256 lenB = listB.length;
+        uint256 total = lenA + lenB;
+        if (total == 0) return false;
+
+        uint256 totalWeight;
+        for (uint256 i = 0; i < lenA; i++) {
+            totalWeight += _teamWeight(listA[i]);
         }
-        require(totalWeight > 0, "zero team power");
+        for (uint256 j = 0; j < lenB; j++) {
+            totalWeight += _teamWeight(listB[j]);
+        }
+        if (totalWeight == 0) return false;
 
         poolAccumulated[uint8(poolType)] = 0;
 
-        uint256 distributed = 0;
-        for (uint256 i = 0; i < candidates.length; i++) {
-            address c = candidates[i];
-            uint256 weight = teamPower[c];
-            uint256 amount;
-            if (i == candidates.length - 1) {
-                amount = balance - distributed;
-            } else {
-                amount = (balance * weight) / totalWeight;
-            }
+        uint256 distributed;
+        uint256 lastK = total - 1;
+        uint256 k;
+        for (uint256 i = 0; i < lenA; i++) {
+            address acc = listA[i];
+            uint256 amount = (k == lastK)
+                ? pool - distributed
+                : (pool * _teamWeight(acc)) / totalWeight;
             if (amount > 0) {
-                usdt.safeTransfer(c, amount);
+                usdt.safeTransfer(acc, amount);
                 distributed += amount;
-                emit PoolRewardSettled(uint8(poolType), c, amount);
-                emit PoolRewardWeightSnapshot(uint8(poolType), c, weight, totalWeight);
+                emit PoolRewardSettled(uint8(poolType), acc, amount);
+            }
+            k++;
+        }
+        for (uint256 j = 0; j < lenB; j++) {
+            address acc = listB[j];
+            uint256 amount = (k == lastK)
+                ? pool - distributed
+                : (pool * _teamWeight(acc)) / totalWeight;
+            if (amount > 0) {
+                usdt.safeTransfer(acc, amount);
+                distributed += amount;
+                emit PoolRewardSettled(uint8(poolType), acc, amount);
+            }
+            k++;
+        }
+
+        if (poolType == PoolType.Node) {
+            emit NodePoolSettledOnChain(currentDay(), pool, totalWeight, total);
+        } else {
+            emit SuperNodePoolSettledOnChain(currentDay(), pool, totalWeight, total);
+        }
+        return true;
+    }
+
+    function settleNodePoolOnChain() external whenNotPaused nonReentrant returns (bool) {
+        _requireSettlementAuth();
+        uint256 dayId = currentDay();
+        require(dayId > lastNodePoolSettleDay, "already settled today");
+        lastNodePoolSettleDay = dayId;
+        return _distributePoolByWeight(PoolType.Node, nodeList, superNodeList);
+    }
+
+    function settleSuperNodePoolOnChain() external whenNotPaused nonReentrant returns (bool) {
+        _requireSettlementAuth();
+        uint256 dayId = currentDay();
+        require(dayId > lastSuperNodePoolSettleDay, "already settled today");
+        lastSuperNodePoolSettleDay = dayId;
+        // Reuse weighted distributor by passing superNodeList as both the primary
+        // and a synthetic empty second list via a helper.
+        return _distributeSuperNodePool();
+    }
+
+    function _distributeSuperNodePool() private returns (bool) {
+        uint256 pool = poolAccumulated[uint8(PoolType.SuperNode)];
+        if (pool < minPoolSettleAmount || pool == 0) return false;
+
+        uint256 len = superNodeList.length;
+        if (len == 0) return false;
+
+        uint256 totalWeight;
+        for (uint256 i = 0; i < len; i++) {
+            totalWeight += _teamWeight(superNodeList[i]);
+        }
+        if (totalWeight == 0) return false;
+
+        poolAccumulated[uint8(PoolType.SuperNode)] = 0;
+
+        uint256 distributed;
+        for (uint256 i = 0; i < len; i++) {
+            address acc = superNodeList[i];
+            uint256 amount = (i == len - 1)
+                ? pool - distributed
+                : (pool * _teamWeight(acc)) / totalWeight;
+            if (amount > 0) {
+                usdt.safeTransfer(acc, amount);
+                distributed += amount;
+                emit PoolRewardSettled(uint8(PoolType.SuperNode), acc, amount);
             }
         }
+
+        emit SuperNodePoolSettledOnChain(currentDay(), pool, totalWeight, len);
+        return true;
     }
 }

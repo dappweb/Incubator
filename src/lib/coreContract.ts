@@ -56,8 +56,26 @@ const coreAbi = [
   "function settleDailyRewardsManual(address[] participants, uint256 lightPriceInUsdt) external",
   "function settleLeaderboard(uint256 dayId) external",
   "function settlePoolRewards(uint8 poolType, address[] recipients, uint16[] shares) external",
-  "function settleNodePoolOnChain(address[] candidates) external",
-  "function settleSuperNodePoolOnChain(address[] candidates) external",
+  "function settleNodePoolOnChain() external returns (bool)",
+  "function settleSuperNodePoolOnChain() external returns (bool)",
+  "function getNodeList() view returns (address[])",
+  "function getSuperNodeList() view returns (address[])",
+  "function getNodeListLength() view returns (uint256)",
+  "function getSuperNodeListLength() view returns (uint256)",
+  "function lastNodePoolSettleDay() view returns (uint256)",
+  "function lastSuperNodePoolSettleDay() view returns (uint256)",
+  "function leaderboardSettledDay(uint256) view returns (bool)",
+  "function minPoolSettleAmount() view returns (uint256)",
+  "function publicSettleEnabled() view returns (bool)",
+  "function roleListsBootstrapped() view returns (bool)",
+  "function bootstrapRoleLists() external",
+  "function setMinPoolSettleAmount(uint256 amount) external",
+  "function setPublicSettleEnabled(bool enabled) external",
+  "event NodePoolSettledOnChain(uint256 indexed dayId, uint256 totalDistributed, uint256 recipientCount)",
+  "event SuperNodePoolSettledOnChain(uint256 indexed dayId, uint256 totalDistributed, uint256 recipientCount)",
+  "event LeaderboardPoolSettledOnChain(uint256 indexed dayId, uint256 totalDistributed)",
+  "event RoleListUpdated(address indexed account, uint8 indexed role, bool added)",
+  "event SettlementConfigUpdated(string key, uint256 value)",
   "function backfillTeamPowerFromOrders(address[] users) external",
   "function teamPower(address user) view returns (uint256)",
   "function teamPowerBackfilled(address user) view returns (bool)",
@@ -651,18 +669,160 @@ export async function settlePoolRewards(provider: BrowserProvider, poolType: num
   return tx.wait();
 }
 
-export async function settleNodePoolOnChain(provider: BrowserProvider, candidates: string[]) {
+export async function settleNodePoolOnChain(provider: BrowserProvider) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.settleNodePoolOnChain(candidates, { gasLimit: 3_000_000n });
+  const tx = await contract.settleNodePoolOnChain({ gasLimit: 5_000_000n });
   return tx.wait();
 }
 
-export async function settleSuperNodePoolOnChain(provider: BrowserProvider, candidates: string[]) {
+export async function settleSuperNodePoolOnChain(provider: BrowserProvider) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.settleSuperNodePoolOnChain(candidates, { gasLimit: 3_000_000n });
+  const tx = await contract.settleSuperNodePoolOnChain({ gasLimit: 5_000_000n });
   return tx.wait();
+}
+
+export async function bootstrapRoleLists(provider: BrowserProvider) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.bootstrapRoleLists({ gasLimit: 5_000_000n });
+  return tx.wait();
+}
+
+export async function setMinPoolSettleAmount(provider: BrowserProvider, amount: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setMinPoolSettleAmount(amount);
+  return tx.wait();
+}
+
+export async function setPublicSettleEnabled(provider: BrowserProvider, enabled: boolean) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setPublicSettleEnabled(enabled);
+  return tx.wait();
+}
+
+export type SettlementSummary = {
+  nodePoolBalance: bigint;
+  superNodePoolBalance: bigint;
+  leaderboardPoolBalance: bigint;
+  nodeList: string[];
+  superNodeList: string[];
+  lastNodePoolSettleDay: bigint;
+  lastSuperNodePoolSettleDay: bigint;
+  currentDay: bigint;
+  leaderboardSettledYesterday: boolean;
+  leaderboardYesterdayId: bigint;
+  minPoolSettleAmount: bigint;
+  publicSettleEnabled: boolean;
+  roleListsBootstrapped: boolean;
+};
+
+export async function getSettlementSummary(provider: BrowserProvider): Promise<SettlementSummary> {
+  const contract = getCoreContract(provider) as any;
+  const [
+    nodePoolBalance,
+    superNodePoolBalance,
+    leaderboardPoolBalance,
+    nodeList,
+    superNodeList,
+    lastNodePoolSettleDay,
+    lastSuperNodePoolSettleDay,
+    currentDay,
+    minPoolSettleAmount,
+    publicSettleEnabled,
+    roleListsBootstrapped,
+  ] = await Promise.all([
+    contract.poolAccumulated(3) as Promise<bigint>,
+    contract.poolAccumulated(2) as Promise<bigint>,
+    contract.poolAccumulated(5) as Promise<bigint>,
+    contract.getNodeList() as Promise<string[]>,
+    contract.getSuperNodeList() as Promise<string[]>,
+    contract.lastNodePoolSettleDay() as Promise<bigint>,
+    contract.lastSuperNodePoolSettleDay() as Promise<bigint>,
+    contract.currentDay() as Promise<bigint>,
+    contract.minPoolSettleAmount() as Promise<bigint>,
+    contract.publicSettleEnabled() as Promise<boolean>,
+    contract.roleListsBootstrapped() as Promise<boolean>,
+  ]);
+  const leaderboardYesterdayId = currentDay > 0n ? currentDay - 1n : 0n;
+  const leaderboardSettledYesterday = await (contract.leaderboardSettledDay(leaderboardYesterdayId) as Promise<boolean>);
+  return {
+    nodePoolBalance,
+    superNodePoolBalance,
+    leaderboardPoolBalance,
+    nodeList,
+    superNodeList,
+    lastNodePoolSettleDay,
+    lastSuperNodePoolSettleDay,
+    currentDay,
+    leaderboardSettledYesterday,
+    leaderboardYesterdayId,
+    minPoolSettleAmount,
+    publicSettleEnabled,
+    roleListsBootstrapped,
+  };
+}
+
+export type PoolPreviewEntry = {
+  recipient: string;
+  weight: bigint;
+  bps: number;
+  amount: bigint;
+};
+
+export type PoolPreview = {
+  total: bigint;
+  totalWeight: bigint;
+  entries: PoolPreviewEntry[];
+};
+
+async function computePoolPreview(
+  provider: BrowserProvider,
+  poolBalance: bigint,
+  recipients: string[],
+): Promise<PoolPreview> {
+  const contract = getCoreContract(provider) as any;
+  const weights = await Promise.all(
+    recipients.map(async (addr) => {
+      const [direct, team] = await Promise.all([
+        contract.directReferralVolume(addr) as Promise<bigint>,
+        contract.teamTotalVolume(addr) as Promise<bigint>,
+      ]);
+      return { recipient: addr, weight: (direct ?? 0n) + (team ?? 0n) };
+    }),
+  );
+  const nonZero = weights.filter((w) => w.weight > 0n);
+  const totalWeight = nonZero.reduce((sum, w) => sum + w.weight, 0n);
+  if (totalWeight === 0n || poolBalance === 0n) {
+    return { total: poolBalance, totalWeight, entries: [] };
+  }
+  let distributed = 0n;
+  const entries: PoolPreviewEntry[] = nonZero.map((w, idx) => {
+    let amount: bigint;
+    if (idx === nonZero.length - 1) {
+      amount = poolBalance - distributed;
+    } else {
+      amount = (poolBalance * w.weight) / totalWeight;
+    }
+    distributed += amount;
+    const bps = totalWeight > 0n ? Number((w.weight * 10000n) / totalWeight) : 0;
+    return { recipient: w.recipient, weight: w.weight, bps, amount };
+  });
+  return { total: poolBalance, totalWeight, entries };
+}
+
+export async function previewNodeSettlement(provider: BrowserProvider): Promise<PoolPreview> {
+  const summary = await getSettlementSummary(provider);
+  const recipients = [...summary.nodeList, ...summary.superNodeList];
+  return computePoolPreview(provider, summary.nodePoolBalance, recipients);
+}
+
+export async function previewSuperNodeSettlement(provider: BrowserProvider): Promise<PoolPreview> {
+  const summary = await getSettlementSummary(provider);
+  return computePoolPreview(provider, summary.superNodePoolBalance, summary.superNodeList);
 }
 
 export async function backfillTeamPowerFromOrders(provider: BrowserProvider, users: string[]) {

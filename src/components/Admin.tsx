@@ -96,6 +96,7 @@ import {
 } from "../lib/tokenContract";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
+import AdminSettlementPanel from "./AdminSettlementPanel";
 
 type AdminTabKey = "overview" | "prices" | "pools" | "market" | "settlement" | "primary" | "token" | "system" | "announcements" | "guide";
 
@@ -1564,85 +1565,14 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 </button>
               </div>
 
-              <div style={{ marginTop: "16px", padding: "10px", border: "1px solid #2d7", borderRadius: "6px" }}>
-                <div style={{ fontWeight: 600, color: "#2d7", marginBottom: "6px" }}>
-                  {lang === "zh" ? "链上 teamPower 自动结算（推荐）" : "On-chain teamPower auto-settlement (recommended)"}
-                </div>
-                <div style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
-                  {lang === "zh"
-                    ? "仅填写候选地址，合约按 teamPower[候选] / Σ teamPower 自动分配池内 USDT；owner 只能决定谁参与，不能决定金额。"
-                    : "Only the candidate list is required; the contract auto-allocates USDT by teamPower[c] / Σ teamPower. Owner selects who participates, not how much."}
-                </div>
-
-                <label className="field">{lang === "zh" ? "节点池候选(Node / SuperNode 均可, 逗号分隔)" : "Node Pool Candidates (Node or SuperNode, comma-separated)"}
-                  <input value={settlementInputs.settleNodeCandidates} onChange={e => setSettlementInputs(p => ({ ...p, settleNodeCandidates: e.target.value }))} placeholder="0x...,0x..." />
-                </label>
-                <div className="actions admin-actions-tight">
-                  <button className="ghost-btn" type="button"
-                    onClick={() => void executeAction("preview-node-onchain", async () => {
-                      const addrs = settlementInputs.settleNodeCandidates.split(",").map(s => s.trim()).filter(Boolean);
-                      addrs.forEach(validateAddress);
-                      if (!addrs.length) throw new Error(lang === "zh" ? "请填写候选地址" : "Provide candidate addresses");
-                      const powers = await getTeamPowers(provider!, addrs);
-                      const total = powers.reduce((s, p) => s + p, 0n);
-                      const preview = addrs.map((a, i) => `${a.slice(0,6)}..${a.slice(-4)} tp=${powers[i]} (${total ? (Number(powers[i]*10000n/total)/100).toFixed(2) : 0}%)`);
-                      alert(`${lang === "zh" ? "节点池预览" : "Node pool preview"}\nΣtp=${total}\n${preview.join("\n")}`);
-                    }, "")} disabled={actionKey !== ""}>
-                    {actionKey === "preview-node-onchain" ? t.loading : lang === "zh" ? "预览份额" : "Preview"}
-                  </button>
-                  <button className="primary-btn" type="button"
-                    onClick={() => void executeAction("settle-node-onchain", async () => {
-                      const addrs = settlementInputs.settleNodeCandidates.split(",").map(s => s.trim()).filter(Boolean);
-                      addrs.forEach(validateAddress);
-                      if (!addrs.length) throw new Error(lang === "zh" ? "请填写候选地址" : "Provide candidate addresses");
-                      await settleNodePoolOnChain(provider!, addrs);
-                    }, lang === "zh" ? "节点池链上结算完成。" : "Node pool settled on-chain.")} disabled={actionKey !== ""}>
-                    {actionKey === "settle-node-onchain" ? t.loading : lang === "zh" ? "链上结算节点池" : "Settle Node On-Chain"}
-                  </button>
-                </div>
-
-                <label className="field" style={{ marginTop: "12px" }}>{lang === "zh" ? "超级节点池候选(仅 SuperNode, 逗号分隔)" : "SuperNode Pool Candidates (SuperNode only, comma-separated)"}
-                  <input value={settlementInputs.settleSuperCandidates} onChange={e => setSettlementInputs(p => ({ ...p, settleSuperCandidates: e.target.value }))} placeholder="0x...,0x..." />
-                </label>
-                <div className="actions admin-actions-tight">
-                  <button className="ghost-btn" type="button"
-                    onClick={() => void executeAction("preview-super-onchain", async () => {
-                      const addrs = settlementInputs.settleSuperCandidates.split(",").map(s => s.trim()).filter(Boolean);
-                      addrs.forEach(validateAddress);
-                      if (!addrs.length) throw new Error(lang === "zh" ? "请填写候选地址" : "Provide candidate addresses");
-                      const powers = await getTeamPowers(provider!, addrs);
-                      const total = powers.reduce((s, p) => s + p, 0n);
-                      const preview = addrs.map((a, i) => `${a.slice(0,6)}..${a.slice(-4)} tp=${powers[i]} (${total ? (Number(powers[i]*10000n/total)/100).toFixed(2) : 0}%)`);
-                      alert(`${lang === "zh" ? "超级节点池预览" : "SuperNode pool preview"}\nΣtp=${total}\n${preview.join("\n")}`);
-                    }, "")} disabled={actionKey !== ""}>
-                    {actionKey === "preview-super-onchain" ? t.loading : lang === "zh" ? "预览份额" : "Preview"}
-                  </button>
-                  <button className="primary-btn" type="button"
-                    onClick={() => void executeAction("settle-super-onchain", async () => {
-                      const addrs = settlementInputs.settleSuperCandidates.split(",").map(s => s.trim()).filter(Boolean);
-                      addrs.forEach(validateAddress);
-                      if (!addrs.length) throw new Error(lang === "zh" ? "请填写候选地址" : "Provide candidate addresses");
-                      await settleSuperNodePoolOnChain(provider!, addrs);
-                    }, lang === "zh" ? "超级节点池链上结算完成。" : "Super-node pool settled on-chain.")} disabled={actionKey !== ""}>
-                    {actionKey === "settle-super-onchain" ? t.loading : lang === "zh" ? "链上结算超节池" : "Settle Super On-Chain"}
-                  </button>
-                </div>
-
-                <label className="field" style={{ marginTop: "12px" }}>{lang === "zh" ? "teamPower 回填用户(升级后一次性, 逗号分隔, 可分批)" : "teamPower Backfill Users (one-time after upgrade, comma-separated, batched)"}
-                  <input value={settlementInputs.backfillUsers} onChange={e => setSettlementInputs(p => ({ ...p, backfillUsers: e.target.value }))} placeholder="0x...,0x..." />
-                </label>
-                <div className="actions admin-actions-tight">
-                  <button className="ghost-btn" type="button"
-                    onClick={() => void executeAction("backfill-tp", async () => {
-                      const addrs = settlementInputs.backfillUsers.split(",").map(s => s.trim()).filter(Boolean);
-                      addrs.forEach(validateAddress);
-                      if (!addrs.length) throw new Error(lang === "zh" ? "请填写用户地址" : "Provide user addresses");
-                      await backfillTeamPowerFromOrders(provider!, addrs);
-                    }, lang === "zh" ? "teamPower 回填完成。" : "teamPower backfilled.")} disabled={actionKey !== ""}>
-                    {actionKey === "backfill-tp" ? t.loading : lang === "zh" ? "回填 teamPower" : "Backfill teamPower"}
-                  </button>
-                </div>
-              </div>
+              <AdminSettlementPanel
+                provider={provider}
+                lang={lang}
+                actionKey={actionKey}
+                executeAction={executeAction}
+                usdtDecimals={18}
+                loadingLabel={t.loading}
+              />
 
               <div style={{ marginTop: "16px", fontSize: "12px", color: "#a00" }}>
                 {lang === "zh"
