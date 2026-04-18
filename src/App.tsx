@@ -529,6 +529,8 @@ const App = () => {
   const [firstConnectGuideRunning, setFirstConnectGuideRunning] = useState(false);
   const [addingTokenSymbol, setAddingTokenSymbol] = useState<"ICO" | "LIGHT" | null>(null);
   const [walletConnectPending, setWalletConnectPending] = useState(false);
+  const [showWalletDisconnect, setShowWalletDisconnect] = useState(false);
+  const [lastAddressTapAt, setLastAddressTapAt] = useState(0);
 
   const [machineQty, setMachineQty] = useState(1);
   const [machineReferrer, setMachineReferrer] = useState("");
@@ -978,10 +980,31 @@ const App = () => {
     try {
       disconnect();
       resetWalletState();
+      setShowWalletDisconnect(false);
+      setLastAddressTapAt(0);
       setStatus(t.walletDisconnected);
     } catch (error) {
       setStatus(parseContractError(error, lang));
     }
+  };
+
+  const onAddressPillClick = () => {
+    const now = Date.now();
+
+    if (showWalletDisconnect) {
+      setShowWalletDisconnect(false);
+      setLastAddressTapAt(0);
+      return;
+    }
+
+    if (now - lastAddressTapAt <= 1200) {
+      setShowWalletDisconnect(true);
+      setStatus(lang === "zh" ? "已显示断开钱包按钮。" : "Disconnect button is now visible.");
+      return;
+    }
+
+    setLastAddressTapAt(now);
+    setStatus(lang === "zh" ? "再次点击地址可显示断开钱包按钮。" : "Tap address again to reveal disconnect button.");
   };
   const recentMachineUnits = useMemo(
     () => orders.reduce((sum, order) => sum + toSafeBigInt(order.quantity), 0n),
@@ -1017,6 +1040,26 @@ const App = () => {
       setSwapDirection("forward");
     }
   }, [swapDirection, activePairId]);
+
+  useEffect(() => {
+    if (!showWalletDisconnect) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowWalletDisconnect(false);
+      setLastAddressTapAt(0);
+    }, 6000);
+
+    return () => window.clearTimeout(timer);
+  }, [showWalletDisconnect]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      setShowWalletDisconnect(false);
+      setLastAddressTapAt(0);
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     const cancel = scheduleIdleTask(() => {
@@ -1943,17 +1986,19 @@ const App = () => {
         </button>
         {isConnected ? (
           <div className="wallet-chip-group">
-            <button className="wallet-address-pill" type="button" disabled title={address}>
+            <button className="wallet-address-pill" type="button" onClick={onAddressPillClick} title={address}>
               {shortWalletAddress}
             </button>
-            <button
-              className="primary-btn wallet-disconnect-btn"
-              type="button"
-              onClick={onDisconnectWalletClick}
-              disabled={walletDisconnectPending}
-            >
-              {walletDisconnectPending ? t.loading : t.disconnect}
-            </button>
+            {showWalletDisconnect ? (
+              <button
+                className="primary-btn wallet-disconnect-btn"
+                type="button"
+                onClick={onDisconnectWalletClick}
+                disabled={walletDisconnectPending}
+              >
+                {walletDisconnectPending ? t.loading : t.disconnect}
+              </button>
+            ) : null}
           </div>
         ) : (
           <button
