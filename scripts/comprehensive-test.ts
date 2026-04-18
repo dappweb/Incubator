@@ -170,7 +170,7 @@ async function testCorePriceUpdate() {
   const oldPrice = await core.machineUnitPrice();
   const newPrice = ethers.parseUnits("150", 6);
 
-  await core.connect(owner).updateMachineUnitPrice(newPrice);
+  await core.connect(owner).updatePrice(0, newPrice);
   const updatedPrice = await core.machineUnitPrice();
   
   assert.equal(updatedPrice, newPrice);
@@ -475,11 +475,18 @@ async function deployMockUsdt(initialOwner: string) {
 }
 
 async function deployCore(usdtAddress: string, owner: string, recipients: string[]) {
-  const factory = await ethers.getContractFactory("IncubatorCore");
+  const libraries: Record<string, string> = {};
+  for (const name of ["LeaderboardLib", "NodePoolLib", "PoolSettleLib"] as const) {
+    const libFactory = await ethers.getContractFactory(name);
+    const lib = await libFactory.deploy();
+    await lib.waitForDeployment();
+    libraries[name] = await lib.getAddress();
+  }
+  const factory = await ethers.getContractFactory("IncubatorCore", { libraries });
   const contract = await upgrades.deployProxy(factory, [usdtAddress, owner, recipients], {
     kind: "uups",
     initializer: "initialize",
-    unsafeAllow: ["constructor", "state-variable-assignment"],
+    unsafeAllow: ["constructor", "state-variable-assignment", "external-library-linking"],
   });
   await contract.waitForDeployment();
   return contract;

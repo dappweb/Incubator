@@ -33,13 +33,13 @@ describe("IncubatorCore on-chain pool settlement", function () {
     await core.connect(bob).buyNode();
     await core.connect(carol).buySuperNode();
 
-    assert.equal(await core.getNodeListLength(), 2n);
-    assert.equal(await core.getSuperNodeListLength(), 1n);
+    assert.equal(await core.nodeListLength(), 2n);
+    assert.equal(await core.superNodeListLength(), 1n);
 
     // alice upgrades to super-node → nodeList shrinks, superNodeList grows.
     await core.connect(alice).buySuperNode();
-    assert.equal(await core.getNodeListLength(), 1n);
-    assert.equal(await core.getSuperNodeListLength(), 2n);
+    assert.equal(await core.nodeListLength(), 1n);
+    assert.equal(await core.superNodeListLength(), 2n);
 
     // Generate purchases so teamTotalVolume is non-zero on all referrers (owner is everyone's referrer).
     // Add second-level children for alice/bob/carol to give each of them team volume.
@@ -132,11 +132,32 @@ describe("IncubatorCore on-chain pool settlement", function () {
     // Market transfers identity from alice to bob.
     await core.connect(market).transferIdentityByMarket(identityId, alice.address, bob.address);
 
-    assert.equal(await core.getNodeListLength(), 1n);
-    const nodeList: string[] = await core.getNodeList();
+    assert.equal(await core.nodeListLength(), 1n);
+    const nodeList: string[] = await readAddressList(core, "nodeListLength", "nodeList");
     assert.equal(nodeList[0], bob.address);
   });
 });
+
+async function deployCoreLibraries() {
+  const libraries: Record<string, string> = {};
+  for (const name of ["LeaderboardLib", "NodePoolLib", "PoolSettleLib"] as const) {
+    const factory = await ethers.getContractFactory(name);
+    const contract = await factory.deploy();
+    await contract.waitForDeployment();
+    libraries[name] = await contract.getAddress();
+  }
+  return libraries;
+}
+
+async function getLinkedCoreFactory() {
+  const libraries = await deployCoreLibraries();
+  return ethers.getContractFactory("IncubatorCore", { libraries });
+}
+
+async function readAddressList(contract: any, lengthFn: string, itemFn: string) {
+  const length = Number(await contract[lengthFn]());
+  return Promise.all(Array.from({ length }, (_, index) => contract[itemFn](index) as Promise<string>));
+}
 
 async function deployMockUsdt(initialOwner: string) {
   const factory = await ethers.getContractFactory("MockUSDT");
@@ -146,11 +167,11 @@ async function deployMockUsdt(initialOwner: string) {
 }
 
 async function deployCore(usdtAddress: string, owner: string, recipients: string[]) {
-  const factory = await ethers.getContractFactory("IncubatorCore");
+  const factory = await getLinkedCoreFactory();
   const contract = await upgrades.deployProxy(factory, [usdtAddress, owner, recipients], {
     kind: "uups",
     initializer: "initialize",
-    unsafeAllow: ["constructor", "state-variable-assignment"],
+    unsafeAllow: ["constructor", "state-variable-assignment", "external-library-linking"],
   });
   await contract.waitForDeployment();
   return contract;

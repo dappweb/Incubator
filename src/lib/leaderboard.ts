@@ -173,10 +173,18 @@ export async function fetchLeaderboardDay(
   let whitelistRaw: string[] = [];
   let adjustPctRaw: bigint = 0n;
   try {
-    [whitelistRaw, adjustPctRaw] = await Promise.all([
-      contract.getLeaderboardWhitelist() as Promise<string[]>,
+    const [lenRaw, adjustPctResult] = await Promise.all([
+      contract.leaderboardWhitelistLength() as Promise<bigint>,
       contract.leaderboardWhitelistAdjustPct() as Promise<bigint>,
     ]);
+    adjustPctRaw = adjustPctResult;
+    const len = Number(lenRaw);
+    if (len > 0) {
+      const items = await Promise.all(
+        Array.from({ length: len }, (_, i) => contract.leaderboardWhitelist(i) as Promise<string>),
+      );
+      whitelistRaw = items;
+    }
   } catch {
     // not available on this deployment — use defaults
   }

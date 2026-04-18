@@ -37,15 +37,15 @@ async function main() {
     throw new Error(`Signer is not owner. owner=${owner}, signer=${signer.address}`);
   }
 
-  const tx = await core.setSubAdmin(target, enable);
+  const tx = await core.setAdminRole(target, 1, enable);
   console.log(`tx submitted: ${tx.hash}`);
   const receipt = await tx.wait();
   console.log(`tx confirmed in block: ${receipt?.blockNumber}`);
 
   const isSubAdmin = await core.subAdmins(target);
-  const list = await core.getSubAdmins();
+  const count = Number(await core.subAdminListLength());
   console.log(`subAdmins[target]: ${isSubAdmin}`);
-  console.log(`subAdmin count: ${list.length}`);
+  console.log(`subAdmin count: ${count}`);
 }
 
 main().catch((error) => {

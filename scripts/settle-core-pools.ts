@@ -8,10 +8,12 @@ dotenv.config({ path: ".env" });
 const coreAbi = [
   "function poolAccumulated(uint8 poolType) view returns (uint256)",
   "function rewardPoolBalance() view returns (uint256)",
-  "function getParticipantCount() view returns (uint256)",
-  "function getParticipantAt(uint256 index) view returns (address)",
-  "function getNodeList() view returns (address[])",
-  "function getSuperNodeList() view returns (address[])",
+  "function rewardParticipantsLength() view returns (uint256)",
+  "function rewardParticipants(uint256 index) view returns (address)",
+  "function nodeListLength() view returns (uint256)",
+  "function nodeList(uint256 index) view returns (address)",
+  "function superNodeListLength() view returns (uint256)",
+  "function superNodeList(uint256 index) view returns (address)",
   "function lastNodePoolSettleDay() view returns (uint256)",
   "function lastSuperNodePoolSettleDay() view returns (uint256)",
   "function leaderboardSettledDay(uint256) view returns (bool)",
@@ -385,11 +387,11 @@ async function resolveDailyRewardParticipants(core: any): Promise<string[]> {
     throw new Error("DAILY_REWARD_MAX_PARTICIPANTS must be a positive integer");
   }
 
-  const participantCount: bigint = await core.getParticipantCount();
+  const participantCount: bigint = await core.rewardParticipantsLength();
   const limit = Math.min(Number(participantCount), maxParticipants);
   const participants: string[] = [];
   for (let i = 0; i < limit; i++) {
-    const participant: string = await core.getParticipantAt(i);
+    const participant: string = await core.rewardParticipants(i);
     if (ethers.isAddress(participant)) participants.push(participant);
   }
   return participants;

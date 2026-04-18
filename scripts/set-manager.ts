@@ -37,7 +37,7 @@ async function main() {
     throw new Error(`Signer is not owner/sub-admin. signer=${signer.address}`);
   }
 
-  const tx = await core.setManager(target, enable);
+  const tx = await core.setAdminRole(target, 2, enable);
   console.log(`tx submitted: ${tx.hash}`);
   const receipt = await tx.wait();
   console.log(`tx confirmed in block: ${receipt?.blockNumber}`);

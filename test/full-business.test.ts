@@ -31,14 +31,14 @@ describe("IncubatorCore — Admin & Settlement", function () {
 
     await core.connect(alice).bindReferrer((await ethers.getSigners())[0].address);
     await core.connect(alice).purchaseMachine(1);
-    assert.equal(await core.getParticipantCount(), 1n);
-    assert.equal(await core.getParticipantAt(0), alice.address);
+    assert.equal(await core.rewardParticipantsLength(), 1n);
+    assert.equal(await core.rewardParticipants(0), alice.address);
 
     await core.connect(bob).bindReferrer(alice.address);
     await core.connect(bob).purchaseMachine(1);
-    assert.equal(await core.getParticipantCount(), 2n);
+    assert.equal(await core.rewardParticipantsLength(), 2n);
 
-    await assert.rejects(core.getParticipantAt(5));
+    await assert.rejects(core.rewardParticipants(5));
   });
 
   // ── C-8: withdrawUSDT ──
@@ -90,7 +90,7 @@ describe("IncubatorCore — Admin & Settlement", function () {
     assert.equal(await core.isOwnerOrSubAdmin(owner.address), true);
     assert.equal(await core.isOwnerOrSubAdmin(alice.address), false);
 
-    await core.connect(owner).setSubAdmin(alice.address, true);
+    await core.connect(owner).setAdminRole(alice.address, 1, true);
     assert.equal(await core.isOwnerOrSubAdmin(alice.address), true);
     assert.equal(await core.isOwnerOrSubAdmin(bob.address), false);
   });
@@ -98,32 +98,32 @@ describe("IncubatorCore — Admin & Settlement", function () {
   it("allows owner/sub-admin to manage manager role", async function () {
     const { core, owner, alice, bob, carol } = await deployFixture();
 
-    await core.connect(owner).setSubAdmin(alice.address, true);
+    await core.connect(owner).setAdminRole(alice.address, 1, true);
 
-    await core.connect(alice).setManager(bob.address, true);
+    await core.connect(alice).setAdminRole(bob.address, 2, true);
     assert.equal(await core.isOwnerOrSubAdmin(bob.address), true);
 
-    await core.connect(owner).setManager(carol.address, true);
+    await core.connect(owner).setAdminRole(carol.address, 2, true);
     assert.equal(await core.isOwnerOrSubAdmin(carol.address), true);
 
-    await core.connect(alice).setManager(bob.address, false);
+    await core.connect(alice).setAdminRole(bob.address, 2, false);
     assert.equal(await core.isOwnerOrSubAdmin(bob.address), false);
 
-    await assert.rejects(core.connect(bob).setManager(carol.address, false));
+    await assert.rejects(core.connect(bob).setAdminRole(carol.address, 2, false));
   });
 
   it("allows manager to update prices but blocks high-risk owner-only actions", async function () {
     const { core, owner, alice, bob } = await deployFixture();
 
-    await core.connect(owner).setSubAdmin(alice.address, true);
-    await core.connect(alice).setManager(bob.address, true);
+    await core.connect(owner).setAdminRole(alice.address, 1, true);
+    await core.connect(alice).setAdminRole(bob.address, 2, true);
 
-    await core.connect(bob).updateMachineUnitPrice(101_000000n);
-    await core.connect(bob).updateNodePrice(1001_000000n);
-    await assert.rejects(core.connect(bob).updateSuperNodePrice(3001_000000n));
+    await core.connect(bob).updatePrice(0, 101_000000n);
+    await core.connect(bob).updatePrice(1, 1001_000000n);
+    await assert.rejects(core.connect(bob).updatePrice(2, 3001_000000n));
 
     await assert.rejects(core.connect(bob).withdrawUSDT(bob.address, 1n));
-    await assert.rejects(core.connect(bob).setSubAdmin(bob.address, true));
+    await assert.rejects(core.connect(bob).setAdminRole(bob.address, 1, true));
     await assert.rejects(core.connect(bob).transferOwnership(bob.address));
   });
 
@@ -135,7 +135,7 @@ describe("IncubatorCore — Admin & Settlement", function () {
     await core.connect(alice).purchaseMachine(1);
     await core.connect(alice).purchaseMachine(2);
 
-    const orders = await core.getUserMachineOrders(alice.address);
+    const orders = await readUintList(core, "userOrderIdsLength", "userOrderIds", alice.address);
     assert.equal(orders.length, 2);
     assert.equal(orders[0], 1n);
     assert.equal(orders[1], 2n);
@@ -167,7 +167,7 @@ describe("IncubatorCore — Admin & Settlement", function () {
 
     await core.connect(owner).unpause();
     await core.connect(alice).purchaseMachine(1); // should succeed
-    const order = await core.getMachineOrder(1);
+    const order = await core.machineOrders(1);
     assert.equal(order.quantity, 1n);
   });
 
@@ -176,12 +176,12 @@ describe("IncubatorCore — Admin & Settlement", function () {
     const { core, owner, alice, bob } = await deployFixture();
 
     await core.connect(owner).setLeaderboardWhitelist([alice.address, bob.address]);
-    const list = await core.getLeaderboardWhitelist();
+    const list = await readAddressList(core, "leaderboardWhitelistLength", "leaderboardWhitelist");
     assert.equal(list.length, 2);
 
     // Clear
     await core.connect(owner).setLeaderboardWhitelist([]);
-    assert.equal((await core.getLeaderboardWhitelist()).length, 0);
+    assert.equal((await readAddressList(core, "leaderboardWhitelistLength", "leaderboardWhitelist")).length, 0);
   });
 
   it("setLeaderboardWhitelistAdjustPct rejects values > 10", async function () {
@@ -197,10 +197,10 @@ describe("IncubatorCore — Admin & Settlement", function () {
 
     await core.connect(alice).bindReferrer((await ethers.getSigners())[0].address);
     await core.connect(alice).purchaseMachine(1);
-    const count = await core.getParticipantCount();
+    const count = await core.rewardParticipantsLength();
     // calling again is idempotent
     await core.syncParticipant(alice.address);
-    assert.equal(await core.getParticipantCount(), count);
+    assert.equal(await core.rewardParticipantsLength(), count);
   });
 
   // ── C-5: syncUsdtTokenDecimals ──
@@ -681,7 +681,7 @@ describe("E2E — Registration → Machine → Node → SuperNode", function () 
     // Step 2: Purchase machines
     await core.connect(alice).purchaseMachine(3);
     assert.equal(await core.getUserRole(alice.address), 0n); // still basic
-    const orders = await core.getUserMachineOrders(alice.address);
+    const orders = await readUintList(core, "userOrderIdsLength", "userOrderIds", alice.address);
     assert.equal(orders.length, 1);
 
     // Step 3: Buy Node
@@ -799,7 +799,7 @@ describe("E2E — Daily Settlement + Reward Cap", function () {
     await core.connect(owner).fundRewardPool(2_000_000_000n);
 
     // Day 1 settlement
-    await core.connect(owner).settleDailyRewardsManual([buyer.address]);
+    await core.connect(owner).settleDailyRewardsManual([buyer.address], 1_000_000n);
     const progress1 = await core.getOrderRewardProgress(1);
     assert.ok(progress1.staticPaid > 0n);
     assert.equal(progress1.exited, false);
@@ -809,7 +809,7 @@ describe("E2E — Daily Settlement + Reward Cap", function () {
     await ethers.provider.send("evm_mine", []);
 
     // Day 2 settlement
-    await core.connect(owner).settleDailyRewardsManual([buyer.address]);
+    await core.connect(owner).settleDailyRewardsManual([buyer.address], 1_000_000n);
     const progress2 = await core.getOrderRewardProgress(1);
     assert.ok(progress2.staticPaid > progress1.staticPaid);
     assert.ok(progress2.remainingCap < progress1.remainingCap);
@@ -845,7 +845,7 @@ describe("E2E — Pause Everything", function () {
     await core.connect(owner).unpause();
     await core.connect(alice).bindReferrer(owner.address);
     await core.connect(alice).purchaseMachine(1); // success
-    assert.equal((await core.getMachineOrder(1)).quantity, 1n);
+    assert.equal((await core.machineOrders(1)).quantity, 1n);
 
     await swap.connect(owner).unpause();
   });
@@ -906,10 +906,10 @@ describe("Security — Access Control", function () {
 
     await assert.rejects(core.connect(outsider).pause());
     await assert.rejects(core.connect(outsider).unpause());
-    await assert.rejects(core.connect(outsider).updateMachineUnitPrice(1n));
-    await assert.rejects(core.connect(outsider).updateNodePrice(1n));
-    await assert.rejects(core.connect(outsider).updateSuperNodePrice(1n));
-    await assert.rejects(core.connect(outsider).setSubAdmin(outsider.address, true));
+    await assert.rejects(core.connect(outsider).updatePrice(0, 1n));
+    await assert.rejects(core.connect(outsider).updatePrice(1, 1n));
+    await assert.rejects(core.connect(outsider).updatePrice(2, 1n));
+    await assert.rejects(core.connect(outsider).setAdminRole(outsider.address, 1, true));
     await assert.rejects(core.connect(outsider).setIdentityMarket(outsider.address));
     await assert.rejects(core.connect(outsider).updatePoolRecipient(0, outsider.address));
     await assert.rejects(core.connect(outsider).updatePoolShare(0, 6000));
@@ -918,7 +918,7 @@ describe("Security — Access Control", function () {
     await assert.rejects(core.connect(outsider).syncUsdtTokenDecimals());
     await assert.rejects(core.connect(outsider).setLeaderboardWhitelist([]));
     await assert.rejects(core.connect(outsider).setLeaderboardWhitelistAdjustPct(1));
-    await assert.rejects(core.connect(outsider).settleDailyRewardsManual([]));
+    await assert.rejects(core.connect(outsider).settleDailyRewardsManual([], 1_000_000n));
   });
 
   it("PrimarySwapController: all onlyOwner functions reject non-owner", async function () {
@@ -1056,6 +1056,32 @@ async function deployMockUsdt(initialOwner: string) {
   return c;
 }
 
+async function deployCoreLibraries() {
+  const libraries: Record<string, string> = {};
+  for (const name of ["LeaderboardLib", "NodePoolLib", "PoolSettleLib"] as const) {
+    const factory = await ethers.getContractFactory(name);
+    const contract = await factory.deploy();
+    await contract.waitForDeployment();
+    libraries[name] = await contract.getAddress();
+  }
+  return libraries;
+}
+
+async function getLinkedCoreFactory() {
+  const libraries = await deployCoreLibraries();
+  return ethers.getContractFactory("IncubatorCore", { libraries });
+}
+
+async function readAddressList(contract: any, lengthFn: string, itemFn: string) {
+  const length = Number(await contract[lengthFn]());
+  return Promise.all(Array.from({ length }, (_, index) => contract[itemFn](index) as Promise<string>));
+}
+
+async function readUintList(contract: any, lengthFn: string, itemFn: string, owner: string) {
+  const length = Number(await contract[lengthFn](owner));
+  return Promise.all(Array.from({ length }, (_, index) => contract[itemFn](owner, index) as Promise<bigint>));
+}
+
 async function deployIcoToken(initialOwner: string, saleWallet: string) {
   const f = await ethers.getContractFactory("IncubatorToken");
   const c = await f.deploy("Incubator ICO", "ICO", initialOwner, saleWallet);
@@ -1071,10 +1097,10 @@ async function deployMockToken(name: string, symbol: string, initialOwner: strin
 }
 
 async function deployCore(usdtAddress: string, owner: string, recipients: string[]) {
-  const f = await ethers.getContractFactory("IncubatorCore");
+  const f = await getLinkedCoreFactory();
   const c = await upgrades.deployProxy(f, [usdtAddress, owner, recipients], {
     kind: "uups", initializer: "initialize",
-    unsafeAllow: ["constructor", "state-variable-assignment"],
+    unsafeAllow: ["constructor", "state-variable-assignment", "external-library-linking"],
   });
   await c.waitForDeployment();
   return c;

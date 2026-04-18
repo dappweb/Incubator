@@ -88,7 +88,7 @@ async function main() {
       "function owner() view returns (address)",
       "function paused() view returns (bool)",
       "function usdt() view returns (address)",
-      "function getParticipantCount() view returns (uint256)",
+      "function rewardParticipantsLength() view returns (uint256)",
       "function getPoolConfig(uint8 poolType) view returns (address recipient, uint16 bps)",
       "function identityMarket() view returns (address)",
     ];
@@ -98,7 +98,7 @@ async function main() {
         core.owner(),
         core.paused(),
         core.usdt(),
-        core.getParticipantCount(),
+        core.rewardParticipantsLength(),
         core.identityMarket(),
       ]);
       results.push({ label: "Core owner", ok: true, detail: owner });

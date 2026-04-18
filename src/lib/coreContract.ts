@@ -13,8 +13,9 @@ const coreAbi = [
   "function superNodePrice() view returns (uint256)",
   "function getUserIdentityId(address user) view returns (uint256)",
   "function getIdentity(uint256 identityId) view returns (uint256 id,address owner,uint8 role,uint256 updatedAt)",
-  "function getMachineOrder(uint256 orderId) view returns ((uint256 id,address user,uint256 quantity,uint256 amountUSDT,address referrer,uint256 createdAt))",
-  "function getUserMachineOrders(address user) view returns (uint256[])",
+  "function machineOrders(uint256 orderId) view returns (uint256 id,address user,uint256 quantity,uint256 amountUSDT,address referrer,uint256 createdAt)",
+  "function userOrderIds(address user, uint256 index) view returns (uint256)",
+  "function userOrderIdsLength(address user) view returns (uint256)",
   "function getUserRole(address user) view returns (uint8)",
   "function directReferralCount(address user) view returns (uint256)",
   "function teamTotalMemberCount(address user) view returns (uint256)",
@@ -24,19 +25,18 @@ const coreAbi = [
   "function owner() view returns (address)",
   "function usdt() view returns (address)",
   "function subAdmins(address user) view returns (bool)",
-  "function getSubAdmins() view returns (address[])",
-  "function setSubAdmin(address account, bool enabled) external",
-  "function setManager(address account, bool enabled) external",
+  "function subAdminList(uint256 index) view returns (address)",
+  "function subAdminListLength() view returns (uint256)",
+  "function setAdminRole(address account, uint8 kind, bool enabled) external",
   "function isOwnerOrSubAdmin(address account) view returns (bool)",
   "function paused() view returns (bool)",
   "function getPoolConfig(uint8 poolType) view returns (address recipient, uint16 bps)",
   "function poolAccumulated(uint8 poolType) view returns (uint256)",
-  "function updateMachineUnitPrice(uint256 newPrice) external",
-  "function updateNodePrice(uint256 newPrice) external",
-  "function updateSuperNodePrice(uint256 newPrice) external",
+  "function updatePrice(uint8 kind, uint256 newPrice) external",
   "function updatePoolRecipient(uint8 poolType, address newRecipient) external",
   "function updatePoolShare(uint8 poolType, uint16 newBps) external",
-  "function getLeaderboardWhitelist() view returns (address[])",
+  "function leaderboardWhitelist(uint256 index) view returns (address)",
+  "function leaderboardWhitelistLength() view returns (uint256)",
   "function leaderboardWhitelistAdjustPct() view returns (uint8)",
   "function setLeaderboardWhitelist(address[] accounts) external",
   "function setLeaderboardWhitelistAdjustPct(uint8 adjustPct) external",
@@ -58,10 +58,10 @@ const coreAbi = [
   "function settlePoolRewards(uint8 poolType, address[] recipients, uint16[] shares) external",
   "function settleNodePoolOnChain() external returns (bool)",
   "function settleSuperNodePoolOnChain() external returns (bool)",
-  "function getNodeList() view returns (address[])",
-  "function getSuperNodeList() view returns (address[])",
-  "function getNodeListLength() view returns (uint256)",
-  "function getSuperNodeListLength() view returns (uint256)",
+  "function nodeList(uint256 index) view returns (address)",
+  "function superNodeList(uint256 index) view returns (address)",
+  "function nodeListLength() view returns (uint256)",
+  "function superNodeListLength() view returns (uint256)",
   "function lastNodePoolSettleDay() view returns (uint256)",
   "function lastSuperNodePoolSettleDay() view returns (uint256)",
   "function leaderboardSettledDay(uint256) view returns (bool)",
@@ -71,27 +71,14 @@ const coreAbi = [
   "function bootstrapRoleLists() external",
   "function setMinPoolSettleAmount(uint256 amount) external",
   "function setPublicSettleEnabled(bool enabled) external",
-  "event NodePoolSettledOnChain(uint256 indexed dayId, uint256 totalDistributed, uint256 recipientCount)",
-  "event SuperNodePoolSettledOnChain(uint256 indexed dayId, uint256 totalDistributed, uint256 recipientCount)",
-  "event LeaderboardPoolSettledOnChain(uint256 indexed dayId, uint256 totalDistributed)",
+  "event NodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount)",
+  "event SuperNodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount)",
+  "event LeaderboardPoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance)",
   "event RoleListUpdated(address indexed account, uint8 indexed role, bool added)",
-  "event SettlementConfigUpdated(string key, uint256 value)",
-  "function backfillTeamPowerFromOrders(address[] users) external",
-  "function teamPower(address user) view returns (uint256)",
-  "function teamPowerBackfilled(address user) view returns (bool)",
-  "event PoolRewardWeightSnapshot(uint8 indexed poolType, address indexed beneficiary, uint256 teamPower, uint256 totalWeight)",
-  "event TeamPowerBackfilled(address indexed user, uint256 totalQuantity)",
+  "event SettlementConfigUpdated(uint256 minPoolSettleAmount, bool publicSettleEnabled)",
   "function setIdentityMarket(address market) external",
   "function setRewardWeights(address[] accounts, uint256[] weights) external",
   "function withdrawUSDT(address to, uint256 amount) external",
-  "function withdrawAccumulatedPool(uint8 poolType, address to, uint256 amount) external",
-  "function emergencyWithdrawUSDT(address to, uint256 amount) external",
-  "function withdrawLight(address to, uint256 amount) external",
-  "function emergencyWithdrawLight(address to, uint256 amount) external",
-  "function getTreasuryStatus() view returns (uint256 usdtBalance, uint256 reservedForPools, uint256 freeUSDT, uint256 lightBalance, uint256 lightRewardReserve, uint256 freeLight)",
-  "event TreasuryUSDTWithdrawn(address indexed to, uint256 amount, bool emergency)",
-  "event TreasuryLightWithdrawn(address indexed to, uint256 amount, bool emergency)",
-  "event PoolAccumulatedWithdrawn(uint8 indexed poolType, address indexed to, uint256 amount)",
   "function setUsdtAddress(address newUsdtAddress) external",
   "function initLightRewardConfig(address lightToken, address swapPoolManager) external",
   "function rewardPoolBalance() view returns (uint256)",
@@ -106,8 +93,8 @@ const coreAbi = [
   "function rewardCapBps() view returns (uint16)",
   "function rewardBurnAddress() view returns (address)",
   "function identityMarket() view returns (address)",
-  "function getParticipantCount() view returns (uint256)",
-  "function getParticipantAt(uint256 index) view returns (address)",
+  "function rewardParticipants(uint256 index) view returns (address)",
+  "function rewardParticipantsLength() view returns (uint256)",
   "function cycleDuration() view returns (uint256)",
   "function currentDay() view returns (uint256)",
   "function setCycleDuration(uint256 newDuration) external",
@@ -234,7 +221,13 @@ export async function getUserMachineOrderIds(
   user: string,
 ): Promise<bigint[]> {
   const contract = getCoreContract(provider) as any;
-  return contract.getUserMachineOrders(user);
+  const count: bigint = await contract.userOrderIdsLength(user);
+  const n = Number(count);
+  const ids: bigint[] = [];
+  for (let i = 0; i < n; i++) {
+    ids.push(await contract.userOrderIds(user, i) as bigint);
+  }
+  return ids;
 }
 
 export async function getUserIdentityId(provider: BrowserProvider, user: string): Promise<bigint> {
@@ -280,7 +273,7 @@ export type RewardRecord = {
 
 export async function getMachineOrder(provider: BrowserProvider, orderId: bigint): Promise<MachineOrder> {
   const contract = getCoreContract(provider) as any;
-  const row = await contract.getMachineOrder(orderId);
+  const row = await contract.machineOrders(orderId);
   return {
     id: (row.id ?? row[0]) as bigint,
     user: (row.user ?? row[1]) as string,
@@ -422,20 +415,26 @@ export async function isSubAdmin(provider: BrowserProvider, account: string): Pr
 
 export async function getSubAdmins(provider: BrowserProvider): Promise<string[]> {
   const contract = getCoreContract(provider) as any;
-  return contract.getSubAdmins();
+  const count: bigint = await contract.subAdminListLength();
+  const n = Number(count);
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(await contract.subAdminList(i) as string);
+  }
+  return out;
 }
 
 export async function setCoreSubAdmin(provider: BrowserProvider, account: string, enabled: boolean) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.setSubAdmin(account, enabled);
+  const tx = await contract.setAdminRole(account, 1, enabled);
   return tx.wait();
 }
 
 export async function setCoreManager(provider: BrowserProvider, account: string, enabled: boolean) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.setManager(account, enabled);
+  const tx = await contract.setAdminRole(account, 2, enabled);
   return tx.wait();
 }
 
@@ -475,21 +474,21 @@ export async function unpauseCore(provider: BrowserProvider) {
 export async function updateMachinePrice(provider: BrowserProvider, newPrice: bigint) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.updateMachineUnitPrice(newPrice);
+  const tx = await contract.updatePrice(0, newPrice);
   return tx.wait();
 }
 
 export async function updateCoreNodePrice(provider: BrowserProvider, newPrice: bigint) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.updateNodePrice(newPrice);
+  const tx = await contract.updatePrice(1, newPrice);
   return tx.wait();
 }
 
 export async function updateCoreSuperNodePrice(provider: BrowserProvider, newPrice: bigint) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.updateSuperNodePrice(newPrice);
+  const tx = await contract.updatePrice(2, newPrice);
   return tx.wait();
 }
 
@@ -509,7 +508,13 @@ export async function updateCorePoolShare(provider: BrowserProvider, poolType: n
 
 export async function getLeaderboardWhitelist(provider: BrowserProvider): Promise<string[]> {
   const contract = getCoreContract(provider) as any;
-  return contract.getLeaderboardWhitelist();
+  const count: bigint = await contract.leaderboardWhitelistLength();
+  const n = Number(count);
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(await contract.leaderboardWhitelist(i) as string);
+  }
+  return out;
 }
 
 export async function getLeaderboardWhitelistAdjustPct(provider: BrowserProvider): Promise<number> {
@@ -610,7 +615,7 @@ export async function getIdentityMarket(provider: BrowserProvider): Promise<stri
 
 export async function getParticipantCount(provider: BrowserProvider): Promise<number> {
   const c = getCoreContract(provider) as any;
-  return Number(await c.getParticipantCount());
+  return Number(await c.rewardParticipantsLength());
 }
 
 export async function getParticipants(provider: BrowserProvider, max = 500): Promise<string[]> {
@@ -619,7 +624,7 @@ export async function getParticipants(provider: BrowserProvider, max = 500): Pro
   const n = Math.min(count, max);
   const results: string[] = [];
   for (let i = 0; i < n; i++) {
-    results.push(await c.getParticipantAt(i) as string);
+    results.push(await c.rewardParticipants(i) as string);
   }
   return results;
 }
@@ -704,6 +709,16 @@ export async function setPublicSettleEnabled(provider: BrowserProvider, enabled:
   return tx.wait();
 }
 
+async function readAddrList(contract: any, lengthFn: string, itemFn: string): Promise<string[]> {
+  const count: bigint = await contract[lengthFn]();
+  const n = Number(count);
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(await contract[itemFn](i) as string);
+  }
+  return out;
+}
+
 export type SettlementSummary = {
   nodePoolBalance: bigint;
   superNodePoolBalance: bigint;
@@ -738,8 +753,8 @@ export async function getSettlementSummary(provider: BrowserProvider): Promise<S
     contract.poolAccumulated(3) as Promise<bigint>,
     contract.poolAccumulated(2) as Promise<bigint>,
     contract.poolAccumulated(5) as Promise<bigint>,
-    contract.getNodeList() as Promise<string[]>,
-    contract.getSuperNodeList() as Promise<string[]>,
+    readAddrList(contract, "nodeListLength", "nodeList"),
+    readAddrList(contract, "superNodeListLength", "superNodeList"),
     contract.lastNodePoolSettleDay() as Promise<bigint>,
     contract.lastSuperNodePoolSettleDay() as Promise<bigint>,
     contract.currentDay() as Promise<bigint>,
@@ -825,29 +840,23 @@ export async function previewSuperNodeSettlement(provider: BrowserProvider): Pro
   return computePoolPreview(provider, summary.superNodePoolBalance, summary.superNodeList);
 }
 
-export async function backfillTeamPowerFromOrders(provider: BrowserProvider, users: string[]) {
-  const signer = await provider.getSigner();
-  const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.backfillTeamPowerFromOrders(users, { gasLimit: 5_000_000n });
-  return tx.wait();
+export async function backfillTeamPowerFromOrders(_provider: BrowserProvider, _users: string[]) {
+  throw new Error("backfillTeamPowerFromOrders is no longer supported (removed in three-pool on-chain settlement upgrade)");
 }
 
-export async function getTeamPower(provider: BrowserProvider, user: string): Promise<bigint> {
-  const contract = getCoreContract(provider) as any;
-  return (await contract.teamPower(user)) as bigint;
+export async function getTeamPower(_provider: BrowserProvider, _user: string): Promise<bigint> {
+  return 0n;
 }
 
-export async function isTeamPowerBackfilled(provider: BrowserProvider, user: string): Promise<boolean> {
-  const contract = getCoreContract(provider) as any;
-  return (await contract.teamPowerBackfilled(user)) as boolean;
+export async function isTeamPowerBackfilled(_provider: BrowserProvider, _user: string): Promise<boolean> {
+  return false;
 }
 
 /**
- * Fetch teamPower for multiple candidates in parallel (for admin preview / audit).
+ * Deprecated: kept as stub so existing imports continue to type-check.
  */
-export async function getTeamPowers(provider: BrowserProvider, users: string[]): Promise<bigint[]> {
-  const contract = getCoreContract(provider) as any;
-  return Promise.all(users.map((u) => contract.teamPower(u) as Promise<bigint>));
+export async function getTeamPowers(_provider: BrowserProvider, users: string[]): Promise<bigint[]> {
+  return users.map(() => 0n);
 }
 
 export async function setIdentityMarket(provider: BrowserProvider, market: string) {
@@ -865,44 +874,32 @@ export async function withdrawCoreUSDT(provider: BrowserProvider, to: string, am
 }
 
 export async function withdrawCoreAccumulatedPool(
-  provider: BrowserProvider,
-  poolType: number,
-  to: string,
-  amount: bigint,
+  _provider: BrowserProvider,
+  _poolType: number,
+  _to: string,
+  _amount: bigint,
 ) {
-  const signer = await provider.getSigner();
-  const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.withdrawAccumulatedPool(poolType, to, amount);
-  return tx.wait();
+  throw new Error("withdrawAccumulatedPool is no longer supported on-chain; use settlePoolRewards / settleNodePoolOnChain instead");
 }
 
 export async function emergencyWithdrawCoreUSDT(
-  provider: BrowserProvider,
-  to: string,
-  amount: bigint,
+  _provider: BrowserProvider,
+  _to: string,
+  _amount: bigint,
 ) {
-  const signer = await provider.getSigner();
-  const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.emergencyWithdrawUSDT(to, amount);
-  return tx.wait();
+  throw new Error("emergencyWithdrawUSDT is no longer supported on-chain");
 }
 
-export async function withdrawCoreLight(provider: BrowserProvider, to: string, amount: bigint) {
-  const signer = await provider.getSigner();
-  const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.withdrawLight(to, amount);
-  return tx.wait();
+export async function withdrawCoreLight(_provider: BrowserProvider, _to: string, _amount: bigint) {
+  throw new Error("withdrawLight is no longer supported on-chain");
 }
 
 export async function emergencyWithdrawCoreLight(
-  provider: BrowserProvider,
-  to: string,
-  amount: bigint,
+  _provider: BrowserProvider,
+  _to: string,
+  _amount: bigint,
 ) {
-  const signer = await provider.getSigner();
-  const contract = getCoreContract(provider).connect(signer) as any;
-  const tx = await contract.emergencyWithdrawLight(to, amount);
-  return tx.wait();
+  throw new Error("emergencyWithdrawLight is no longer supported on-chain");
 }
 
 export interface CoreTreasuryStatus {
@@ -917,17 +914,18 @@ export interface CoreTreasuryStatus {
 
 export async function getCoreTreasuryStatus(provider: BrowserProvider): Promise<CoreTreasuryStatus> {
   const contract = getCoreContract(provider) as any;
-  const [summary, ...pools] = await Promise.all([
-    contract.getTreasuryStatus(),
+  const [lightRewardReserve, ...pools] = await Promise.all([
+    contract.rewardPoolBalance() as Promise<bigint>,
     ...Array.from({ length: 6 }, (_, i) => contract.poolAccumulated(i) as Promise<bigint>),
   ]);
+  const reservedForPools = (pools as bigint[]).reduce((s, v) => s + v, 0n);
   return {
-    usdtBalance: summary[0] as bigint,
-    reservedForPools: summary[1] as bigint,
-    freeUSDT: summary[2] as bigint,
-    lightBalance: summary[3] as bigint,
-    lightRewardReserve: summary[4] as bigint,
-    freeLight: summary[5] as bigint,
+    usdtBalance: 0n,
+    reservedForPools,
+    freeUSDT: 0n,
+    lightBalance: 0n,
+    lightRewardReserve,
+    freeLight: 0n,
     poolAccumulated: pools as bigint[],
   };
 }

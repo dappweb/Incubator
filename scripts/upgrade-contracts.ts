@@ -34,6 +34,24 @@ async function main() {
   try {
     const summary: Array<{ label: string; proxy: string; implementation: string }> = [];
 
+    // Deploy external libraries used by IncubatorCore (only if we are upgrading it).
+    let coreLibraries: Record<string, string> | undefined;
+    const coreTarget = targets.find((t) => t.contractName === "IncubatorCore");
+    const coreProxy = coreTarget ? resolveProxyAddress(coreTarget.envKey) : null;
+    if (coreProxy) {
+      console.log("\nDeploying external libraries for IncubatorCore...");
+      const libNames = ["LeaderboardLib", "NodePoolLib", "PoolSettleLib"] as const;
+      coreLibraries = {};
+      for (const name of libNames) {
+        const factory = await ethers.getContractFactory(name);
+        const deployed = await factory.deploy();
+        await deployed.waitForDeployment();
+        const addr = await deployed.getAddress();
+        coreLibraries[name] = addr;
+        console.log(`  ✓ ${name}: ${addr}`);
+      }
+    }
+
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index];
       const proxyAddress = resolveProxyAddress(target.envKey);
@@ -43,11 +61,22 @@ async function main() {
       }
 
       console.log(`\n${index + 1}. Upgrading ${target.label}...`);
-      const factory = await ethers.getContractFactory(target.contractName);
-      const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, {
+      const factoryOpts =
+        target.contractName === "IncubatorCore" && coreLibraries
+          ? { libraries: coreLibraries }
+          : undefined;
+      const factory = await ethers.getContractFactory(target.contractName, factoryOpts);
+      const upgradeOpts: Parameters<typeof upgrades.upgradeProxy>[2] = {
         kind: "uups",
         unsafeAllow: ["constructor"],
-      });
+      };
+      if (target.contractName === "IncubatorCore") {
+        upgradeOpts.unsafeAllow = [
+          ...(upgradeOpts.unsafeAllow ?? []),
+          "external-library-linking",
+        ];
+      }
+      const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, upgradeOpts);
       await upgraded.waitForDeployment();
       const implementation = await upgrades.erc1967.getImplementationAddress(proxyAddress);
       summary.push({ label: target.label, proxy: proxyAddress, implementation });
@@ -83,7 +112,7 @@ async function main() {
       ];
       for (const pool of poolsToRoute) {
         try {
-          const current: string = await core.poolRecipient(pool.id);
+          const [current] = await core.getPoolConfig(pool.id);
           if (current.toLowerCase() === coreAddress.toLowerCase()) {
             console.log(`  - pool#${pool.id} (${pool.name}) already routed to core, skipping`);
             continue;
@@ -112,7 +141,7 @@ async function main() {
 
       // 3. Set minimum settle amount (1 USDT by default, using usdt decimals)
       try {
-        const usdtAddress: string = await core.usdtToken();
+        const usdtAddress: string = await core.usdt();
         const usdt = await ethers.getContractAt("IERC20Metadata", usdtAddress);
         let decimals = 18n;
         try {

@@ -8,6 +8,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {LeaderboardLib} from "./libs/LeaderboardLib.sol";
+import {NodePoolLib} from "./libs/NodePoolLib.sol";
+import {PoolSettleLib} from "./libs/PoolSettleLib.sol";
 
 interface IERC20Burnable is IERC20 {
     function burn(uint256 amount) external;
@@ -63,14 +66,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         uint256 updatedAt;
     }
 
-    struct LeaderboardState {
-        address[10] topUsers;
-        uint256[10] topVolumes;
-        uint8 topCount;
-        address[10] lastUsers;
-        uint8 lastCount;
-    }
-
+    // LeaderboardState lives in LeaderboardLib (identical layout).
     IERC20 public usdt;
 
     uint16 public constant BPS_DENOMINATOR = 10_000;
@@ -90,7 +86,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     mapping(uint256 => mapping(address => bool)) private identityOperatorApproval;
 
     mapping(uint256 => MachineOrder) public machineOrders;
-    mapping(address => uint256[]) private userOrderIds;
+    mapping(address => uint256[]) public userOrderIds;
     PoolConfig[6] private poolConfigs;
     uint256 public nextMachineOrderId;
 
@@ -105,10 +101,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     mapping(address => uint256) public teamTotalVolume;
 
     // --- original layout boundary (slot 25) ---
-    address[] private rewardParticipants;
+    address[] public rewardParticipants;
     mapping(address => bool) public isRewardParticipant;
 
-    mapping(uint256 => LeaderboardState) private leaderboards;
+    mapping(uint256 => LeaderboardLib.LeaderboardState) private leaderboards;
     mapping(uint256 => mapping(address => uint256)) public dailyVolume;
 
     uint16[10] private rankShares;
@@ -123,7 +119,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
     // Sub-admin access control (stored on-chain). Keep newly added storage at the end.
     mapping(address => bool) public subAdmins;
-    address[] private subAdminList;
+    address[] public subAdminList;
     mapping(address => uint256) private subAdminIndexPlusOne;
 
     // === NEW VARIABLES (appended after slot 34) ===
@@ -145,7 +141,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     mapping(address => uint256) public directSuperNodeReferralCount;
 
     uint8 public leaderboardWhitelistAdjustPct;
-    address[] private leaderboardWhitelist;
+    address[] public leaderboardWhitelist;
     mapping(address => uint256) private leaderboardWhitelistIndexPlusOne;
     mapping(uint256 => mapping(address => uint256)) private dailyFirstOrderSeq;
     mapping(uint256 => uint256) private dailyOrderSeq;
@@ -163,8 +159,8 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
     // === On-chain settlement for Node / SuperNode / Leaderboard pools ===
     // Role lists maintained on identity purchase / upgrade / OTC transfer.
-    address[] private nodeList;
-    address[] private superNodeList;
+    address[] public nodeList;
+    address[] public superNodeList;
     mapping(address => uint256) private nodeIndexPlusOne;
     mapping(address => uint256) private superNodeIndexPlusOne;
 
@@ -503,31 +499,22 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return _getRole(user);
     }
 
-    function getMachineOrder(uint256 orderId) external view returns (MachineOrder memory) {
-        return machineOrders[orderId];
-    }
-
-    function getUserMachineOrders(address user) external view returns (uint256[] memory) {
-        return userOrderIds[user];
-    }
-
     function getPoolConfig(uint8 poolType) external view returns (address recipient, uint16 bps) {
         require(poolType < poolConfigs.length, "invalid pool");
         PoolConfig memory config = poolConfigs[poolType];
         return (config.recipient, config.bps);
     }
 
-    function getParticipantCount() external view returns (uint256) {
+    function rewardParticipantsLength() external view returns (uint256) {
         return rewardParticipants.length;
     }
 
-    function getParticipantAt(uint256 index) external view returns (address) {
-        require(index < rewardParticipants.length, "out of range");
-        return rewardParticipants[index];
+    function subAdminListLength() external view returns (uint256) {
+        return subAdminList.length;
     }
 
-    function getSubAdmins() external view returns (address[] memory) {
-        return subAdminList;
+    function userOrderIdsLength(address user) external view returns (uint256) {
+        return userOrderIds[user].length;
     }
 
     function isOwnerOrSubAdmin(address account) public view returns (bool) {
@@ -539,7 +526,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         view
         returns (address[10] memory topUsers, uint256[10] memory topVolumes, uint8 topCount, address[10] memory lastUsers, uint8 lastCount)
     {
-        LeaderboardState storage board = leaderboards[dayId];
+        LeaderboardLib.LeaderboardState storage board = leaderboards[dayId];
         return (board.topUsers, board.topVolumes, board.topCount, board.lastUsers, board.lastCount);
     }
 
@@ -557,38 +544,37 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         _pause();
     }
 
-    function setSubAdmin(address account, bool enabled) external onlyOwner {
+    function setAdminRole(address account, uint8 kind, bool enabled) external {
         require(account != address(0));
-
-        bool exists = subAdmins[account];
-        if (enabled) {
-            require(!exists, "already sub admin");
-            subAdmins[account] = true;
-            subAdminList.push(account);
-            subAdminIndexPlusOne[account] = subAdminList.length;
-            emit SubAdminUpdated(account, true);
-            return;
+        // kind: 1 = subAdmin (owner only), 2 = manager (owner or sub-admin)
+        if (kind == 1) {
+            require(msg.sender == owner(), "only owner");
+            bool exists = subAdmins[account];
+            if (enabled) {
+                require(!exists, "already sub admin");
+                subAdmins[account] = true;
+                subAdminList.push(account);
+                subAdminIndexPlusOne[account] = subAdminList.length;
+            } else {
+                require(exists, "not sub admin");
+                subAdmins[account] = false;
+                uint256 removeIndex = subAdminIndexPlusOne[account] - 1;
+                uint256 lastIndex = subAdminList.length - 1;
+                if (removeIndex != lastIndex) {
+                    address lastAccount = subAdminList[lastIndex];
+                    subAdminList[removeIndex] = lastAccount;
+                    subAdminIndexPlusOne[lastAccount] = removeIndex + 1;
+                }
+                subAdminList.pop();
+                delete subAdminIndexPlusOne[account];
+            }
+            emit SubAdminUpdated(account, enabled);
+        } else if (kind == 2) {
+            require(isOwnerOrSubAdmin(msg.sender));
+            managers[account] = enabled;
+        } else {
+            revert();
         }
-
-        require(exists, "not sub admin");
-        subAdmins[account] = false;
-
-        uint256 removeIndex = subAdminIndexPlusOne[account] - 1;
-        uint256 lastIndex = subAdminList.length - 1;
-        if (removeIndex != lastIndex) {
-            address lastAccount = subAdminList[lastIndex];
-            subAdminList[removeIndex] = lastAccount;
-            subAdminIndexPlusOne[lastAccount] = removeIndex + 1;
-        }
-
-        subAdminList.pop();
-        delete subAdminIndexPlusOne[account];
-        emit SubAdminUpdated(account, false);
-    }
-
-    function setManager(address account, bool enabled) external {
-        require(isOwnerOrSubAdmin(msg.sender));
-        managers[account] = enabled;
     }
 
     function unpause() external onlyOwner {
@@ -599,27 +585,26 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         usdt = IERC20(newUsdtAddress);
     }
 
-    function updateMachineUnitPrice(uint256 newPrice) external {
-        _requirePriceAdmin();
-        require(newPrice > 0 && newPrice <= _maxMachineUnitPrice());
-        uint256 old = machineUnitPrice;
-        machineUnitPrice = newPrice;
-        emit PriceUpdated("MACHINE", old, newPrice);
-    }
-
-    function updateNodePrice(uint256 newPrice) external {
-        _requirePriceAdmin();
-        require(newPrice > 0 && newPrice <= _maxNodePrice());
-        uint256 old = nodePrice;
-        nodePrice = newPrice;
-        emit PriceUpdated("NODE", old, newPrice);
-    }
-
-    function updateSuperNodePrice(uint256 newPrice) external onlyOwner {
-        require(newPrice > 0 && newPrice <= _maxSuperNodePrice());
-        uint256 old = superNodePrice;
-        superNodePrice = newPrice;
-        emit PriceUpdated("SUPER_NODE", old, newPrice);
+    function updatePrice(uint8 kind, uint256 newPrice) external {
+        require(newPrice > 0);
+        if (kind == 0) {
+            _requirePriceAdmin();
+            require(newPrice <= _maxMachineUnitPrice());
+            emit PriceUpdated("MACHINE", machineUnitPrice, newPrice);
+            machineUnitPrice = newPrice;
+        } else if (kind == 1) {
+            _requirePriceAdmin();
+            require(newPrice <= _maxNodePrice());
+            emit PriceUpdated("NODE", nodePrice, newPrice);
+            nodePrice = newPrice;
+        } else if (kind == 2) {
+            require(msg.sender == owner(), "only owner");
+            require(newPrice <= _maxSuperNodePrice());
+            emit PriceUpdated("SUPER_NODE", superNodePrice, newPrice);
+            superNodePrice = newPrice;
+        } else {
+            revert();
+        }
     }
 
 
@@ -691,8 +676,8 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit LeaderboardWhitelistUpdated(accounts);
     }
 
-    function getLeaderboardWhitelist() external view returns (address[] memory) {
-        return leaderboardWhitelist;
+    function leaderboardWhitelistLength() external view returns (uint256) {
+        return leaderboardWhitelist.length;
     }
 
     function setLeaderboardWhitelistAdjustPct(uint8 adjustPct) external onlyOwner {
@@ -1031,117 +1016,19 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     /// @notice Distribute accumulated leaderboard pool to top and lucky rankings of a given day.
     /// 2% leaderboard pool is split as: 1.5% (top ranking) + 0.5% (lucky ranking).
     /// Only works when the Leaderboard pool recipient was set to address(this).
+    /// Actual settlement logic lives in the external LeaderboardLib (linked at deploy time).
     function settleLeaderboard(uint256 dayId) external {
         _requireSettlementAuth();
-        require(!leaderboardSettledDay[dayId], "already settled");
-        uint256 total = poolAccumulated[uint8(PoolType.Leaderboard)];
-        require(total > 0, "no leaderboard balance");
-
-        LeaderboardState storage board = leaderboards[dayId];
-        require(board.topCount > 0 || board.lastCount > 0, "no board data for day");
-
-        leaderboardSettledDay[dayId] = true;
-
-        poolAccumulated[uint8(PoolType.Leaderboard)] = 0;
-
-        uint256 topAmount;
-        uint256 luckyAmount;
-
-        if (board.topCount == 0) {
-            luckyAmount = total;
-        } else if (board.lastCount == 0) {
-            topAmount = total;
-        } else {
-            topAmount = (total * LEADERBOARD_TOP_SHARE_BPS) / BPS_DENOMINATOR;
-            luckyAmount = total - topAmount;
-        }
-
-        if (topAmount > 0) {
-            _settleLeaderboardRanking(dayId, board, topAmount, true);
-        }
-        if (luckyAmount > 0) {
-            _settleLeaderboardRanking(dayId, board, luckyAmount, false);
-        }
-
-        emit LeaderboardPoolSettledOnChain(dayId, total);
-    }
-
-    function _settleLeaderboardRanking(
-        uint256 dayId,
-        LeaderboardState storage board,
-        uint256 total,
-        bool isTopPool
-    ) private {
-        uint8 count = isTopPool ? board.topCount : board.lastCount;
-        require(count > 0, "no board data");
-
-        uint256 whitelistAmount = _settleLeaderboardWhitelist(dayId, total, isTopPool);
-        uint256 rankTotal = total - whitelistAmount;
-
-        uint16 firstShare = _adjustedFirstRankShare();
-        uint32 shareDenominator = 0;
-        for (uint8 i = 0; i < count; i++) {
-            shareDenominator += (i == 0 ? firstShare : rankShares[i]);
-        }
-        require(shareDenominator > 0, "zero share denominator");
-
-        uint256 distributed = 0;
-        for (uint8 i = 0; i < count; i++) {
-            address user = isTopPool ? board.topUsers[i] : board.lastUsers[i];
-            if (user == address(0)) continue;
-
-            uint256 amount;
-            uint16 rankShare = i == 0 ? firstShare : rankShares[i];
-            if (i == count - 1) {
-                amount = rankTotal - distributed;
-            } else {
-                amount = (rankTotal * rankShare) / shareDenominator;
-            }
-            if (amount > 0) {
-                usdt.safeTransfer(user, amount);
-                distributed += amount;
-                if (isTopPool) {
-                    emit LeaderboardSettled(dayId, user, i, amount);
-                } else {
-                    emit LeaderboardLuckySettled(dayId, user, i, amount);
-                }
-            }
-        }
-    }
-
-    function _adjustedFirstRankShare() private view returns (uint16) {
-        uint16 adjustBps = uint16(leaderboardWhitelistAdjustPct) * 100;
-        require(rankShares[0] >= adjustBps, "invalid first-rank adjustment");
-        return rankShares[0] - adjustBps;
-    }
-
-    function _settleLeaderboardWhitelist(uint256 dayId, uint256 total, bool isTopPool) private returns (uint256 whitelistAmount) {
-        if (leaderboardWhitelist.length == 0 || leaderboardWhitelistAdjustPct == 0 || total == 0) {
-            return 0;
-        }
-
-        whitelistAmount = (total * uint256(leaderboardWhitelistAdjustPct)) / 100;
-        if (whitelistAmount == 0) {
-            return 0;
-        }
-
-        uint256 distributed = 0;
-        uint256 count = leaderboardWhitelist.length;
-        for (uint256 i = 0; i < count; i++) {
-            address account = leaderboardWhitelist[i];
-            uint256 amount;
-            if (i == count - 1) {
-                amount = whitelistAmount - distributed;
-            } else {
-                amount = whitelistAmount / count;
-            }
-
-            if (amount > 0) {
-                usdt.safeTransfer(account, amount);
-                distributed += amount;
-                emit LeaderboardWhitelistSettled(dayId, account, isTopPool, amount);
-            }
-        }
+        LeaderboardLib.settle(
+            dayId,
+            poolAccumulated,
+            leaderboards,
+            leaderboardSettledDay,
+            rankShares,
+            leaderboardWhitelist,
+            leaderboardWhitelistAdjustPct,
+            usdt
+        );
     }
 
     function settlePoolRewards(uint8 poolType, address[] calldata recipients, uint16[] calldata shares) external onlyOwner {
@@ -1154,34 +1041,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         address[] calldata recipients,
         uint16[] calldata shares
     ) private {
-        require(recipients.length > 0 && recipients.length == shares.length, "length mismatch");
-
-        uint32 shareTotal = 0;
-        for (uint256 i = 0; i < shares.length; i++) {
-            shareTotal += shares[i];
-        }
-        require(shareTotal == BPS_DENOMINATOR, "shares must sum to 10000");
-
-        uint256 total = poolAccumulated[uint8(poolType)];
-        require(total > 0, "no pool balance");
-
-        poolAccumulated[uint8(poolType)] = 0;
-
-        uint256 distributed = 0;
-        for (uint256 i = 0; i < recipients.length; i++) {
-            require(recipients[i] != address(0), "invalid recipient");
-            uint256 amount;
-            if (i == recipients.length - 1) {
-                amount = total - distributed;
-            } else {
-                amount = (total * shares[i]) / BPS_DENOMINATOR;
-            }
-            if (amount > 0) {
-                usdt.safeTransfer(recipients[i], amount);
-                distributed += amount;
-                emit PoolRewardSettled(uint8(poolType), recipients[i], amount);
-            }
-        }
+        PoolSettleLib.settleAccumulatedPool(uint8(poolType), recipients, shares, poolAccumulated, usdt);
     }
 
     function _allocateMachineOrder(uint256 orderId, uint256 totalAmount, address referrer) private {
@@ -1243,7 +1103,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function _updateLeaderboard(uint256 dayId, address user, uint256 amount) private {
-        LeaderboardState storage board = leaderboards[dayId];
+        LeaderboardLib.LeaderboardState storage board = leaderboards[dayId];
         uint256 updatedVolume = dailyVolume[dayId][user] + amount;
         dailyVolume[dayId][user] = updatedVolume;
 
@@ -1260,34 +1120,11 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit LeaderboardUpdated(dayId, user, updatedVolume);
     }
 
-    function _updateTop(uint256 dayId, LeaderboardState storage board, address user, uint256 volume) private {
-        uint8 index = 10;
-        for (uint8 i = 0; i < board.topCount; i++) {
-            if (board.topUsers[i] == user) { index = i; break; }
-        }
-
-        uint8 targetIndex = 10;
-
-        if (index < 10) {
-            board.topVolumes[index] = volume;
-            targetIndex = index;
-        } else if (board.topCount < 10) {
-            board.topUsers[board.topCount] = user;
-            board.topVolumes[board.topCount] = volume;
-            targetIndex = board.topCount;
-            board.topCount += 1;
-        } else if (_isTopCandidateBetter(dayId, board, user, volume, board.topUsers[board.topCount - 1], board.topVolumes[board.topCount - 1])) {
-            board.topUsers[board.topCount - 1] = user;
-            board.topVolumes[board.topCount - 1] = volume;
-            targetIndex = board.topCount - 1;
-        } else {
-            return;
-        }
-
-        _sortTop(dayId, board, targetIndex);
+    function _updateTop(uint256 dayId, LeaderboardLib.LeaderboardState storage board, address user, uint256 volume) private {
+        LeaderboardLib.updateTop(dayId, board, user, volume, dailyFirstOrderSeq);
     }
 
-    function _updateLast(LeaderboardState storage board, address user) private {
+    function _updateLast(LeaderboardLib.LeaderboardState storage board, address user) private {
         if (board.lastCount < 10) {
             board.lastUsers[board.lastCount] = user;
             board.lastCount += 1;
@@ -1298,70 +1135,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
             board.lastUsers[i] = board.lastUsers[i + 1];
         }
         board.lastUsers[9] = user;
-    }
-
-    function _sortTop(uint256 dayId, LeaderboardState storage board, uint8 startIndex) private {
-        uint8 cursor = startIndex;
-        while (cursor > 0) {
-            if (_isTopCandidateBetter(
-                dayId,
-                board,
-                board.topUsers[cursor],
-                board.topVolumes[cursor],
-                board.topUsers[cursor - 1],
-                board.topVolumes[cursor - 1]
-            )) {
-                (board.topVolumes[cursor], board.topVolumes[cursor - 1]) = (board.topVolumes[cursor - 1], board.topVolumes[cursor]);
-                (board.topUsers[cursor], board.topUsers[cursor - 1]) = (board.topUsers[cursor - 1], board.topUsers[cursor]);
-                cursor -= 1;
-            } else {
-                break;
-            }
-        }
-
-        while (cursor + 1 < board.topCount) {
-            if (_isTopCandidateBetter(
-                dayId,
-                board,
-                board.topUsers[cursor + 1],
-                board.topVolumes[cursor + 1],
-                board.topUsers[cursor],
-                board.topVolumes[cursor]
-            )) {
-                (board.topVolumes[cursor + 1], board.topVolumes[cursor]) = (board.topVolumes[cursor], board.topVolumes[cursor + 1]);
-                (board.topUsers[cursor + 1], board.topUsers[cursor]) = (board.topUsers[cursor], board.topUsers[cursor + 1]);
-                cursor += 1;
-            } else {
-                break;
-            }
-        }
-    }
-
-    function _isTopCandidateBetter(
-        uint256 dayId,
-        LeaderboardState storage,
-        address leftUser,
-        uint256 leftVolume,
-        address rightUser,
-        uint256 rightVolume
-    ) private view returns (bool) {
-        if (leftVolume > rightVolume) {
-            return true;
-        }
-        if (leftVolume < rightVolume) {
-            return false;
-        }
-
-        uint256 leftSeq = dailyFirstOrderSeq[dayId][leftUser];
-        uint256 rightSeq = dailyFirstOrderSeq[dayId][rightUser];
-        if (leftSeq == 0 || rightSeq == 0) {
-            return leftUser < rightUser;
-        }
-        if (leftSeq != rightSeq) {
-            return leftSeq < rightSeq;
-        }
-
-        return leftUser < rightUser;
     }
 
     function _registerParticipant(address account) private {
@@ -1541,88 +1314,17 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         }
     }
 
-    function getNodeList() external view returns (address[] memory) {
-        return nodeList;
-    }
-
-    function getSuperNodeList() external view returns (address[] memory) {
-        return superNodeList;
-    }
-
-    function getNodeListLength() external view returns (uint256) {
+    function nodeListLength() external view returns (uint256) {
         return nodeList.length;
     }
 
-    function getSuperNodeListLength() external view returns (uint256) {
+    function superNodeListLength() external view returns (uint256) {
         return superNodeList.length;
     }
 
     /// @notice Effective team weight = directReferralVolume + teamTotalVolume.
-    /// (directReferralVolume holds first-level volume; teamTotalVolume holds 2+ levels.)
     function _teamWeight(address acc) private view returns (uint256) {
         return directReferralVolume[acc] + teamTotalVolume[acc];
-    }
-
-    /// @notice Distribute a pool on-chain weighted by team volume over the
-    /// combined recipient list. Used by both Node and SuperNode pools.
-    function _distributePoolByWeight(
-        PoolType poolType,
-        address[] storage listA,
-        address[] storage listB
-    ) private returns (bool) {
-        uint256 pool = poolAccumulated[uint8(poolType)];
-        if (pool < minPoolSettleAmount || pool == 0) return false;
-
-        uint256 lenA = listA.length;
-        uint256 lenB = listB.length;
-        uint256 total = lenA + lenB;
-        if (total == 0) return false;
-
-        uint256 totalWeight;
-        for (uint256 i = 0; i < lenA; i++) {
-            totalWeight += _teamWeight(listA[i]);
-        }
-        for (uint256 j = 0; j < lenB; j++) {
-            totalWeight += _teamWeight(listB[j]);
-        }
-        if (totalWeight == 0) return false;
-
-        poolAccumulated[uint8(poolType)] = 0;
-
-        uint256 distributed;
-        uint256 lastK = total - 1;
-        uint256 k;
-        for (uint256 i = 0; i < lenA; i++) {
-            address acc = listA[i];
-            uint256 amount = (k == lastK)
-                ? pool - distributed
-                : (pool * _teamWeight(acc)) / totalWeight;
-            if (amount > 0) {
-                usdt.safeTransfer(acc, amount);
-                distributed += amount;
-                emit PoolRewardSettled(uint8(poolType), acc, amount);
-            }
-            k++;
-        }
-        for (uint256 j = 0; j < lenB; j++) {
-            address acc = listB[j];
-            uint256 amount = (k == lastK)
-                ? pool - distributed
-                : (pool * _teamWeight(acc)) / totalWeight;
-            if (amount > 0) {
-                usdt.safeTransfer(acc, amount);
-                distributed += amount;
-                emit PoolRewardSettled(uint8(poolType), acc, amount);
-            }
-            k++;
-        }
-
-        if (poolType == PoolType.Node) {
-            emit NodePoolSettledOnChain(currentDay(), pool, totalWeight, total);
-        } else {
-            emit SuperNodePoolSettledOnChain(currentDay(), pool, totalWeight, total);
-        }
-        return true;
     }
 
     function settleNodePoolOnChain() external whenNotPaused nonReentrant returns (bool) {
@@ -1630,7 +1332,11 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         uint256 dayId = currentDay();
         require(dayId > lastNodePoolSettleDay, "already settled today");
         lastNodePoolSettleDay = dayId;
-        return _distributePoolByWeight(PoolType.Node, nodeList, superNodeList);
+        return NodePoolLib.distribute(
+            uint8(PoolType.Node), dayId, true, minPoolSettleAmount,
+            poolAccumulated, nodeList, superNodeList,
+            directReferralVolume, teamTotalVolume, usdt
+        );
     }
 
     function settleSuperNodePoolOnChain() external whenNotPaused nonReentrant returns (bool) {
@@ -1638,40 +1344,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         uint256 dayId = currentDay();
         require(dayId > lastSuperNodePoolSettleDay, "already settled today");
         lastSuperNodePoolSettleDay = dayId;
-        // Reuse weighted distributor by passing superNodeList as both the primary
-        // and a synthetic empty second list via a helper.
-        return _distributeSuperNodePool();
-    }
-
-    function _distributeSuperNodePool() private returns (bool) {
-        uint256 pool = poolAccumulated[uint8(PoolType.SuperNode)];
-        if (pool < minPoolSettleAmount || pool == 0) return false;
-
-        uint256 len = superNodeList.length;
-        if (len == 0) return false;
-
-        uint256 totalWeight;
-        for (uint256 i = 0; i < len; i++) {
-            totalWeight += _teamWeight(superNodeList[i]);
-        }
-        if (totalWeight == 0) return false;
-
-        poolAccumulated[uint8(PoolType.SuperNode)] = 0;
-
-        uint256 distributed;
-        for (uint256 i = 0; i < len; i++) {
-            address acc = superNodeList[i];
-            uint256 amount = (i == len - 1)
-                ? pool - distributed
-                : (pool * _teamWeight(acc)) / totalWeight;
-            if (amount > 0) {
-                usdt.safeTransfer(acc, amount);
-                distributed += amount;
-                emit PoolRewardSettled(uint8(PoolType.SuperNode), acc, amount);
-            }
-        }
-
-        emit SuperNodePoolSettledOnChain(currentDay(), pool, totalWeight, len);
-        return true;
+        return NodePoolLib.distribute(
+            uint8(PoolType.SuperNode), dayId, false, minPoolSettleAmount,
+            poolAccumulated, nodeList, superNodeList,
+            directReferralVolume, teamTotalVolume, usdt
+        );
     }
 }
