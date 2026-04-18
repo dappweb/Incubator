@@ -117,6 +117,30 @@ type EditableSwapPool = SwapPool & {
   impactBpsInput: string;
 };
 
+type ParamGuideItem = {
+  name: string;
+  business: string;
+  example: string;
+};
+
+const ParamGuide: React.FC<{ title: string; items: ParamGuideItem[] }> = ({ title, items }) => {
+  if (!items.length) return null;
+  return (
+    <div className="admin-param-guide" role="note" aria-label={title}>
+      <p className="admin-param-guide-title">{title}</p>
+      <div className="admin-param-guide-list">
+        {items.map((item) => (
+          <div key={item.name} className="admin-param-guide-item">
+            <p><strong>{item.name}</strong></p>
+            <p>{item.business}</p>
+            <p>{item.example}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, onRefresh, onStatusChange }) => {
   const t = {
     adminTitle: lang === "zh" ? "管理后台" : "Admin Panel",
@@ -257,6 +281,99 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     ownerTransferred: lang === "zh" ? "Owner 已成功转让。" : "Ownership transferred successfully.",
     ownerTransferWarning: lang === "zh" ? "⚠️ 操作不可逆！请务必确认新地址正确，本操作执行后当前钱包将失去合约控制权。" : "⚠️ Irreversible! Confirm the new address is correct. After this action, the current wallet loses all contract control.",
   };
+
+  const guideLabel = lang === "zh" ? "参数业务说明与案例" : "Parameter Business Notes & Examples";
+  const biz = (zh: string, en: string) => (lang === "zh" ? zh : en);
+  const paramGuides = useMemo(() => ({
+    addressSettings: [
+      { name: "USDT 地址", business: biz("决定系统计价与结算资产，更新后会影响 Core/OTC/Primary/Swap 的转账目标。", "Defines pricing and settlement asset across contracts."), example: biz("示例：旧 USDT 迁移到新合约后，把四个 USDT 地址都切到新地址，避免扣款失败。", "Example: migrate all USDT pointers to a new token contract.") },
+      { name: "Token0 / Token1 地址", business: biz("定义交易对资产顺序，错误配置会导致报价和结算方向错乱。", "Defines pair token ordering for quote/swap logic."), example: biz("示例：主池应为 USDT/ICO；回收池应为 LIGHT/ICO。", "Example: primary USDT/ICO, recovery LIGHT/ICO.") },
+    ],
+    corePrices: [
+      { name: "算力单价", business: biz("用户购买矿机时的单台成本，直接影响入金门槛。", "Unit cost of machine purchase."), example: biz("示例：从 100 调整到 120，买 10 台总额由 1000 变 1200。", "Example: 100 -> 120 changes 10 units from 1000 to 1200.") },
+      { name: "节点价格", business: biz("节点身份购买价格，影响节点入场速度与节点池增速。", "Node identity purchase price."), example: biz("示例：市场过热可上调节点价格抑制抢购。", "Example: raise during overheating demand.") },
+      { name: "超级节点价格", business: biz("超级节点身份购买价格，影响高阶权益获取成本。", "Super-node identity purchase price."), example: biz("示例：从 3000 调到 3500 以提高门槛。", "Example: 3000 -> 3500 to raise barrier.") },
+    ],
+    corePools: [
+      { name: "接收地址", business: biz("指定每个池子的收款钱包或合约地址。", "Recipient wallet/contract for each pool."), example: biz("示例：平台池改为财务冷钱包，便于审计和提取。", "Example: route platform pool to treasury cold wallet.") },
+      { name: "比例(BPS)", business: biz("控制订单金额在各池子中的分配占比。", "Controls allocation ratio across pools."), example: biz("示例：2000 BPS=20%；所有池子总和必须 10000。", "Example: 2000 BPS = 20%; total must be 10000.") },
+    ],
+    whitelist: [
+      { name: "调节值(0-10)", business: biz("排行榜结算时对白名单加权，数值越大白名单分配越高。", "Whitelist adjustment used in leaderboard settlement."), example: biz("示例：调节值 5，表示从第1名比例扣减部分分给白名单。", "Example: adjustment 5 reallocates part of rank-1 share.") },
+      { name: "白名单地址", business: biz("仅这些地址可参与白名单分配。", "Only these addresses receive whitelist allocation."), example: biz("示例：输入 3 个运营地址，日结时按规则分配。", "Example: add 3 operation wallets for whitelist settlement.") },
+    ],
+    otc: [
+      { name: "手续费(BPS)", business: biz("OTC 成交抽成比例。", "OTC trade fee ratio."), example: biz("示例：1000 BPS=10%；成交 100 USDT 抽成 10 USDT。", "Example: 1000 BPS=10%, fee 10 on 100 trade.") },
+      { name: "手续费接收地址", business: biz("OTC 手续费归集钱包。", "Recipient wallet for OTC fees."), example: biz("示例：配置到平台财务地址统一记账。", "Example: route to treasury wallet.") },
+    ],
+    swapPools: [
+      { name: "池手续费(BPS)", business: biz("兑换时池子收取的手续费率。", "Pool swap fee rate."), example: biz("示例：30 BPS=0.3%；输入 1000，手续费约 3。", "Example: 30 BPS = 0.3%." ) },
+      { name: "冲击上限(BPS)", business: biz("限制单笔交易允许的最大价格冲击，防止深度被打穿。", "Max allowed price impact per trade."), example: biz("示例：300 BPS=3%；超过则前端提示风险/拒绝。", "Example: 300 BPS = 3% threshold.") },
+    ],
+    light: [
+      { name: "Burn / Bootstrap / Node / SuperNode BPS", business: biz("定义 LIGHT 手续费分账比例。", "Defines LIGHT fee split ratios."), example: biz("示例：6000/3000/700/300 表示 60%销毁，30%回流，7%节点，3%超节。", "Example split 60/30/7/3.") },
+      { name: "分账接收地址", business: biz("定义各子池接收人地址。", "Recipients for each LIGHT fee bucket."), example: biz("示例：节点池接收地址改为节点奖励发放合约。", "Example: set node bucket recipient to reward distributor.") },
+    ],
+    cycle: [
+      { name: "结算周期(秒)", business: biz("控制 Core+Swap 结算节奏，0 代表默认 1 天。", "Settlement cadence in seconds; 0 means 1 day default."), example: biz("示例：测试网设为 600 秒快速验证，主网建议 86400 秒。", "Example: 600s on testnet, 86400s on mainnet.") },
+    ],
+    fundReward: [
+      { name: "金额(LIGHT)", business: biz("向奖励池注入可发放资金。", "Funding amount into reward pool."), example: biz("示例：注入 1000 LIGHT 作为当天结算预算。", "Example: fund 1000 LIGHT for daily settlement.") },
+    ],
+    rewardConfig: [
+      { name: "Daily/Imm Burn/Sec Burn/Static/Dynamic/Cap BPS", business: biz("控制每日释放、销毁与静动态奖励比例及封顶。", "Controls release, burn, static/dynamic split and cap."), example: biz("示例：Daily=200 表示每日释放池子的 2%。", "Example: Daily 200 => release 2% each cycle.") },
+    ],
+    manualSettle: [
+      { name: "每日结算参与者地址", business: biz("指定本轮参与日结的地址集合。", "Address set for daily settlement."), example: biz("示例：输入 A,B,C，仅对三者执行本轮日结。", "Example: settle only A/B/C this cycle.") },
+      { name: "排行榜 Day ID", business: biz("指定要结算的榜单日编号。", "Day id to settle leaderboard."), example: biz("示例：输入 42，结算第 42 天榜单。", "Example: day 42 leaderboard.") },
+      { name: "节点/超级节点接收地址与份额", business: biz("手动分配池余额到指定地址。", "Manual split of pool to recipients."), example: biz("示例：两地址份额 7000,3000 即 7:3 分配。", "Example: 7000/3000 split.") },
+    ],
+    identityWeightWithdraw: [
+      { name: "身份市场地址", business: biz("定义身份资产交易市场合约。", "Identity market contract pointer."), example: biz("示例：升级市场合约后更新到新地址。", "Example: point to upgraded market contract.") },
+      { name: "地址 + 权重值", business: biz("配置奖励权重账户，用于结算加权。", "Weighted account config for rewards."), example: biz("示例：运营地址权重 100，普通地址权重 50。", "Example: ops 100 vs normal 50.") },
+      { name: "提取地址 + 提取数量", business: biz("从 Core 合约提取 USDT 到目标地址。", "Withdraw USDT from Core to target address."), example: biz("示例：提取 5000 USDT 到多签财务钱包。", "Example: withdraw 5000 USDT to multisig.") },
+    ],
+    cleanup: [
+      { name: "身份类型 + 最大撤销数", business: biz("批量清理低价 OTC 订单。", "Batch cleanup low-price OTC listings."), example: biz("示例：类型=1，最大=50，单次最多处理 50 个节点单。", "Example: role 1, max 50 listings.") },
+    ],
+    primaryBuy: [
+      { name: "Buy / SuperNode / NodePool / Platform BPS", business: biz("定义一级市场买入手续费及其分账结构。", "Primary buy fee and split structure."), example: biz("示例：Buy=500，Super=100，Node=200，Platform=200。", "Example: total 500 split 100/200/200.") },
+    ],
+    primarySell: [
+      { name: "Sell/Burn/PlatformICO/LiquidityICO BPS", business: biz("定义卖出时 USDT 抽成与 ICO 去向比例。", "Defines sell fee and ICO routing split."), example: biz("示例：Burn=1000, PlatformICO=2000, LiquidityICO=7000。", "Example: 10/20/70 sell ICO split.") },
+    ],
+    primaryRecipients: [
+      { name: "SuperNode/NodePool/Platform Recipient", business: biz("定义一级市场手续费接收人。", "Recipients for primary market fee split."), example: biz("示例：平台接收地址配置为财务合约地址。", "Example: platform recipient -> treasury contract.") },
+    ],
+    primaryThreshold: [
+      { name: "最低 USDT 储备 + 最低持有人数", business: biz("满足后才允许启用卖出。", "Prerequisites for enabling sell."), example: biz("示例：储备>=5000万且持有人>=10万才开放卖出。", "Example: reserve and holders must pass threshold.") },
+      { name: "上报持有人数 + Pair 地址", business: biz("同步外部统计与交易对地址。", "Sync external holder metrics and pair pointer."), example: biz("示例：主流交易所换池后更新 Pair 地址。", "Example: update pair after DEX migration.") },
+    ],
+    primaryWithdraw: [
+      { name: "卖出开关", business: biz("强制启停一级市场卖出。", "Force enable/disable sell."), example: biz("示例：流动性异常时临时关闭卖出。", "Example: disable sell during liquidity stress.") },
+      { name: "提取 Token/To/Amount", business: biz("从一级市场控制器提取资产。", "Withdraw treasury assets from primary controller."), example: biz("示例：提取 USDT 到多签地址做再分配。", "Example: withdraw to multisig for redistribution.") },
+    ],
+    tokenMintBurn: [
+      { name: "Mint 接收地址 + 数量", business: biz("增发 ICO 到指定地址。", "Mint ICO token to recipient."), example: biz("示例：给运营地址铸造 10000 ICO 用于活动。", "Example: mint 10k ICO for campaign.") },
+      { name: "Burn Unsold 数量", business: biz("销毁未售库存，减少流通压力。", "Burn unsold inventory."), example: biz("示例：销毁 50000 ICO 以降低抛压。", "Example: burn 50k ICO to reduce sell pressure.") },
+    ],
+    tokenExecutor: [
+      { name: "Executor 地址 + 启用状态", business: biz("配置可执行销毁权限的地址。", "Manage burn executor permissions."), example: biz("示例：启用自动化脚本钱包作为执行人。", "Example: enable automation wallet as executor.") },
+      { name: "销售钱包地址", business: biz("指定销售配额资金钱包。", "Wallet holding sale allocation."), example: biz("示例：迁移销售钱包到新多签。", "Example: move sale wallet to new multisig.") },
+    ],
+    tokenLiquidity: [
+      { name: "PairId + Amount0/Amount1 + To", business: biz("添加/移除流动性时的目标池与数量配置。", "Pool and amount config for add/remove liquidity."), example: biz("示例：Pair 0 添加 1万 USDT 与等值 ICO。", "Example: add 10k USDT and ICO on pair 0.") },
+    ],
+    tokenDistribution: [
+      { name: "手续费分发参数", business: biz("按收款地址和 BPS 分发手续费。", "Distribute collected fees by recipients and BPS."), example: biz("示例：A/B 两地址按 7000/3000 分配。", "Example: recipients split 70/30.") },
+      { name: "默认池创建参数", business: biz("初始化池手续费与冲击上限。", "Initialize default pool fee and impact caps."), example: biz("示例：USDT/ICO=30bps, LIGHT/ICO=30bps, 冲击=300bps。", "Example: 30/30 fee with 300 bps impact cap.") },
+    ],
+    systemAdmin: [
+      { name: "子管理员地址", business: biz("授予或撤销系统级管理权限。", "Grant/revoke system-level admin rights."), example: biz("示例：新增技术同事地址用于日常配置。", "Example: add ops engineer as sub-admin.") },
+      { name: "经理地址", business: biz("授予价格与公告管理权限。", "Grant manager role for price/announcements."), example: biz("示例：运营地址可改价格但不能改系统权限。", "Example: manager can edit prices, not system auth.") },
+      { name: "新 Owner 地址", business: biz("合约控制权迁移目标地址。", "Ownership transfer target."), example: biz("示例：迁移到治理多签地址接管系统。", "Example: transfer ownership to governance multisig.") },
+    ],
+  }), [lang]);
 
   const poolLabels = useMemo(
     () => [
@@ -805,6 +922,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={t.addressSettingsTitle} hint={t.addressSettingsHint} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.addressSettings} />
               {/* USDT 地址 */}
               <div className="admin-setting-section">
                 <div className="admin-pool-echo">
@@ -960,6 +1078,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         {adminTab === "prices" && canManagePrices && (
           <section className="grid">
             <Card title={t.corePrices} hint={t.corePricesHint} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.corePrices} />
               {/* 当前链上价格回显 */}
               <div className="admin-price-echo">
                 <div className="admin-price-echo-item">
@@ -1028,6 +1147,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         {adminTab === "pools" && canManageSystem && (
           <section className="grid">
             <Card title={t.poolConfigTitle} hint={t.poolConfigHint} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.corePools} />
               <div className="admin-pool-list">
                 {poolConfigs.map((pool, index) => (
                   <div key={pool.label} className="list-item">
@@ -1083,6 +1203,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={t.leaderboardWhitelistTitle} hint={t.leaderboardWhitelistHint} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.whitelist} />
               <div className="admin-pool-echo">
                 <KVRow label={t.whitelistAdjustPct} value={String(leaderboardAdjustPct)} />
                 <KVRow
@@ -1142,6 +1263,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
           <section className="grid">
             {/* OTC 配置 */}
             <Card title={t.otcConfigTitle} hint={t.contractManagement}>
+              <ParamGuide title={guideLabel} items={paramGuides.otc} />
               {/* 当前数据回显 */}
               <div className="admin-pool-echo">
                 <KVRow label={t.otcFeeRate} value={`${(otcFeeBps / 100).toFixed(2)}%`} />
@@ -1178,6 +1300,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
             {/* Swap 池配置 */}
             <Card title={t.swapPoolConfigTitle} hint={t.statisticsAnalysis} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.swapPools} />
               <div className="admin-pool-list">
                 {swapPools.map((pool) => (
                   <div key={pool.pairId} className="list-item">
@@ -1227,6 +1350,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
             {/* LIGHT 配置 */}
             <Card title={t.lightConfigTitle} hint={t.contractManagement} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.light} />
               {/* 数据回显 */}
               <div className="admin-pool-echo">
                 <KVRow label={t.lightVaultBalance} value={`${String(lightFeeVault)} LIGHT`} />
@@ -1318,6 +1442,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "⏱ 结算周期" : "⏱ Settlement Cycle"} hint={lang === "zh" ? "设置结算周期（秒），0=默认1天。同步修改 Core 和 Swap 合约" : "Set cycle duration (seconds), 0=default 1 day. Updates both Core and Swap contracts"}>
+              <ParamGuide title={guideLabel} items={paramGuides.cycle} />
               <div className="admin-pool-echo">
                 <KVRow label={lang === "zh" ? "当前 Day ID" : "Current Day ID"} value={String(currentDayId)} />
                 <KVRow label={lang === "zh" ? "Core 周期" : "Core Cycle"} value={coreCycleDuration === 0n ? `86400s (${lang === "zh" ? "默认1天" : "default 1 day"})` : `${coreCycleDuration}s (${Math.round(Number(coreCycleDuration) / 60)} min)`} />
@@ -1359,6 +1484,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "注入奖励池" : "Fund Reward Pool"} hint={lang === "zh" ? "向奖励池转入 LIGHT" : "Transfer LIGHT into reward pool"}>
+              <ParamGuide title={guideLabel} items={paramGuides.fundReward} />
               <label className="field">{lang === "zh" ? "金额 (LIGHT)" : "Amount (LIGHT)"}
                 <input value={settlementInputs.fundAmount} onChange={e => setSettlementInputs(p => ({ ...p, fundAmount: e.target.value }))} placeholder="100" />
               </label>
@@ -1373,6 +1499,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "更新分配比例" : "Update Reward Config"} hint={lang === "zh" ? "修改释放 BPS 配置" : "Update release BPS config"} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.rewardConfig} />
               <div className="admin-form-grid">
                 <label className="field">Daily BPS<input value={settlementInputs.dailyBps} onChange={e => setSettlementInputs(p => ({ ...p, dailyBps: e.target.value }))} placeholder={rewardConfig ? String(rewardConfig.releaseDailyBps) : ""} /></label>
                 <label className="field">Imm Burn BPS<input value={settlementInputs.immBurnBps} onChange={e => setSettlementInputs(p => ({ ...p, immBurnBps: e.target.value }))} placeholder={rewardConfig ? String(rewardConfig.releaseImmediateBurnBps) : ""} /></label>
@@ -1399,6 +1526,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "手动结算" : "Manual Settlement"} hint={lang === "zh" ? "执行各类结算操作" : "Execute settlement operations"} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.manualSettle} />
               <label className="field">{lang === "zh" ? "每日结算-参与者地址(逗号分隔)" : "Daily - Participants (comma-separated)"}
                 <input value={settlementInputs.settleDailyAddrs} onChange={e => setSettlementInputs(p => ({ ...p, settleDailyAddrs: e.target.value }))} placeholder="0x...,0x..." />
               </label>
@@ -1463,6 +1591,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "身份市场 / 权重 / 提取" : "Identity Market / Weight / Withdraw"} hint={lang === "zh" ? "设置身份市场合约、奖励权重和提取 USDT" : "Set identity market, reward weight, and withdraw USDT"}>
+              <ParamGuide title={guideLabel} items={paramGuides.identityWeightWithdraw} />
               <label className="field">{lang === "zh" ? "身份市场地址" : "Identity Market Address"}
                 <input value={settlementInputs.identityMarket} onChange={e => setSettlementInputs(p => ({ ...p, identityMarket: e.target.value }))} placeholder={identityMarket || "0x..."} />
               </label>
@@ -1510,6 +1639,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "OTC 低价清理" : "OTC Cleanup"} hint={lang === "zh" ? "批量撤销 OTC 上的低价挂单" : "Batch cancel low-price OTC orders"}>
+              <ParamGuide title={guideLabel} items={paramGuides.cleanup} />
               <div className="admin-form-grid">
                 <label className="field">{lang === "zh" ? "身份类型" : "Role"} (1=Node, 2=SuperNode)
                   <input value={settlementInputs.cleanupRole} onChange={e => setSettlementInputs(p => ({ ...p, cleanupRole: e.target.value }))} />
@@ -1558,6 +1688,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "买入手续费" : "Buy Fee Config"} hint="updateBuyFeeConfig">
+              <ParamGuide title={guideLabel} items={paramGuides.primaryBuy} />
               <div className="admin-form-grid">
                 <label className="field">Buy BPS<input value={primaryInputs.buyBps} onChange={e => setPrimaryInputs(p => ({ ...p, buyBps: e.target.value }))} /></label>
                 <label className="field">SuperNode BPS<input value={primaryInputs.superBps} onChange={e => setPrimaryInputs(p => ({ ...p, superBps: e.target.value }))} /></label>
@@ -1575,6 +1706,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "卖出配置" : "Sell Config"} hint="updateSellConfig">
+              <ParamGuide title={guideLabel} items={paramGuides.primarySell} />
               <div className="admin-form-grid">
                 <label className="field">Sell BPS<input value={primaryInputs.sellBps} onChange={e => setPrimaryInputs(p => ({ ...p, sellBps: e.target.value }))} /></label>
                 <label className="field">Burn BPS<input value={primaryInputs.burnBps} onChange={e => setPrimaryInputs(p => ({ ...p, burnBps: e.target.value }))} /></label>
@@ -1592,6 +1724,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "接收地址" : "Fee Recipients"} hint="updateRecipients">
+              <ParamGuide title={guideLabel} items={paramGuides.primaryRecipients} />
               <label className="field">SuperNode Recipient<input value={primaryInputs.superRecip} onChange={e => setPrimaryInputs(p => ({ ...p, superRecip: e.target.value }))} /></label>
               <label className="field">NodePool Recipient<input value={primaryInputs.nodeRecip} onChange={e => setPrimaryInputs(p => ({ ...p, nodeRecip: e.target.value }))} /></label>
               <label className="field">Platform Recipient<input value={primaryInputs.platRecip} onChange={e => setPrimaryInputs(p => ({ ...p, platRecip: e.target.value }))} /></label>
@@ -1607,6 +1740,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "阈值 / 持有人 / Pair" : "Thresholds / Holders / Pair"} hint={lang === "zh" ? "开启卖出的前置条件" : "Prerequisites for enabling sell"}>
+              <ParamGuide title={guideLabel} items={paramGuides.primaryThreshold} />
               <div className="admin-form-grid">
                 <label className="field">{lang === "zh" ? "最低 USDT 储备" : "Min USDT Reserve"}<input value={primaryInputs.minReserve} onChange={e => setPrimaryInputs(p => ({ ...p, minReserve: e.target.value }))} /></label>
                 <label className="field">{lang === "zh" ? "最低持有人数" : "Min ICO Holders"}<input value={primaryInputs.minHolders} onChange={e => setPrimaryInputs(p => ({ ...p, minHolders: e.target.value }))} /></label>
@@ -1647,6 +1781,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "卖出开关 / 资金提取" : "Sell Toggle / Treasury Withdraw"} hint={lang === "zh" ? "启用/禁用 USDT 卖出，或提取资金" : "Enable/disable sell USDT or withdraw treasury"}>
+              <ParamGuide title={guideLabel} items={paramGuides.primaryWithdraw} />
               <div className="actions" style={{ marginBottom: "16px" }}>
                 <button className={primaryConfig?.sellUsdtEnabled ? "ghost-btn" : "primary-btn"} type="button"
                   onClick={() => {
@@ -1689,6 +1824,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "铸造 ICO Token" : "Mint ICO Token"} hint={lang === "zh" ? "仅 Token Owner 可调用" : "Only token owner can call"}>
+              <ParamGuide title={guideLabel} items={paramGuides.tokenMintBurn} />
               <label className="field">{lang === "zh" ? "接收地址" : "Recipient"}<input value={tokenInputs.mintTo} onChange={e => setTokenInputs(p => ({ ...p, mintTo: e.target.value }))} placeholder="0x..." /></label>
               <label className="field">{lang === "zh" ? "数量" : "Amount"}<input value={tokenInputs.mintAmount} onChange={e => setTokenInputs(p => ({ ...p, mintAmount: e.target.value }))} placeholder="1000" /></label>
               <div className="actions">
@@ -1703,6 +1839,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "销毁未售 Token" : "Burn Unsold"} hint={lang === "zh" ? "从销售钱包销毁指定数量" : "Burn specified amount from sale wallet"}>
+              <ParamGuide title={guideLabel} items={paramGuides.tokenMintBurn} />
               <label className="field">{lang === "zh" ? "销毁数量" : "Burn Amount"}<input value={tokenInputs.burnAmount} onChange={e => setTokenInputs(p => ({ ...p, burnAmount: e.target.value }))} placeholder="1000" /></label>
               <div className="actions">
                 <button className="primary-btn" type="button" style={{ background: "var(--color-error, #dc2626)" }}
@@ -1715,6 +1852,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "销毁执行人 / 销售钱包" : "Burn Executor / Sale Wallet"} hint={lang === "zh" ? "管理 BurnExecutor 权限和销售钱包地址" : "Manage burn executor and sale wallet"}>
+              <ParamGuide title={guideLabel} items={paramGuides.tokenExecutor} />
               <label className="field">{lang === "zh" ? "Executor 地址" : "Executor Address"}<input value={tokenInputs.executorAddr} onChange={e => setTokenInputs(p => ({ ...p, executorAddr: e.target.value }))} placeholder="0x..." /></label>
               <label className="field">{lang === "zh" ? "启用 / 禁用" : "Enable / Disable"}
                 <select value={tokenInputs.executorEnabled} onChange={e => setTokenInputs(p => ({ ...p, executorEnabled: e.target.value }))}>
@@ -1745,6 +1883,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "Swap 流动性管理" : "Swap Liquidity Management"} hint={lang === "zh" ? "向 SwapPoolManager 添加或移除流动性" : "Add or remove liquidity in SwapPoolManager"} className="grid-full">
+              <ParamGuide title={guideLabel} items={paramGuides.tokenLiquidity} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div>
                   <h4 style={{ margin: "0 0 8px" }}>{lang === "zh" ? "添加流动性" : "Add Liquidity"}</h4>
@@ -1780,6 +1919,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={lang === "zh" ? "手续费分发 / 创建默认池" : "Fee Distribution / Create Pools"} hint={lang === "zh" ? "分发手续费或创建默认交易池" : "Distribute fees or create default pools"}>
+              <ParamGuide title={guideLabel} items={paramGuides.tokenDistribution} />
               <h4 style={{ margin: "0 0 8px" }}>{lang === "zh" ? "手续费分发" : "Distribute Fees"}</h4>
               <label className="field">Pair ID<input value={tokenInputs.distPairId} onChange={e => setTokenInputs(p => ({ ...p, distPairId: e.target.value }))} /></label>
               <label className="field">Token Address<input value={tokenInputs.distToken} onChange={e => setTokenInputs(p => ({ ...p, distToken: e.target.value }))} placeholder="0x..." /></label>
@@ -1821,6 +1961,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
           <section className="grid">
             {/* 多管理员 */}
             <Card title={t.multiAdminTitle} hint={t.multiAdminHint}>
+              <ParamGuide title={guideLabel} items={paramGuides.systemAdmin} />
               <p className="hint-text" style={{ marginBottom: "0.75rem" }}>{t.subAdminList}</p>
               {subAdmins.length === 0 ? (
                 <p style={{ color: "var(--color-muted, #888)", fontSize: "0.875rem" }}>{t.noSubAdmins}</p>
@@ -1854,6 +1995,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             </Card>
 
             <Card title={t.managerTitle} hint={t.managerHint}>
+              <ParamGuide title={guideLabel} items={paramGuides.systemAdmin} />
               <p className="hint-text" style={{ marginBottom: "0.75rem" }}>
                 {lang === "zh" ? "按地址直接授权或移除经理角色。" : "Grant or remove manager role by address."}
               </p>
@@ -1874,6 +2016,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
             {/* Owner 转让 */}
             {isOwner && (
               <Card title={t.ownerTransferTitle} hint={t.ownerTransferHint}>
+                <ParamGuide title={guideLabel} items={paramGuides.systemAdmin} />
                 <p style={{ color: "var(--color-warning, #f59e0b)", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
                   {t.ownerTransferWarning}
                 </p>

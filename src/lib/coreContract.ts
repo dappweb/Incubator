@@ -93,7 +93,16 @@ export function getCoreContract(provider: BrowserProvider) {
   return new Contract(CORE_CONTRACT_ADDRESS, coreAbi, provider);
 }
 
-/** 读取 SuperNode池(2)、Node池(3)、Platform池(4，即USDT契约池)、Leaderboard池(5，即FOMO奖励) 的积累余额 */
+const erc20BalanceAbi = [
+  "function balanceOf(address account) view returns (uint256)",
+];
+
+/**
+ * 读取 SuperNode池(2)、Node池(3)、Platform池(4，即USDT契约池)、Leaderboard池(5，即FOMO奖励) 的展示余额。
+ *
+ * 展示口径：优先读取每个池子 recipient 的 USDT 余额。
+ * 若 recipient 为 Core 合约自身，则退回读取 `poolAccumulated(poolType)`，避免多个池子共享同一地址时无法区分池子额度。
+ */
 export async function getPoolAccumulatedBalances(provider: BrowserProvider): Promise<{
   superNodePool: bigint;
   nodePool: bigint;
@@ -101,12 +110,47 @@ export async function getPoolAccumulatedBalances(provider: BrowserProvider): Pro
   leaderboardPool: bigint;
 }> {
   const contract = getCoreContract(provider);
-  const [superNodePool, nodePool, platformPool, leaderboardPool] = await Promise.all([
-    contract.poolAccumulated(2) as Promise<bigint>,
-    contract.poolAccumulated(3) as Promise<bigint>,
-    contract.poolAccumulated(4) as Promise<bigint>,
-    contract.poolAccumulated(5) as Promise<bigint>,
-  ]);
+
+  const poolTypes = [2, 3, 4, 5] as const;
+  const usdtAddress = await contract.usdt() as string;
+  const usdtContract = new Contract(usdtAddress, erc20BalanceAbi, provider);
+
+  const poolConfigs = await Promise.all(
+    poolTypes.map(async (poolType) => {
+      const cfg = await contract.getPoolConfig(poolType);
+      return { poolType, recipient: String(cfg.recipient).toLowerCase() };
+    }),
+  );
+
+  const coreAddress = CORE_CONTRACT_ADDRESS.toLowerCase();
+  const uniqueRecipients = Array.from(new Set(poolConfigs.map((item) => item.recipient)));
+  const recipientBalanceMap = new Map<string, bigint>();
+
+  const recipientBalances = await Promise.all(
+    uniqueRecipients.map(async (recipient) => {
+      const balance = await usdtContract.balanceOf(recipient) as bigint;
+      return { recipient, balance };
+    }),
+  );
+
+  for (const { recipient, balance } of recipientBalances) {
+    recipientBalanceMap.set(recipient, balance);
+  }
+
+  const displayByPoolType = new Map<number, bigint>();
+  for (const { poolType, recipient } of poolConfigs) {
+    if (recipient === coreAddress) {
+      displayByPoolType.set(poolType, await contract.poolAccumulated(poolType) as bigint);
+      continue;
+    }
+    displayByPoolType.set(poolType, recipientBalanceMap.get(recipient) ?? 0n);
+  }
+
+  const superNodePool = displayByPoolType.get(2) ?? 0n;
+  const nodePool = displayByPoolType.get(3) ?? 0n;
+  const platformPool = displayByPoolType.get(4) ?? 0n;
+  const leaderboardPool = displayByPoolType.get(5) ?? 0n;
+
   return { superNodePool, nodePool, platformPool, leaderboardPool };
 }
 
