@@ -94,6 +94,20 @@ const UNLIMITED_THRESHOLD = 10n ** 48n;
 const fmtAllowance = (v: bigint, lang: string) =>
   v >= UNLIMITED_THRESHOLD ? (lang === "zh" ? "无限制" : "Unlimited") : formatUsdt(v) + " USDT";
 
+/** 面板展示用：截断到 maxFractionDigits 位小数并加千分位，避免 18 位小数"尾巴" */
+const formatCompact = (raw: string, maxFractionDigits = 4): string => {
+  if (!raw) return "0";
+  const negative = raw.startsWith("-");
+  const body = negative ? raw.slice(1) : raw;
+  const [intPartRaw, fracPartRaw = ""] = body.split(".");
+  const intPart = intPartRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  let frac = fracPartRaw.slice(0, maxFractionDigits).replace(/0+$/, "");
+  const result = frac ? `${intPart}.${frac}` : intPart;
+  return negative ? `-${result}` : result;
+};
+const fmtUsdtCompact = (v: bigint) => formatCompact(formatUsdt(v));
+const fmtTokenCompact = (v: bigint, decimals: number) => formatCompact(formatTokenAmount(v, decimals));
+
 const toSafeBigInt = (value: unknown): bigint => {
   if (typeof value === "bigint") {
     return value;
@@ -2060,29 +2074,29 @@ const App = () => {
             <div className="pool-panel-grid">
               <div className="pool-panel-cell">
                 <p className="pool-panel-label">{t.poolPrimary}</p>
-                <p className="pool-panel-value">{formatTokenAmount(primaryPoolReserve.ico, 18)} ICO</p>
-                <p className="pool-panel-value">{formatUsdt(primaryPoolReserve.usdt)} USDT</p>
+                <p className="pool-panel-value">{fmtTokenCompact(primaryPoolReserve.ico, 18)} ICO</p>
+                <p className="pool-panel-value">{fmtUsdtCompact(primaryPoolReserve.usdt)} USDT</p>
               </div>
               <div className="pool-panel-cell">
                 <p className="pool-panel-label">{t.poolLight}</p>
-                <p className="pool-panel-value">{formatTokenAmount(lightPoolReserve.light, 18)} LIGHT</p>
-                <p className="pool-panel-value">{formatTokenAmount(lightPoolReserve.ico, 18)} ICO</p>
+                <p className="pool-panel-value">{fmtTokenCompact(lightPoolReserve.light, 18)} LIGHT</p>
+                <p className="pool-panel-value">{fmtTokenCompact(lightPoolReserve.ico, 18)} ICO</p>
               </div>
               <div className="pool-panel-cell">
                 <p className="pool-panel-label">{t.poolSuperNode}</p>
-                <p className="pool-panel-value">{formatUsdt(superNodePoolBalance)} USDT</p>
+                <p className="pool-panel-value">{fmtUsdtCompact(superNodePoolBalance)} USDT</p>
               </div>
               <div className="pool-panel-cell">
                 <p className="pool-panel-label">{t.poolNode}</p>
-                <p className="pool-panel-value">{formatUsdt(nodePoolBalance)} USDT</p>
+                <p className="pool-panel-value">{fmtUsdtCompact(nodePoolBalance)} USDT</p>
               </div>
               <div className="pool-panel-cell">
                 <p className="pool-panel-label">{t.poolPlatform}</p>
-                <p className="pool-panel-value">{formatUsdt(platformPoolBalance)} USDT</p>
+                <p className="pool-panel-value">{fmtUsdtCompact(platformPoolBalance)} USDT</p>
               </div>
               <div className="pool-panel-cell">
                 <p className="pool-panel-label">{t.poolLeaderboard}</p>
-                <p className="pool-panel-value">{formatUsdt(leaderboardPoolBalance)} USDT</p>
+                <p className="pool-panel-value">{fmtUsdtCompact(leaderboardPoolBalance)} USDT</p>
               </div>
             </div>
             <div className="actions" style={{ marginTop: "1rem" }}>
