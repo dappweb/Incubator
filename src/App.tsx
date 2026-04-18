@@ -27,6 +27,7 @@ import {
     getMachineOrder,
     getMachineUnitPrice,
     getNodePrice,
+    getOrderRewardLedger,
     getPoolAccumulatedBalances,
     getReferrer,
     getRewardRecordsByBeneficiary,
