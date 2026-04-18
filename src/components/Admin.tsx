@@ -343,7 +343,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       { name: "Sell/Burn/PlatformICO/LiquidityICO BPS", business: biz("定义卖出时 USDT 抽成与 ICO 去向比例。", "Defines sell fee and ICO routing split."), example: biz("示例：Burn=1000, PlatformICO=2000, LiquidityICO=7000。", "Example: 10/20/70 sell ICO split.") },
     ],
     primaryRecipients: [
-      { name: "SuperNode/NodePool/Platform Recipient", business: biz("定义一级市场手续费接收人。", "Recipients for primary market fee split."), example: biz("示例：平台接收地址配置为财务合约地址。", "Example: platform recipient -> treasury contract.") },
+      { name: "SuperNode/NodePool/Platform Recipient", business: biz("仅影响 USDT→ICO 兑换时的手续费分账接收人，不影响购买算力/节点/超级节点的资金分发。", "Only affects fee split recipients on USDT→ICO swaps. Does NOT affect machine/node/super-node purchase allocation."), example: biz("示例：平台接收地址配置为财务合约地址。购买算力的 Platform 接收人请到『资金池』页修改。", "Example: set platform recipient to treasury. To change machine-purchase Platform recipient, use the Pools tab.") },
     ],
     primaryThreshold: [
       { name: "最低 USDT 储备 + 最低持有人数", business: biz("满足后才允许启用卖出。", "Prerequisites for enabling sell."), example: biz("示例：储备>=5000万且持有人>=10万才开放卖出。", "Example: reserve and holders must pass threshold.") },
@@ -1723,7 +1723,12 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               </div>
             </Card>
 
-            <Card title={lang === "zh" ? "接收地址" : "Fee Recipients"} hint="updateRecipients">
+            <Card title={lang === "zh" ? "接收地址" : "Fee Recipients"} hint={lang === "zh" ? "updateRecipients（仅 USDT→ICO 兑换手续费，不影响购买算力）" : "updateRecipients (swap fee only, NOT machine purchase)"}>
+              <div className="warning-banner" style={{ padding: "8px 12px", marginBottom: 12, background: "rgba(255,176,32,0.12)", border: "1px solid rgba(255,176,32,0.4)", borderRadius: 6, fontSize: 12, lineHeight: 1.5 }}>
+                {lang === "zh"
+                  ? "⚠ 此处仅影响 USDT→ICO 兑换时的手续费分发。若要修改购买算力/节点的 Platform/SuperNode/Node 接收地址，请切换到『资金池』页。"
+                  : "⚠ Only affects fee recipients on USDT→ICO swaps. To change machine/node purchase recipients, use the Pools tab."}
+              </div>
               <ParamGuide title={guideLabel} items={paramGuides.primaryRecipients} />
               <label className="field">SuperNode Recipient<input value={primaryInputs.superRecip} onChange={e => setPrimaryInputs(p => ({ ...p, superRecip: e.target.value }))} /></label>
               <label className="field">NodePool Recipient<input value={primaryInputs.nodeRecip} onChange={e => setPrimaryInputs(p => ({ ...p, nodeRecip: e.target.value }))} /></label>
