@@ -227,6 +227,38 @@
   align-items: center;
   gap: 8px;
 }
+.wallet-chip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.wallet-address-pill {
+  border: 1px solid rgba(95, 216, 127, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-radius: 14px;
+  padding: 10px 14px;
+  min-height: 44px;
+  max-width: 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: inset 0 0 0 1px rgba(95, 216, 127, 0.08);
+}
+.wallet-address-pill:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.wallet-disconnect-btn {
+  flex: 0 0 auto;
+}
 
 .brand-mark {
   position: relative;
@@ -2458,9 +2490,25 @@ tr:last-child td {
     justify-content: flex-end;
     gap: 6px;
   }
+  .wallet-chip-group {
+    gap: 6px;
+    max-width: 172px;
+  }
+  .wallet-address-pill {
+    max-width: 108px;
+    min-height: 36px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
   .topbar-actions .primary-btn {
     font-size: 12px;
     padding: 6px 12px;
+  }
+  .wallet-disconnect-btn {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 11px;
   }
   .icon-btn {
     width: 32px;
@@ -2905,6 +2953,18 @@ tr:last-child td {
   }
   .referrer-modal__title {
     font-size: 18px;
+  }
+  .wallet-chip-group {
+    max-width: 148px;
+  }
+  .wallet-address-pill {
+    max-width: 96px;
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+  .wallet-disconnect-btn {
+    padding: 6px 8px;
+    min-width: 44px;
   }
 }
 

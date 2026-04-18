@@ -29,6 +29,7 @@ import {
     pauseCore,
     setCoreManager,
     setCoreSubAdmin,
+    setCoreUsdtAddress,
     setCycleDuration,
     setIdentityMarket,
     setLeaderboardWhitelist,
@@ -47,7 +48,7 @@ import {
     withdrawCoreUSDT
 } from "../lib/coreContract";
 import { parseContractError } from "../lib/errorParser";
-import { cleanupLowerOrders, getOtcFeeConfig, getOtcUsdtAddress, updateOtcFeeConfig } from "../lib/otcContract";
+import { cleanupLowerOrders, getOtcFeeConfig, getOtcUsdtAddress, setOtcUsdtAddress, updateOtcFeeConfig } from "../lib/otcContract";
 import {
     addSwapLiquidity,
     createDefaultPools,
@@ -66,6 +67,7 @@ import {
     removeSwapLiquidity,
     reportIcoHolderCount,
     setPairTokens as setPairTokensOnChain,
+    setPrimaryUsdtAddress,
     setUsdtAddress as setUsdtAddressOnChain,
     settleLightFees,
     unpauseSwap,
@@ -211,11 +213,14 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
     // 地址设置
     addressSettingsTitle: lang === "zh" ? "链上地址管理" : "On-Chain Address Settings",
-    addressSettingsHint: lang === "zh" ? "可一键同步替换 Swap / Core / OTC / Primary 四个合约的 USDT 地址，并设置交易池 Token 对。" : "Sync USDT address across Swap / Core / OTC / Primary in one action, and configure pair tokens.",
+    addressSettingsHint: lang === "zh" ? "按合约分步更新 USDT 地址，每次只提交一笔交易，并可单独设置交易池 Token 对。" : "Update USDT address step by step per contract, one transaction at a time, and configure pair tokens separately.",
     pairLabel: lang === "zh" ? "交易池" : "Trading Pair",
     token0Address: lang === "zh" ? "Token 0 地址" : "Token 0 Address",
     token1Address: lang === "zh" ? "Token 1 地址" : "Token 1 Address",
-    saveUsdtAddress: lang === "zh" ? "一键同步所有 USDT 地址" : "Sync All USDT Addresses",
+    saveSwapUsdtAddress: lang === "zh" ? "更新 Swap USDT" : "Update Swap USDT",
+    saveCoreUsdtAddress: lang === "zh" ? "更新 Core USDT" : "Update Core USDT",
+    saveOtcUsdtAddress: lang === "zh" ? "更新 OTC USDT" : "Update OTC USDT",
+    savePrimaryUsdtAddress: lang === "zh" ? "更新 Primary USDT" : "Update Primary USDT",
     swapUsdtAddress: lang === "zh" ? "Swap USDT" : "Swap USDT",
     coreUsdtAddress: lang === "zh" ? "Core USDT" : "Core USDT",
     otcUsdtAddress: lang === "zh" ? "OTC USDT" : "OTC USDT",
@@ -540,7 +545,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
     try {
       setActionKey(key);
-      setLocalStatus("");
+      const pendingMessage = lang === "zh" ? "操作已发起，请在钱包中确认。" : "Action started. Please confirm in your wallet.";
+      setLocalStatus(pendingMessage);
+      onStatusChange(pendingMessage);
       await action();
       await loadAdminState();
       await onRefresh();
@@ -816,23 +823,43 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 </label>
                 <div className="actions admin-actions-tight">
                   <button className="primary-btn" type="button"
-                    onClick={() => void executeAction("set-usdt", async () => {
+                    onClick={() => void executeAction("set-swap-usdt", async () => {
                       validateAddress(usdtAddressInput);
-                      const nextUsdt = usdtAddressInput.trim();
-                      await setUsdtAddressOnChain(provider!, nextUsdt);
-                      if (CORE_CONTRACT_ADDRESS) {
-                        await setCoreUsdtAddress(provider!, nextUsdt);
-                      }
-                      if (OTC_CONTRACT_ADDRESS) {
-                        await setOtcUsdtAddress(provider!, nextUsdt);
-                      }
-                      if (PRIMARY_SWAP_CONTROLLER_ADDRESS) {
-                        await setPrimaryUsdtAddress(provider!, nextUsdt);
-                      }
-                    }, lang === "zh" ? "已同步更新 Swap/Core/OTC/Primary 的 USDT 地址。" : "USDT address synced across Swap/Core/OTC/Primary.")}
+                      await setUsdtAddressOnChain(provider!, usdtAddressInput.trim());
+                    }, lang === "zh" ? "Swap 的 USDT 地址已更新。" : "Swap USDT address updated.")}
                     disabled={actionKey !== ""}>
-                    {actionKey === "set-usdt" ? t.loading : t.saveUsdtAddress}
+                    {actionKey === "set-swap-usdt" ? t.loading : t.saveSwapUsdtAddress}
                   </button>
+                  {CORE_CONTRACT_ADDRESS ? (
+                    <button className="primary-btn" type="button"
+                      onClick={() => void executeAction("set-core-usdt", async () => {
+                        validateAddress(usdtAddressInput);
+                        await setCoreUsdtAddress(provider!, usdtAddressInput.trim());
+                      }, lang === "zh" ? "Core 的 USDT 地址已更新。" : "Core USDT address updated.")}
+                      disabled={actionKey !== ""}>
+                      {actionKey === "set-core-usdt" ? t.loading : t.saveCoreUsdtAddress}
+                    </button>
+                  ) : null}
+                  {OTC_CONTRACT_ADDRESS ? (
+                    <button className="primary-btn" type="button"
+                      onClick={() => void executeAction("set-otc-usdt", async () => {
+                        validateAddress(usdtAddressInput);
+                        await setOtcUsdtAddress(provider!, usdtAddressInput.trim());
+                      }, lang === "zh" ? "OTC 的 USDT 地址已更新。" : "OTC USDT address updated.")}
+                      disabled={actionKey !== ""}>
+                      {actionKey === "set-otc-usdt" ? t.loading : t.saveOtcUsdtAddress}
+                    </button>
+                  ) : null}
+                  {PRIMARY_SWAP_CONTROLLER_ADDRESS ? (
+                    <button className="primary-btn" type="button"
+                      onClick={() => void executeAction("set-primary-usdt", async () => {
+                        validateAddress(usdtAddressInput);
+                        await setPrimaryUsdtAddress(provider!, usdtAddressInput.trim());
+                      }, lang === "zh" ? "Primary 的 USDT 地址已更新。" : "Primary USDT address updated.")}
+                      disabled={actionKey !== ""}>
+                      {actionKey === "set-primary-usdt" ? t.loading : t.savePrimaryUsdtAddress}
+                    </button>
+                  ) : null}
                 </div>
               </div>
 

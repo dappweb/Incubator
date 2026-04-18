@@ -1,14 +1,9 @@
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { BrowserProvider, FallbackProvider, isAddress, JsonRpcProvider } from "ethers";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount, useWalletClient } from "wagmi";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useAccount, useDisconnect, useWalletClient } from "wagmi";
 import "./App.css";
-import Admin from "./components/Admin";
 import { Card, KVRow } from "./components/Common";
-import { Leaderboard } from "./components/Leaderboard";
-import { MyAssets } from "./components/MyAssets";
-import { OtcMarket } from "./components/OtcMarket";
-import { TokenHistory, type TokenType } from "./components/TokenHistory";
+import type { TokenType } from "./components/TokenHistory";
 import {
     CNC_MAINNET_CHAIN_ID,
     CNC_MAINNET_CHAIN_NAME,
@@ -70,6 +65,7 @@ import { fetchTokenHistory, type TxRecord } from "./lib/tokenHistory";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, resolveUsdtAddress } from "./lib/usdtContract";
 import {
     checkConnection,
+    connectWallet,
     ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
     setupWalletAfterConnect
 } from "./lib/wallet";
@@ -82,6 +78,12 @@ const LIGHT_ICO_PAIR_ID = 1;
 const FIRST_CONNECT_GUIDE_DONE_KEY = "incubator:first-connect-guide-done";
 const INOUT_LOOKBACK_DAYS = 7;
 const INOUT_PREVIEW_LIMIT = 12;
+
+const Admin = lazy(() => import("./components/Admin"));
+const Leaderboard = lazy(() => import("./components/Leaderboard").then((module) => ({ default: module.Leaderboard })));
+const MyAssets = lazy(() => import("./components/MyAssets").then((module) => ({ default: module.MyAssets })));
+const OtcMarket = lazy(() => import("./components/OtcMarket").then((module) => ({ default: module.OtcMarket })));
+const TokenHistory = lazy(() => import("./components/TokenHistory").then((module) => ({ default: module.TokenHistory })));
 
 /** 一次性最大授权量，避免每次购买重复 approve */
 const MAX_APPROVAL = 2n ** 256n - 1n;
@@ -132,6 +134,24 @@ const MOBILE_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "mine", label: "记录" },
   { key: "assets", label: "资产" },
 ];
+
+function DeferredSectionFallback({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <Card title={title} hint={hint}>
+      <p className="hint">加载中...</p>
+    </Card>
+  );
+}
+
+function scheduleIdleTask(task: () => void, timeout = 400) {
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    const idleId = window.requestIdleCallback(task, { timeout });
+    return () => window.cancelIdleCallback(idleId);
+  }
+
+  const timer = window.setTimeout(task, Math.min(timeout, 250));
+  return () => window.clearTimeout(timer);
+}
 
 const App = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
@@ -492,8 +512,9 @@ const App = () => {
   };
 
 
-  // Wagmi hooks — bridge RainbowKit connection into app state
+  // Wagmi hooks — bridge wallet connection into app state
   const { address: wagmiAddress, isConnected: wagmiConnected, chainId: wagmiChainId } = useAccount();
+  const { disconnect, isPending: walletDisconnectPending } = useDisconnect();
   const { data: walletClient } = useWalletClient();
 
   const [address, setAddress] = useState("");
@@ -507,6 +528,7 @@ const App = () => {
   const [showFirstConnectGuide, setShowFirstConnectGuide] = useState(false);
   const [firstConnectGuideRunning, setFirstConnectGuideRunning] = useState(false);
   const [addingTokenSymbol, setAddingTokenSymbol] = useState<"ICO" | "LIGHT" | null>(null);
+  const [walletConnectPending, setWalletConnectPending] = useState(false);
 
   const [machineQty, setMachineQty] = useState(1);
   const [machineReferrer, setMachineReferrer] = useState("");
@@ -736,6 +758,11 @@ const App = () => {
     return isOnCncMainnet(chainId) ? CNC_MAINNET_CHAIN_NAME : `${t.wrongNetwork} (chainId=${chainId})`;
   }, [chainId, t.notConnected, t.wrongNetwork]);
 
+  const shortWalletAddress = useMemo(
+    () => (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ""),
+    [address],
+  );
+
   const isWrongNetwork = useMemo(() => Boolean(chainId) && !isOnCncMainnet(chainId), [chainId]);
 
   const isConnected = Boolean(address && provider);
@@ -929,6 +956,33 @@ const App = () => {
     }
     void onSwapExecute();
   };
+  const onConnectWalletClick = async () => {
+    try {
+      setWalletConnectPending(true);
+      await connectWallet();
+      await ensureCncMainnetNetwork();
+      const existing = await checkConnection();
+      if (!existing) {
+        throw new Error(lang === "zh" ? "钱包授权成功，但未读取到账户信息" : "Wallet authorized, but account state could not be restored");
+      }
+      await syncWalletState(existing.provider, existing.address, existing.chainId);
+      setStatus(t.walletConnected);
+    } catch (error) {
+      setStatus(parseContractError(error, lang));
+    } finally {
+      setWalletConnectPending(false);
+    }
+  };
+
+  const onDisconnectWalletClick = async () => {
+    try {
+      disconnect();
+      resetWalletState();
+      setStatus(t.walletDisconnected);
+    } catch (error) {
+      setStatus(parseContractError(error, lang));
+    }
+  };
   const recentMachineUnits = useMemo(
     () => orders.reduce((sum, order) => sum + toSafeBigInt(order.quantity), 0n),
     [orders],
@@ -965,7 +1019,8 @@ const App = () => {
   }, [swapDirection, activePairId]);
 
   useEffect(() => {
-    void (async () => {
+    const cancel = scheduleIdleTask(() => {
+      void (async () => {
       try {
         const rows = await fetchPublishedAnnouncements();
         console.info(`[App] Loaded ${rows.length} announcements`);
@@ -974,7 +1029,10 @@ const App = () => {
         console.error("[App] Failed to load announcements:", err);
         setAnnouncements([]);
       }
-    })();
+      })();
+    }, 800);
+
+    return cancel;
   }, []);
 
   const refreshSwapPanel = async (
@@ -1395,7 +1453,11 @@ const App = () => {
       }
     };
 
-    void runRefresh();
+    const cancelInitialRefresh = scheduleIdleTask(() => {
+      if (!disposed) {
+        void runRefresh();
+      }
+    }, 600);
 
     const timer = window.setInterval(() => {
       if (!disposed) {
@@ -1405,6 +1467,7 @@ const App = () => {
 
     return () => {
       disposed = true;
+      cancelInitialRefresh();
       window.clearInterval(timer);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1878,12 +1941,30 @@ const App = () => {
         <button className="icon-btn" onClick={toggleLang} title="Toggle Language" type="button">
           {lang === "zh" ? "中" : "EN"}
         </button>
-        <ConnectButton
-          label={t.connect}
-          showBalance={false}
-          chainStatus="icon"
-          accountStatus={{ smallScreen: "avatar", largeScreen: "full" }}
-        />
+        {isConnected ? (
+          <div className="wallet-chip-group">
+            <button className="wallet-address-pill" type="button" disabled title={address}>
+              {shortWalletAddress}
+            </button>
+            <button
+              className="primary-btn wallet-disconnect-btn"
+              type="button"
+              onClick={onDisconnectWalletClick}
+              disabled={walletDisconnectPending}
+            >
+              {walletDisconnectPending ? t.loading : t.disconnect}
+            </button>
+          </div>
+        ) : (
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={() => void onConnectWalletClick()}
+            disabled={walletConnectPending}
+          >
+            {walletConnectPending ? t.loading : t.connect}
+          </button>
+        )}
       </div>
     </header>
 
@@ -1921,10 +2002,12 @@ const App = () => {
           </Card>
 
           {/* 奖金榜单 — 直接内嵌 */}
-          <Leaderboard
-            provider={provider ?? readonlyProvider as unknown as BrowserProvider}
-            lang={lang}
-          />
+          <Suspense fallback={<DeferredSectionFallback title={lang === "zh" ? "排行榜" : "Leaderboard"} />}>
+            <Leaderboard
+              provider={provider ?? readonlyProvider as unknown as BrowserProvider}
+              lang={lang}
+            />
+          </Suspense>
 
           {/* 平台资金池面板 */}
           <Card title={t.poolPanelTitle} hint={t.poolPanelHint}>
@@ -2287,16 +2370,18 @@ const App = () => {
       ) : null}
 
       {activeTab === "otc" ? (
-        <OtcMarket
-          t={t}
-          address={address}
-          provider={provider ?? undefined}
-          identityId={identityId ?? undefined}
-          role={role}
-          loading={loading}
-          onStatusChange={setStatus}
-          onLoadingChange={setLoading}
-        />
+        <Suspense fallback={<DeferredSectionFallback title={t.tab_otc} hint={t.portfolioHint} />}>
+          <OtcMarket
+            t={t}
+            address={address}
+            provider={provider ?? undefined}
+            identityId={identityId ?? undefined}
+            role={role}
+            loading={loading}
+            onStatusChange={setStatus}
+            onLoadingChange={setLoading}
+          />
+        </Suspense>
       ) : null}
 
       {activeTab === "swap" ? (
@@ -2464,27 +2549,31 @@ const App = () => {
       ) : null}
 
       {activeTab === "assets" ? (
-        <MyAssets
-          t={t}
-          address={address}
-          provider={provider ?? undefined}
-          identityId={identityId ?? undefined}
-          role={role}
-          loading={loading}
-          onStatusChange={setStatus}
-          onLoadingChange={setLoading}
-        />
+        <Suspense fallback={<DeferredSectionFallback title={t.tab_assets} hint={t.portfolioHint} />}>
+          <MyAssets
+            t={t}
+            address={address}
+            provider={provider ?? undefined}
+            identityId={identityId ?? undefined}
+            role={role}
+            loading={loading}
+            onStatusChange={setStatus}
+            onLoadingChange={setLoading}
+          />
+        </Suspense>
       ) : null}
 
       {activeTab === "mine" ? (
         historyToken && provider && address ? (
-          <TokenHistory
-            tokenType={historyToken}
-            userAddress={address}
-            provider={readonlyProvider as unknown as BrowserProvider}
-            onBack={() => setHistoryToken(null)}
-            lang={lang}
-          />
+          <Suspense fallback={<DeferredSectionFallback title={lang === "zh" ? "钱包流水" : "Token History"} />}>
+            <TokenHistory
+              tokenType={historyToken}
+              userAddress={address}
+              provider={readonlyProvider as unknown as BrowserProvider}
+              onBack={() => setHistoryToken(null)}
+              lang={lang}
+            />
+          </Suspense>
         ) : (
         <section className="grid-full">
           <Card title={t.assetsTitle} hint={t.assetsHint}>
@@ -2649,7 +2738,9 @@ const App = () => {
       ) : null}
 
       {activeTab === "admin" && hasAdminAccess ? (
-        <Admin lang={lang} address={address} contractOwner={contractOwner} provider={provider} onRefresh={onRefreshWallet} onStatusChange={setStatus} />
+        <Suspense fallback={<DeferredSectionFallback title={t.tab_admin} hint={t.ownerPanel} />}>
+          <Admin lang={lang} address={address} contractOwner={contractOwner} provider={provider} onRefresh={onRefreshWallet} onStatusChange={setStatus} />
+        </Suspense>
       ) : null}
 
       {/* 底部导航栏 */}
