@@ -464,7 +464,12 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     settleSuperAddrs: "", settleSuperShares: "",
     settleNodeCandidates: "", settleSuperCandidates: "",
     backfillUsers: "",
+    treasuryWithdrawTo: "", treasuryWithdrawAmt: "",
+    treasuryPoolType: "3", treasuryPoolTo: "", treasuryPoolAmt: "",
+    treasuryLightTo: "", treasuryLightAmt: "",
   });
+  const [treasuryStatus, setTreasuryStatus] = useState<CoreTreasuryStatus | null>(null);
+  const [treasuryLoading, setTreasuryLoading] = useState(false);
 
   // ── 一级市场 tab state ──
   const [primaryConfig, setPrimaryConfigState] = useState<PrimarySwapConfig | null>(null);
@@ -1727,6 +1732,117 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   }, lang === "zh" ? "USDT 已提取。" : "USDT withdrawn.")} disabled={actionKey !== ""}>
                   {actionKey === "withdraw-usdt" ? t.loading : lang === "zh" ? "提取 USDT" : "Withdraw"}
                 </button>
+              </div>
+            </Card>
+
+            <Card title={lang === "zh" ? "🏦 链上资金托管（核心合约国库）" : "🏦 Core Contract Treasury"} hint={lang === "zh" ? "查看并管理合约代持的 USDT / LIGHT；按池分账" : "Inspect & manage USDT / LIGHT custodied by the contract, per-pool ledger"}>
+              <div className="actions admin-actions-tight" style={{ marginBottom: 10 }}>
+                <button className="ghost-btn" type="button" disabled={treasuryLoading}
+                  onClick={() => void (async () => {
+                    if (!provider) return;
+                    setTreasuryLoading(true);
+                    try {
+                      const s = await getCoreTreasuryStatus(provider);
+                      setTreasuryStatus(s);
+                    } catch (e) {
+                      setStatusMessage({ type: "error", text: parseContractError(e) });
+                    } finally {
+                      setTreasuryLoading(false);
+                    }
+                  })()}>
+                  {treasuryLoading ? t.loading : (lang === "zh" ? "刷新国库状态" : "Refresh Treasury")}
+                </button>
+              </div>
+              {treasuryStatus && (
+                <div style={{ fontSize: 12, lineHeight: 1.7, background: "var(--color-surface-2, #f7f7fb)", padding: 10, borderRadius: 6, marginBottom: 10 }}>
+                  <div><strong>USDT:</strong> {formatUsdt(treasuryStatus.usdtBalance)} · {lang === "zh" ? "池锁定" : "reserved"} {formatUsdt(treasuryStatus.reservedForPools)} · {lang === "zh" ? "自由余额" : "free"} <strong style={{ color: "#15803d" }}>{formatUsdt(treasuryStatus.freeUSDT)}</strong></div>
+                  <div style={{ marginTop: 4 }}>
+                    {(["Liquidity", "Referral", "SuperNode", "Node", "Platform", "Leaderboard"] as const).map((name, i) => (
+                      <span key={name} style={{ marginRight: 12 }}>
+                        [{i}] {name}: <strong>{formatUsdt(treasuryStatus.poolAccumulated[i] ?? 0n)}</strong>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 6 }}><strong>LIGHT:</strong> {formatUnits(treasuryStatus.lightBalance, 18)} · {lang === "zh" ? "每日奖励锁定" : "daily reserve"} {formatUnits(treasuryStatus.lightRewardReserve, 18)} · {lang === "zh" ? "自由" : "free"} <strong style={{ color: "#15803d" }}>{formatUnits(treasuryStatus.freeLight, 18)}</strong></div>
+                </div>
+              )}
+
+              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 10, marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: "#475569", marginBottom: 6 }}>
+                  {lang === "zh" ? "① 从指定池账本（poolAccumulated）手动发放 — 不影响池外自由余额" : "① Manually disburse from a pool ledger (poolAccumulated)"}
+                </div>
+                <div className="admin-form-grid">
+                  <label className="field">{lang === "zh" ? "池类型" : "Pool"}
+                    <select value={settlementInputs.treasuryPoolType} onChange={e => setSettlementInputs(p => ({ ...p, treasuryPoolType: e.target.value }))}>
+                      <option value="0">0 Liquidity</option>
+                      <option value="1">1 Referral</option>
+                      <option value="2">2 SuperNode</option>
+                      <option value="3">3 Node</option>
+                      <option value="4">4 Platform</option>
+                      <option value="5">5 Leaderboard</option>
+                    </select>
+                  </label>
+                  <label className="field">{lang === "zh" ? "收款地址" : "To"}
+                    <input value={settlementInputs.treasuryPoolTo} onChange={e => setSettlementInputs(p => ({ ...p, treasuryPoolTo: e.target.value }))} placeholder="0x..." />
+                  </label>
+                  <label className="field">{lang === "zh" ? "数量 (USDT)" : "Amount (USDT)"}
+                    <input value={settlementInputs.treasuryPoolAmt} onChange={e => setSettlementInputs(p => ({ ...p, treasuryPoolAmt: e.target.value }))} placeholder="0" />
+                  </label>
+                </div>
+                <div className="actions admin-actions-tight">
+                  <button className="ghost-btn" type="button"
+                    onClick={() => void executeAction("withdraw-pool", async () => {
+                      validateAddress(settlementInputs.treasuryPoolTo);
+                      await withdrawCoreAccumulatedPool(provider!, Number(settlementInputs.treasuryPoolType), settlementInputs.treasuryPoolTo.trim(), parseUsdt(settlementInputs.treasuryPoolAmt));
+                    }, lang === "zh" ? "池账本发放完成。" : "Pool ledger disbursed.")} disabled={actionKey !== ""}>
+                    {actionKey === "withdraw-pool" ? t.loading : (lang === "zh" ? "从池账本发放" : "Disburse from pool")}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 10, marginTop: 10 }}>
+                <div style={{ fontSize: 12, color: "#475569", marginBottom: 6 }}>
+                  {lang === "zh" ? "② LIGHT 代币提取 — 不会动用 rewardPoolBalance" : "② Withdraw LIGHT (guarded by rewardPoolBalance)"}
+                </div>
+                <div className="admin-form-grid">
+                  <label className="field">{lang === "zh" ? "收款地址" : "To"}
+                    <input value={settlementInputs.treasuryLightTo} onChange={e => setSettlementInputs(p => ({ ...p, treasuryLightTo: e.target.value }))} placeholder="0x..." />
+                  </label>
+                  <label className="field">{lang === "zh" ? "数量 (LIGHT)" : "Amount (LIGHT)"}
+                    <input value={settlementInputs.treasuryLightAmt} onChange={e => setSettlementInputs(p => ({ ...p, treasuryLightAmt: e.target.value }))} placeholder="0" />
+                  </label>
+                </div>
+                <div className="actions admin-actions-tight">
+                  <button className="ghost-btn" type="button"
+                    onClick={() => void executeAction("withdraw-light", async () => {
+                      validateAddress(settlementInputs.treasuryLightTo);
+                      await withdrawCoreLight(provider!, settlementInputs.treasuryLightTo.trim(), parseUnits(settlementInputs.treasuryLightAmt || "0", 18));
+                    }, lang === "zh" ? "LIGHT 已提取。" : "LIGHT withdrawn.")} disabled={actionKey !== ""}>
+                    {actionKey === "withdraw-light" ? t.loading : (lang === "zh" ? "提取 LIGHT" : "Withdraw LIGHT")}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ borderTop: "1px solid #ef4444", paddingTop: 10, marginTop: 10, background: "#fef2f2", padding: 10, borderRadius: 6 }}>
+                <div style={{ fontSize: 12, color: "#991b1b", marginBottom: 6, fontWeight: 600 }}>
+                  ⚠ {lang === "zh" ? "③ 紧急提取 — 需合约已 Paused，可穿透池/奖励锁定" : "③ Emergency withdraw — requires paused, bypasses ledger guards"}
+                </div>
+                <div className="actions admin-actions-tight">
+                  <button className="ghost-btn" type="button" style={{ borderColor: "#ef4444", color: "#b91c1c" }}
+                    onClick={() => void executeAction("emerg-usdt", async () => {
+                      validateAddress(settlementInputs.withdrawTo);
+                      await emergencyWithdrawCoreUSDT(provider!, settlementInputs.withdrawTo.trim(), parseUsdt(settlementInputs.withdrawAmount));
+                    }, lang === "zh" ? "紧急 USDT 已提取。" : "Emergency USDT withdrawn.")} disabled={actionKey !== ""}>
+                    {actionKey === "emerg-usdt" ? t.loading : (lang === "zh" ? "紧急提取 USDT（使用上方提取框参数）" : "Emergency USDT (uses form above)")}
+                  </button>
+                  <button className="ghost-btn" type="button" style={{ borderColor: "#ef4444", color: "#b91c1c" }}
+                    onClick={() => void executeAction("emerg-light", async () => {
+                      validateAddress(settlementInputs.treasuryLightTo);
+                      await emergencyWithdrawCoreLight(provider!, settlementInputs.treasuryLightTo.trim(), parseUnits(settlementInputs.treasuryLightAmt || "0", 18));
+                    }, lang === "zh" ? "紧急 LIGHT 已提取。" : "Emergency LIGHT withdrawn.")} disabled={actionKey !== ""}>
+                    {actionKey === "emerg-light" ? t.loading : (lang === "zh" ? "紧急提取 LIGHT" : "Emergency LIGHT")}
+                  </button>
+                </div>
               </div>
             </Card>
 

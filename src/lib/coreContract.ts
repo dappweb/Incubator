@@ -66,6 +66,14 @@ const coreAbi = [
   "function setIdentityMarket(address market) external",
   "function setRewardWeights(address[] accounts, uint256[] weights) external",
   "function withdrawUSDT(address to, uint256 amount) external",
+  "function withdrawAccumulatedPool(uint8 poolType, address to, uint256 amount) external",
+  "function emergencyWithdrawUSDT(address to, uint256 amount) external",
+  "function withdrawLight(address to, uint256 amount) external",
+  "function emergencyWithdrawLight(address to, uint256 amount) external",
+  "function getTreasuryStatus() view returns (uint256 usdtBalance, uint256 reservedForPools, uint256 freeUSDT, uint256 lightBalance, uint256 lightRewardReserve, uint256 freeLight)",
+  "event TreasuryUSDTWithdrawn(address indexed to, uint256 amount, bool emergency)",
+  "event TreasuryLightWithdrawn(address indexed to, uint256 amount, bool emergency)",
+  "event PoolAccumulatedWithdrawn(uint8 indexed poolType, address indexed to, uint256 amount)",
   "function setUsdtAddress(address newUsdtAddress) external",
   "function initLightRewardConfig(address lightToken, address swapPoolManager) external",
   "function rewardPoolBalance() view returns (uint256)",
@@ -694,6 +702,74 @@ export async function withdrawCoreUSDT(provider: BrowserProvider, to: string, am
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.withdrawUSDT(to, amount);
   return tx.wait();
+}
+
+export async function withdrawCoreAccumulatedPool(
+  provider: BrowserProvider,
+  poolType: number,
+  to: string,
+  amount: bigint,
+) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.withdrawAccumulatedPool(poolType, to, amount);
+  return tx.wait();
+}
+
+export async function emergencyWithdrawCoreUSDT(
+  provider: BrowserProvider,
+  to: string,
+  amount: bigint,
+) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.emergencyWithdrawUSDT(to, amount);
+  return tx.wait();
+}
+
+export async function withdrawCoreLight(provider: BrowserProvider, to: string, amount: bigint) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.withdrawLight(to, amount);
+  return tx.wait();
+}
+
+export async function emergencyWithdrawCoreLight(
+  provider: BrowserProvider,
+  to: string,
+  amount: bigint,
+) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.emergencyWithdrawLight(to, amount);
+  return tx.wait();
+}
+
+export interface CoreTreasuryStatus {
+  usdtBalance: bigint;
+  reservedForPools: bigint;
+  freeUSDT: bigint;
+  lightBalance: bigint;
+  lightRewardReserve: bigint;
+  freeLight: bigint;
+  poolAccumulated: bigint[];
+}
+
+export async function getCoreTreasuryStatus(provider: BrowserProvider): Promise<CoreTreasuryStatus> {
+  const contract = getCoreContract(provider) as any;
+  const [summary, ...pools] = await Promise.all([
+    contract.getTreasuryStatus(),
+    ...Array.from({ length: 6 }, (_, i) => contract.poolAccumulated(i) as Promise<bigint>),
+  ]);
+  return {
+    usdtBalance: summary[0] as bigint,
+    reservedForPools: summary[1] as bigint,
+    freeUSDT: summary[2] as bigint,
+    lightBalance: summary[3] as bigint,
+    lightRewardReserve: summary[4] as bigint,
+    freeLight: summary[5] as bigint,
+    poolAccumulated: pools as bigint[],
+  };
 }
 
 export async function getCoreUsdtAddress(provider: BrowserProvider): Promise<string> {

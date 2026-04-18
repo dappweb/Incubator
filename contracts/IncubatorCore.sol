@@ -744,9 +744,120 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return true;
     }
 
+    /// @notice Emitted whenever the owner moves contract-held USDT out.
+    event TreasuryUSDTWithdrawn(address indexed to, uint256 amount, bool emergency);
+    /// @notice Emitted when owner manually disburses an accumulated pool ledger entry.
+    event PoolAccumulatedWithdrawn(uint8 indexed poolType, address indexed to, uint256 amount);
+    /// @notice Emitted when owner rescues LIGHT tokens sitting in the contract.
+    event TreasuryLightWithdrawn(address indexed to, uint256 amount, bool emergency);
+
+    /// @notice Aggregate view of on-chain assets under admin custody.
+    /// @return usdtBalance Raw USDT balance of the contract.
+    /// @return reservedForPools Sum of all `poolAccumulated` entries (self-custodied pool ledger).
+    /// @return freeUSDT Balance not earmarked for any pool ledger (`usdtBalance - reservedForPools`).
+    /// @return lightBalance Raw LIGHT balance of the contract.
+    /// @return lightRewardReserve Portion of LIGHT already committed to daily reward pool.
+    /// @return freeLight LIGHT not earmarked for daily reward pool.
+    function getTreasuryStatus()
+        external
+        view
+        returns (
+            uint256 usdtBalance,
+            uint256 reservedForPools,
+            uint256 freeUSDT,
+            uint256 lightBalance,
+            uint256 lightRewardReserve,
+            uint256 freeLight
+        )
+    {
+        usdtBalance = usdt.balanceOf(address(this));
+        for (uint8 i = 0; i < poolConfigs.length; i++) {
+            reservedForPools += poolAccumulated[i];
+        }
+        freeUSDT = usdtBalance > reservedForPools ? usdtBalance - reservedForPools : 0;
+
+        if (address(lightToken) != address(0)) {
+            lightBalance = lightToken.balanceOf(address(this));
+        }
+        lightRewardReserve = rewardPoolBalance;
+        freeLight = lightBalance > lightRewardReserve ? lightBalance - lightRewardReserve : 0;
+    }
+
+    /// @notice Withdraw USDT that is NOT earmarked for any self-custodied pool ledger.
+    /// Use this for routine withdraws (e.g. sweep incidental deposits).
+    /// Reverts if `amount` would dip into `Σ poolAccumulated`.
     function withdrawUSDT(address to, uint256 amount) external onlyOwner {
         require(to != address(0), "invalid to");
+        require(amount > 0, "invalid amount");
+
+        uint256 reserved;
+        for (uint8 i = 0; i < poolConfigs.length; i++) {
+            reserved += poolAccumulated[i];
+        }
+        uint256 balance = usdt.balanceOf(address(this));
+        require(balance >= reserved, "inconsistent reserve");
+        require(amount <= balance - reserved, "exceeds free balance");
+
         usdt.safeTransfer(to, amount);
+        emit TreasuryUSDTWithdrawn(to, amount, false);
+    }
+
+    /// @notice Manually disburse accumulated pool funds to an arbitrary address.
+    /// Useful to forward a pool balance to a multisig/treasury or to remediate without running
+    /// the full weighted settlement. Decreases `poolAccumulated[poolType]` by `amount`.
+    function withdrawAccumulatedPool(uint8 poolType, address to, uint256 amount) external onlyOwner {
+        require(poolType < poolConfigs.length, "invalid pool");
+        require(to != address(0), "invalid to");
+        require(amount > 0, "invalid amount");
+        require(amount <= poolAccumulated[poolType], "exceeds pool balance");
+
+        poolAccumulated[poolType] -= amount;
+        usdt.safeTransfer(to, amount);
+        emit PoolAccumulatedWithdrawn(poolType, to, amount);
+        emit PoolRewardSettled(poolType, to, amount);
+    }
+
+    /// @notice Emergency escape hatch that ignores the pool-ledger guard.
+    /// Can only be called when the contract is paused, forcing explicit operator intent.
+    function emergencyWithdrawUSDT(address to, uint256 amount) external onlyOwner whenPaused {
+        require(to != address(0), "invalid to");
+        require(amount > 0, "invalid amount");
+        usdt.safeTransfer(to, amount);
+        emit TreasuryUSDTWithdrawn(to, amount, true);
+    }
+
+    /// @notice Withdraw LIGHT that is NOT part of `rewardPoolBalance`.
+    function withdrawLight(address to, uint256 amount) external onlyOwner {
+        require(address(lightToken) != address(0), "light not set");
+        require(to != address(0), "invalid to");
+        require(amount > 0, "invalid amount");
+
+        uint256 balance = lightToken.balanceOf(address(this));
+        require(balance >= rewardPoolBalance, "inconsistent reserve");
+        require(amount <= balance - rewardPoolBalance, "exceeds free light");
+
+        IERC20(address(lightToken)).safeTransfer(to, amount);
+        emit TreasuryLightWithdrawn(to, amount, false);
+    }
+
+    /// @notice Emergency LIGHT withdraw; requires paused state. Can dip into reward reserve.
+    /// If it touches `rewardPoolBalance`, that ledger is reduced accordingly so accounting stays honest.
+    function emergencyWithdrawLight(address to, uint256 amount) external onlyOwner whenPaused {
+        require(address(lightToken) != address(0), "light not set");
+        require(to != address(0), "invalid to");
+        require(amount > 0, "invalid amount");
+
+        uint256 balance = lightToken.balanceOf(address(this));
+        require(amount <= balance, "exceeds balance");
+
+        uint256 free = balance > rewardPoolBalance ? balance - rewardPoolBalance : 0;
+        if (amount > free) {
+            uint256 fromReserve = amount - free;
+            rewardPoolBalance -= fromReserve;
+        }
+
+        IERC20(address(lightToken)).safeTransfer(to, amount);
+        emit TreasuryLightWithdrawn(to, amount, true);
     }
 
     function _settleDailyRewards(address[] calldata participants, bool manual, uint256 lightPriceInUsdt) private {
