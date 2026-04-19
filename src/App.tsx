@@ -38,11 +38,17 @@ import {
     isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
     purchaseMachine,
     type MachineOrder,
+    type OrderRewardLedger,
     type RewardRecord,
     type TeamStats
 } from "./lib/coreContract";
 import { parseContractError } from "./lib/errorParser";
 import { getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
+import {
+    claimLightReward,
+    getLightClaimable,
+    hasLightRewardVault,
+} from "./lib/lightRewardVault";
 import {
     getActiveOrderIds,
     getLastTradePriceByRole,
@@ -2700,11 +2706,11 @@ const App = () => {
             <Card title={t.identity || (lang === "zh" ? "身份资产" : "My Identity Assets")}>
               <div className="stats-grid">
                 <div className="stat-pill">
-                  <span>{t.node || (lang === "zh" ? "节点" : "Nodes")}</span>
+                  <span>{lang === "zh" ? "节点" : "Nodes"}</span>
                   <strong>{identityId && role === 1 ? 1 : 0}</strong>
                 </div>
                 <div className="stat-pill">
-                  <span>{t.superNode || (lang === "zh" ? "超级节点" : "SuperNodes")}</span>
+                  <span>{lang === "zh" ? "超级节点" : "SuperNodes"}</span>
                   <strong>{identityId && role === 2 ? 1 : 0}</strong>
                 </div>
                 <div className="stat-pill">
