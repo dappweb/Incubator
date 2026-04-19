@@ -146,6 +146,7 @@ event SuperNodePurchased(
 VITE_CORE_CONTRACT_ADDRESS=0x...
 VITE_OTC_CONTRACT_ADDRESS=0x...
 VITE_SWAP_POOL_ADDRESS=0x...
+VITE_PRIMARY_SWAP_CONTROLLER_ADDRESS=0x...
 
 # Token 地址（CNC Mainnet）
 VITE_USDT_CONTRACT_ADDRESS=0x...
@@ -289,6 +290,61 @@ export function formatUsdt(value: bigint): string;
 // 优先级：URL 参数 -> 链上 referralOf -> owner 默认 -> 手动输入
 // 并在执行购买前通过 ensureReferrerReady() 做链上最终校验/绑定
 ```
+
+---
+
+## 二之二、Swap 合约接口（PrimarySwapController + SwapPoolManager）
+
+> 用户端 UI 不需要直接调用以下管理面接口；仅 Admin Tab 与运维脚本依赖。
+
+### `PrimarySwapController`
+
+```solidity
+// --- 默认费率（P0）---
+DEFAULT_SUPER_NODE_FEE_BPS = 100;   // 1%
+DEFAULT_NODE_POOL_FEE_BPS  = 200;   // 2%
+DEFAULT_PLATFORM_FEE_BPS   = 200;   // 2%
+
+// --- 平台累计池（P1）---
+function getContractPoolStats() external view returns (uint256 usdt, uint256 ico);
+event ContractPoolAccrued(address indexed token, uint256 amount, uint256 totalAfter);
+
+// --- 自动开闸（P3）---
+function tryAutoEnableSellUsdt() external; // permissionless
+
+// --- 底池注资（P2）---
+address public bottomPoolLpRecipient;
+uint16  public bottomPoolAutoInjectBps;
+function updateBottomPoolConfig(address lp, uint16 bps) external onlyOwner;
+function injectBottomPool(uint256 usdtAmount, uint256 icoAmount, uint256 minU, uint256 minI) external onlyOwner;
+event BottomPoolInjected(address indexed lpTo, uint256 usdtUsed, uint256 icoUsed, uint256 liquidity);
+event BottomPoolConfigUpdated(address lpRecipient, uint16 autoInjectBps);
+```
+
+对应前端 helper：`src/lib/swapContract.ts`
+
+- `getContractPoolStats(provider)`
+- `tryAutoEnableSellUsdt(signer)`
+- `getBottomPoolConfig(provider)` / `updateBottomPoolConfig(signer, lp, bps)` / `injectBottomPool(signer, usdt, ico, minU, minI)`
+
+### `SwapPoolManager`（增量）
+
+```solidity
+// --- LIGHT 实时分配（P3）---
+bool public lightRealtimeDistribute; // 默认 false
+function setLightRealtimeDistribute(bool enabled) external onlyOwner;
+// 内部：_distributeLightFees() 复用于 settleLightFees() 与实时模式
+
+// --- USDT/ICO 池下线（P6）---
+bool public usdtIcoPoolEnabled; // 默认 false
+function setUsdtIcoPoolEnabled(bool enabled) external onlyOwner;
+function migrateUsdtIcoLiquidity(address to) external onlyOwner;
+```
+
+对应前端 helper：
+
+- `getLightRealtimeDistribute` / `setLightRealtimeDistribute`
+- `getUsdtIcoPoolEnabled` / `setUsdtIcoPoolEnabled` / `migrateUsdtIcoLiquidity`
 
 ---
 

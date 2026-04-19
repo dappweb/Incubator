@@ -1,0 +1,23 @@
+[settlement] start at 2026-04-18T00:10:01+00:00
+[settlement] running core pool settlement
+
+> incubator@0.1.0 settle:core:cncMainnet
+> hardhat run scripts/settle-core-pools.ts --network cncMainnet
+
+[dotenv@17.3.1] injecting env (36) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[settle-core] signer: 0x744447d8580EB900b199e852C132F626247a36F7
+[settle-core] chainId: 50716
+[settle-core] core: 0xECD96148D33A8ca8F86cd701d445FB3bbe7592E2
+[settle-core] cycleDuration: 86400 seconds
+[settle-core] daily reward pool balance: 0
+[settle-core] reward pool empty, skip
+[settle-core] node pool balance: 0
+[settle-core] node pool empty, skip
+[settle-core] super-node pool balance: 0
+[settle-core] super-node pool empty, skip
+[settle-core] leaderboard pool balance: 0
+[settle-core] leaderboard pool empty, skip
+[settle-core] audit file: artifacts/settlement-runs/core-settlement-50716-20260418-001004Z.json
+[settlement] done at 2026-04-18T00:10:04+00:00

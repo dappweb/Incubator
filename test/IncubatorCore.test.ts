@@ -355,37 +355,37 @@ describe("IncubatorCore", function () {
 
     await usdt.connect(owner).mint(buyer.address, 2_000_000_000n);
     await usdt.connect(buyer).approve(coreAddr, 2_000_000_000n);
-  await core.connect(owner).initLightRewardConfig(await light.getAddress(), owner.address);
-  await light.connect(owner).mint(owner.address, ethers.parseUnits("2000", 18));
-  await light.connect(owner).approve(coreAddr, ethers.parseUnits("2000", 18));
+    await core.connect(owner).initLightRewardConfig(await light.getAddress(), owner.address);
+    await light.connect(owner).mint(owner.address, ethers.parseUnits("2000", 18));
+    await light.connect(owner).approve(coreAddr, ethers.parseUnits("2000", 18));
 
     await core.connect(buyer).bindReferrer(owner.address);
     await core.connect(buyer).purchaseMachine(1);
 
-  await core.connect(owner).fundRewardPool(ethers.parseUnits("1000", 18));
+    await core.connect(owner).fundRewardPool(ethers.parseUnits("1000", 18));
     const poolBefore = await core.rewardPoolBalance();
-  assert.equal(poolBefore, ethers.parseUnits("1000", 18));
+    assert.equal(poolBefore, ethers.parseUnits("1000", 18));
 
     await core.connect(owner).settleDailyRewardsManual([buyer.address], 1_000_000n);
 
-  const orderProgress = await core.orderRewardLedger(1);
-  const remainingCap = orderProgress.capAmount - orderProgress.staticPaid - orderProgress.dynamicPaid;
-  assert.equal(orderProgress.staticPaid, 5_760_000n);
-  assert.equal(orderProgress.dynamicPaid, 0n);
-  assert.equal(remainingCap, 294_240_000n);
-  assert.equal(orderProgress.exited, false);
+    const orderProgress = await core.orderRewardLedger(1);
+    const remainingCap = orderProgress.capAmount - orderProgress.staticPaid - orderProgress.dynamicPaid;
+    assert.equal(orderProgress.staticPaid, 5_760_000n);
+    assert.equal(orderProgress.dynamicPaid, 0n);
+    assert.equal(remainingCap, 294_240_000n);
+    assert.equal(orderProgress.exited, false);
 
     // 2% release from 1000 USDT => 20 USDT; burn 10.4 USDT, reward 9.6 USDT.
     // With no dynamic denominator, only static 60% (5.76 USDT) is distributed and 3.84 USDT is carried back.
     assert.equal(await core.rewardPoolBalance(), ethers.parseUnits("983.84", 18));
 
-    const canSettleAgainSameDay = await core.connect(owner).settleDailyRewardsIfDue.staticCall([buyer.address]);
+    const canSettleAgainSameDay = await core.connect(owner).settleDailyRewardsIfDue.staticCall([buyer.address], 1_000_000n);
     assert.equal(canSettleAgainSameDay, false);
 
     await ethers.provider.send("evm_increaseTime", [24 * 60 * 60]);
     await ethers.provider.send("evm_mine", []);
 
-    const canSettleNextDay = await core.connect(owner).settleDailyRewardsIfDue.staticCall([buyer.address]);
+    const canSettleNextDay = await core.connect(owner).settleDailyRewardsIfDue.staticCall([buyer.address], 1_000_000n);
     assert.equal(canSettleNextDay, true);
   });
 
@@ -513,13 +513,11 @@ describe("IncubatorCore", function () {
 
     // Set Leaderboard recipient to address(this) by using core contract address as placeholder —
     // we deploy with the core address itself so poolAccumulated receives the leaderboard funds.
-    const factory = await ethers.getContractFactory("IncubatorCore");
-    // Use a temp address first, then update after deployment
     const core: any = await upgrades.deployProxy(
       await getLinkedCoreFactory(),
       [await usdt.getAddress(), owner.address,
         [lp.address, referral.address, superPool.address, nodePool.address, platform.address, owner.address]],
-      { kind: "uups", initializer: "initialize", unsafeAllow: ["constructor", "state-variable-assignment"] },
+      { kind: "uups", initializer: "initialize", unsafeAllow: ["constructor", "state-variable-assignment", "external-library-linking"] },
     );
     await core.waitForDeployment();
     const coreAddr = await core.getAddress();
@@ -623,12 +621,11 @@ describe("IncubatorCore", function () {
     const [owner, alice, bob, white, lp, referral, superPool, nodePool, platform] = await ethers.getSigners();
     const usdt = await deployMockUsdt(owner.address);
 
-    const factory = await ethers.getContractFactory("IncubatorCore");
     const core: any = await upgrades.deployProxy(
-      factory,
+      await getLinkedCoreFactory(),
       [await usdt.getAddress(), owner.address,
         [lp.address, referral.address, superPool.address, nodePool.address, platform.address, owner.address]],
-      { kind: "uups", initializer: "initialize", unsafeAllow: ["constructor", "state-variable-assignment"] },
+      { kind: "uups", initializer: "initialize", unsafeAllow: ["constructor", "state-variable-assignment", "external-library-linking"] },
     );
     await core.waitForDeployment();
     const coreAddr = await core.getAddress();
@@ -695,22 +692,16 @@ describe("IncubatorCore", function () {
     // Settle node pool 60/40 split between alice and bob
     const aliceBefore = await usdt.balanceOf(alice.address);
     const bobBefore = await usdt.balanceOf(bob.address);
-    await core.connect(owner).settleNodeRewards(
-      [alice.address, bob.address],
-      [6000, 4000],
-    );
+    await core.connect(owner).settlePoolRewards(3, [alice.address, bob.address], [6000, 4000]);
     assert.equal(await core.poolAccumulated(3), 0n);
     assert.equal((await usdt.balanceOf(alice.address)) - aliceBefore, 48_000_000n); // 60% of 80
     assert.equal((await usdt.balanceOf(bob.address)) - bobBefore, 32_000_000n);    // 40% of 80
 
     // settleNodeRewards with bad shares must fail even when balance is zero (input validation first)
-    await assert.rejects(
-      core.connect(owner).settleNodeRewards([alice.address], [9999]),
-      /shares must sum to 10000/,
-    );
+    await expectRevert(core.connect(owner).settlePoolRewards(3, [alice.address], [9999]));
 
     // Settle super-node pool entirely to alice
-    await core.connect(owner).settleSuperNodeRewards([alice.address], [10000]);
+    await core.connect(owner).settlePoolRewards(2, [alice.address], [10000]);
     assert.equal(await core.poolAccumulated(2), 0n);
   });
 
@@ -772,7 +763,7 @@ describe("IncubatorCore", function () {
     const orderAfter = await upgraded.machineOrders(1);
     assert.equal(orderAfter.quantity, orderBefore.quantity);
     assert.equal(orderAfter.amountUSDT, orderBefore.amountUSDT);
-    assert.equal(await upgraded.roles(buyer.address), 0n);
+    assert.equal(await upgraded.getUserRole(buyer.address), 0n);
   });
 });
 
@@ -800,6 +791,13 @@ async function readAddressList(contract: any, lengthFn: string, itemFn: string) 
 async function deployMockUsdt(initialOwner: string) {
   const factory = await ethers.getContractFactory("MockUSDT");
   const contract = await factory.deploy(initialOwner);
+  await contract.waitForDeployment();
+  return contract;
+}
+
+async function deployMockToken(name: string, symbol: string, initialOwner: string) {
+  const factory = await ethers.getContractFactory("MockToken");
+  const contract = await factory.deploy(name, symbol, initialOwner);
   await contract.waitForDeployment();
   return contract;
 }

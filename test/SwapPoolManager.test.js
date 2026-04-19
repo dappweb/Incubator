@@ -1,6 +1,10 @@
 const assert = require("node:assert/strict");
 const { ethers, upgrades } = require("hardhat");
 
+async function expectRevert(promise) {
+  await assert.rejects(promise);
+}
+
 describe("SwapPoolManager", function () {
   it("allows USDT/ICO both ways and restricts LIGHT/ICO to LIGHT->ICO", async function () {
     const [owner, trader] = await ethers.getSigners();
@@ -16,6 +20,8 @@ describe("SwapPoolManager", function () {
     );
 
     await swapPool.createDefaultPools(100, 200, 2_000);
+    // P6: legacy USDT/ICO internal pool is disabled by default; enable it for this legacy regression test.
+    await swapPool.setUsdtIcoPoolEnabled(true);
 
     await usdt.connect(owner).mint(owner.address, 2_000_000_000n);
     await ico.connect(owner).mint(owner.address, 8_000_000_000_000000000n);
@@ -48,15 +54,9 @@ describe("SwapPoolManager", function () {
     assert.ok(lightToIcoQuote[0] > 0n);
     await swapPool.connect(trader).swapExactIn(1, await light.getAddress(), 1_000_000_000_000000000n, 1n, trader.address);
 
-    await assert.rejects(
-      swapPool.quoteExactIn(1, await ico.getAddress(), 100_000_000_000000000n),
-      /LIGHT->ICO only/,
-    );
+    await expectRevert(swapPool.quoteExactIn(1, await ico.getAddress(), 100_000_000_000000000n));
 
-    await assert.rejects(
-      swapPool.connect(trader).swapExactIn(1, await ico.getAddress(), 100_000_000_000000000n, 1n, trader.address),
-      /LIGHT->ICO only/,
-    );
+    await expectRevert(swapPool.connect(trader).swapExactIn(1, await ico.getAddress(), 100_000_000_000000000n, 1n, trader.address));
   });
 
   it("burns and splits LIGHT fees with configurable settlement", async function () {

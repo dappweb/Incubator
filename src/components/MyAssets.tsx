@@ -1,14 +1,14 @@
 import { BrowserProvider } from "ethers";
 import React, { useEffect, useState } from "react";
 import {
-  getMachineOrder,
-  getUserMachineOrderIds,
-  getUserRole,
-  type MachineOrder,
+    getMachineOrder,
+    getUserMachineOrderIds,
+    getUserRole,
+    type MachineOrder
 } from "../lib/coreContract";
 import {
-  getActiveOrderIds,
-  getOrder
+    getActiveOrderIds,
+    getOrder
 } from "../lib/otcContract";
 import { Card, KVRow } from "./Common";
 
@@ -47,6 +47,8 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
   });
   const [userRole, setUserRole] = useState(0);
   const [createdAt, setCreatedAt] = useState<string>("Unknown");
+  const [pendingLight, setPendingLight] = useState<bigint>(0n);
+  const [claiming, setClaiming] = useState(false);
 
   const getRoleLabel = (r: number) =>
     r === 0 ? (t.user || "User") : r === 1 ? (t.node || "Node") : t.superNode || "SuperNode";
@@ -110,6 +112,14 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
           ? new Date().toLocaleDateString()
           : "Unknown"
       );
+
+      // LIGHT realtime reward (acc-per-share) pending balance
+      try {
+        const pending = await getPendingLightReward(provider, address);
+        setPendingLight(pending);
+      } catch {
+        setPendingLight(0n);
+      }
     } catch (error) {
       onStatusChange(error instanceof Error ? error.message : "Failed to load assets");
     } finally {
@@ -187,6 +197,46 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
             <span>{t.otcListings || "OTC Listings"}</span>
             <strong>{assetSummary.otcListingCount}</strong>
           </div>
+        </div>
+      </Card>
+
+      {/* LIGHT Realtime Reward */}
+      <Card title={t.lightRewardTitle || "LIGHT 实时奖励 (节点/超级节点)"}>
+        <KVRow
+          label={t.lightPendingLabel || "待领取 LIGHT"}
+          value={`${(Number(pendingLight) / 1e18).toFixed(6)} LIGHT`}
+        />
+        <p className="hint">
+          {t.lightRewardHint ||
+            "LIGHT→ICO 兑换的 3% / 7% 按小区业绩加权实时入账，可随时领取。"}
+        </p>
+        <div className="actions">
+          <button
+            className="primary-btn"
+            disabled={claiming || pendingLight === 0n || !provider || !address}
+            onClick={async () => {
+              if (!provider || !address) return;
+              try {
+                setClaiming(true);
+                onLoadingChange(true);
+                await claimLightReward(provider);
+                onStatusChange(t.lightClaimOk || "LIGHT 奖励已领取");
+                const next = await getPendingLightReward(provider, address);
+                setPendingLight(next);
+              } catch (err) {
+                onStatusChange(err instanceof Error ? err.message : "claim failed");
+              } finally {
+                setClaiming(false);
+                onLoadingChange(false);
+              }
+            }}
+          >
+            {claiming
+              ? t.loading || "Loading..."
+              : pendingLight === 0n
+                ? t.noClaimable || "无可领取"
+                : t.claimLight || "领取 LIGHT"}
+          </button>
         </div>
       </Card>
 

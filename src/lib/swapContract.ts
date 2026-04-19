@@ -36,6 +36,25 @@ const swapAbi = [
   "function createDefaultPools(uint16 feeBpsUsdtIco, uint16 feeBpsLightIco, uint16 maxPriceImpactBps) external",
   "function cycleDuration() view returns (uint256)",
   "function setCycleDuration(uint256 newDuration) external",
+  // P3 + P6 additions
+  "function lightRealtimeDistribute() view returns (bool)",
+  "function setLightRealtimeDistribute(bool enabled) external",
+  "function usdtIcoPoolEnabled() view returns (bool)",
+  "function setUsdtIcoPoolEnabled(bool enabled) external",
+  "function migrateUsdtIcoLiquidity(address to) external returns (uint256 usdtAmount, uint256 icoAmount)",
+  // P7: U-based LIGHT → ICO swap with 60/30/3/7 split
+  "function incubatorCore() view returns (address)",
+  "function lightPriceUsdtE18() view returns (uint256)",
+  "function icoPriceUsdtE18() view returns (uint256)",
+  "function lightBurnSplitBps() view returns (uint16)",
+  "function lightPoolSplitBps() view returns (uint16)",
+  "function lightSuperSplitBps() view returns (uint16)",
+  "function lightNodeSplitBps() view returns (uint16)",
+  "function quoteLightForIcoUsdBased(uint256 lightIn) view returns (uint256 icoOut)",
+  "function swapLightForIcoUsdBased(uint256 lightIn, uint256 minIcoOut, address to) returns (uint256 icoOut)",
+  "function setLightUsdPrice(uint256 lightPriceE18, uint256 icoPriceE18)",
+  "function setLightSplitBps(uint16 burnBps, uint16 poolBps, uint16 superBps, uint16 nodeBps)",
+  "function setIncubatorCore(address core)",
 ];
 
 const pancakeRouterV2Abi = [
@@ -87,6 +106,16 @@ const primarySwapControllerAbi = [
   "function updatePair(address newPair) external",
   "function withdrawTreasury(address token, address to, uint256 amount) external",
   "function canEnableSellUsdt() view returns (bool)",
+  // P1 + P3 additions
+  "function contractUsdtAccumulated() view returns (uint256)",
+  "function contractIcoAccumulated() view returns (uint256)",
+  "function getContractPoolStats() view returns (uint256 usdtTotal, uint256 icoTotal)",
+  "function tryAutoEnableSellUsdt() returns (bool enabled)",
+  // P2 bottom-pool injection
+  "function bottomPoolLpRecipient() view returns (address)",
+  "function bottomPoolAutoInjectBps() view returns (uint16)",
+  "function injectBottomPool(uint256 usdtAmount, uint256 icoAmount, uint256 minUsdt, uint256 minIco) returns (uint256 usedUsdt, uint256 usedIco, uint256 liquidity)",
+  "function updateBottomPoolConfig(address newLpRecipient, uint16 newAutoInjectBps) external",
 ];
 
 export type SwapPool = {
@@ -689,5 +718,105 @@ export async function setSwapCycleDuration(provider: BrowserProvider, durationSe
   const signer = await provider.getSigner();
   const contract = getSwapContract(provider).connect(signer) as any;
   const tx = await contract.setCycleDuration(durationSeconds);
+  return tx.wait();
+}
+
+// ── P1: Contract-pool read-only stats ──
+export async function getContractPoolStats(provider: BrowserProvider): Promise<{ usdtTotal: bigint; icoTotal: bigint }> {
+  if (!hasPrimarySwapController()) {
+    return { usdtTotal: 0n, icoTotal: 0n };
+  }
+  try {
+    const c = getPrimarySwapController(provider) as any;
+    const [usdtTotal, icoTotal] = await c.getContractPoolStats();
+    return { usdtTotal: usdtTotal as bigint, icoTotal: icoTotal as bigint };
+  } catch {
+    return { usdtTotal: 0n, icoTotal: 0n };
+  }
+}
+
+// ── P3: permissionless auto-enable for sell-usdt ──
+export async function tryAutoEnableSellUsdt(provider: BrowserProvider) {
+  const signer = await provider.getSigner();
+  const c = getPrimarySwapController(provider).connect(signer) as any;
+  const tx = await c.tryAutoEnableSellUsdt({ gasLimit: 200_000n });
+  return tx.wait();
+}
+
+// ── P3: realtime LIGHT distribute toggle ──
+export async function getLightRealtimeDistribute(provider: BrowserProvider): Promise<boolean> {
+  try {
+    const c = getSwapContract(provider) as any;
+    return Boolean(await c.lightRealtimeDistribute());
+  } catch {
+    return false;
+  }
+}
+
+export async function setLightRealtimeDistribute(provider: BrowserProvider, enabled: boolean) {
+  const signer = await provider.getSigner();
+  const c = getSwapContract(provider).connect(signer) as any;
+  const tx = await c.setLightRealtimeDistribute(enabled);
+  return tx.wait();
+}
+
+// ── P6: legacy USDT/ICO internal pool enable + drain ──
+export async function getUsdtIcoPoolEnabled(provider: BrowserProvider): Promise<boolean> {
+  try {
+    const c = getSwapContract(provider) as any;
+    return Boolean(await c.usdtIcoPoolEnabled());
+  } catch {
+    return false;
+  }
+}
+
+export async function setUsdtIcoPoolEnabled(provider: BrowserProvider, enabled: boolean) {
+  const signer = await provider.getSigner();
+  const c = getSwapContract(provider).connect(signer) as any;
+  const tx = await c.setUsdtIcoPoolEnabled(enabled);
+  return tx.wait();
+}
+
+export async function migrateUsdtIcoLiquidity(provider: BrowserProvider, to: string) {
+  const signer = await provider.getSigner();
+  const c = getSwapContract(provider).connect(signer) as any;
+  const tx = await c.migrateUsdtIcoLiquidity(to, { gasLimit: 400_000n });
+  return tx.wait();
+}
+
+// ── P2: bottom-pool injection (PrimarySwapController) ──
+export async function getBottomPoolConfig(provider: BrowserProvider): Promise<{ lpRecipient: string; autoInjectBps: number }> {
+  if (!hasPrimarySwapController()) {
+    return { lpRecipient: ZERO_ADDRESS, autoInjectBps: 0 };
+  }
+  try {
+    const c = getPrimarySwapController(provider) as any;
+    const [lpRecipient, autoInjectBps] = await Promise.all([
+      c.bottomPoolLpRecipient(),
+      c.bottomPoolAutoInjectBps(),
+    ]);
+    return { lpRecipient: lpRecipient as string, autoInjectBps: Number(autoInjectBps) };
+  } catch {
+    return { lpRecipient: ZERO_ADDRESS, autoInjectBps: 0 };
+  }
+}
+
+export async function updateBottomPoolConfig(provider: BrowserProvider, lpRecipient: string, autoInjectBps: number) {
+  const signer = await provider.getSigner();
+  const c = getPrimarySwapController(provider).connect(signer) as any;
+  const tx = await c.updateBottomPoolConfig(lpRecipient, autoInjectBps);
+  return tx.wait();
+}
+
+export async function injectBottomPool(
+  provider: BrowserProvider,
+  usdtAmount: bigint,
+  icoAmount: bigint,
+  minUsdt: bigint,
+  minIco: bigint,
+) {
+  const signer = await provider.getSigner();
+  const c = getPrimarySwapController(provider).connect(signer) as any;
+  const tx = await c.injectBottomPool(usdtAmount, icoAmount, minUsdt, minIco, { gasLimit: 800_000n });
   return tx.wait();
 }

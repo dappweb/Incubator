@@ -98,6 +98,21 @@ const coreAbi = [
   "function cycleDuration() view returns (uint256)",
   "function currentDay() view returns (uint256)",
   "function setCycleDuration(uint256 newDuration) external",
+  // LIGHT realtime reward (acc-per-share) — P7
+  "function pendingLightReward(address user) view returns (uint256)",
+  "function claimLightReward() returns (uint256)",
+  "function lightClaimable(address user) view returns (uint256)",
+  "function accLightPerWeightSuper() view returns (uint256)",
+  "function accLightPerWeightNode() view returns (uint256)",
+  "function totalWeightSuper() view returns (uint256)",
+  "function totalWeightNode() view returns (uint256)",
+  "function pendingSuperLight() view returns (uint256)",
+  "function pendingNodeLight() view returns (uint256)",
+  "function lightRewardsBootstrapped() view returns (bool)",
+  "function bootstrapLightRewards() external",
+  "event LightRewardAccrued(uint256 superAmount, uint256 nodeAmount, uint256 accSuperAfter, uint256 accNodeAfter, uint256 totalWeightSuper, uint256 totalWeightNode)",
+  "event LightRewardClaimed(address indexed user, uint256 amount)",
+  "event LightRewardPending(uint256 superPending, uint256 nodePending)",
 ];
 
 export type CorePoolConfig = {
@@ -118,7 +133,7 @@ const erc20BalanceAbi = [
 ];
 
 /**
- * 读取 SuperNode池(2)、Node池(3)、Platform池(4，即USDT契约池)、Leaderboard池(5，即FOMO奖励) 的展示余额。
+ * 读取 SuperNode池(2)、Node池(3)、Leaderboard池(5)、Contract池(6) 的展示余额。
  *
  * 展示口径：优先读取每个池子 recipient 的 USDT 余额。
  * 若 recipient 为 Core 合约自身，则退回读取 `poolAccumulated(poolType)`，避免多个池子共享同一地址时无法区分池子额度。
@@ -126,21 +141,25 @@ const erc20BalanceAbi = [
 export async function getPoolAccumulatedBalances(provider: BrowserProvider): Promise<{
   superNodePool: bigint;
   nodePool: bigint;
-  platformPool: bigint;
   leaderboardPool: bigint;
+  contractPool: bigint;
 }> {
   const contract = getCoreContract(provider);
 
-  const poolTypes = [2, 3, 4, 5] as const;
+  const poolTypes = [2, 3, 5, 6] as const;
   const usdtAddress = await contract.usdt() as string;
   const usdtContract = new Contract(usdtAddress, erc20BalanceAbi, provider);
 
-  const poolConfigs = await Promise.all(
+  const poolConfigs = (await Promise.all(
     poolTypes.map(async (poolType) => {
-      const cfg = await contract.getPoolConfig(poolType);
-      return { poolType, recipient: String(cfg.recipient).toLowerCase() };
+      try {
+        const cfg = await contract.getPoolConfig(poolType);
+        return { poolType, recipient: String(cfg.recipient).toLowerCase() };
+      } catch {
+        return null;
+      }
     }),
-  );
+  )).filter((item): item is { poolType: (typeof poolTypes)[number]; recipient: string } => item !== null);
 
   const coreAddress = CORE_CONTRACT_ADDRESS.toLowerCase();
   const uniqueRecipients = Array.from(new Set(poolConfigs.map((item) => item.recipient)));
@@ -160,7 +179,11 @@ export async function getPoolAccumulatedBalances(provider: BrowserProvider): Pro
   const displayByPoolType = new Map<number, bigint>();
   for (const { poolType, recipient } of poolConfigs) {
     if (recipient === coreAddress) {
-      displayByPoolType.set(poolType, await contract.poolAccumulated(poolType) as bigint);
+      try {
+        displayByPoolType.set(poolType, await contract.poolAccumulated(poolType) as bigint);
+      } catch {
+        displayByPoolType.set(poolType, 0n);
+      }
       continue;
     }
     displayByPoolType.set(poolType, recipientBalanceMap.get(recipient) ?? 0n);
@@ -168,10 +191,10 @@ export async function getPoolAccumulatedBalances(provider: BrowserProvider): Pro
 
   const superNodePool = displayByPoolType.get(2) ?? 0n;
   const nodePool = displayByPoolType.get(3) ?? 0n;
-  const platformPool = displayByPoolType.get(4) ?? 0n;
   const leaderboardPool = displayByPoolType.get(5) ?? 0n;
+  const contractPool = displayByPoolType.get(6) ?? 0n;
 
-  return { superNodePool, nodePool, platformPool, leaderboardPool };
+  return { superNodePool, nodePool, leaderboardPool, contractPool };
 }
 
 export async function getMachineUnitPrice(provider: BrowserProvider): Promise<bigint> {
@@ -339,6 +362,22 @@ export async function buySuperNode(provider: BrowserProvider, signer?: AbstractS
   if (!signer) signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.buySuperNode({ gasLimit: 1_500_000n });
+  return tx.wait();
+}
+
+export async function getPendingLightReward(provider: BrowserProvider, user: string): Promise<bigint> {
+  const contract = getCoreContract(provider);
+  try {
+    return (await contract.pendingLightReward(user)) as bigint;
+  } catch {
+    return 0n;
+  }
+}
+
+export async function claimLightReward(provider: BrowserProvider, signer?: AbstractSigner) {
+  if (!signer) signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.claimLightReward({ gasLimit: 400_000n });
   return tx.wait();
 }
 
@@ -674,6 +713,7 @@ export async function settlePoolRewards(provider: BrowserProvider, poolType: num
   return tx.wait();
 }
 
+
 export async function settleNodePoolOnChain(provider: BrowserProvider) {
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
@@ -914,10 +954,16 @@ export interface CoreTreasuryStatus {
 
 export async function getCoreTreasuryStatus(provider: BrowserProvider): Promise<CoreTreasuryStatus> {
   const contract = getCoreContract(provider) as any;
-  const [lightRewardReserve, ...pools] = await Promise.all([
-    contract.rewardPoolBalance() as Promise<bigint>,
-    ...Array.from({ length: 6 }, (_, i) => contract.poolAccumulated(i) as Promise<bigint>),
-  ]);
+  const lightRewardReserve = await contract.rewardPoolBalance() as bigint;
+  const pools = await Promise.all(
+    Array.from({ length: 7 }, async (_, i) => {
+      try {
+        return await (contract.poolAccumulated(i) as Promise<bigint>);
+      } catch {
+        return 0n;
+      }
+    }),
+  );
   const reservedForPools = (pools as bigint[]).reduce((s, v) => s + v, 0n);
   return {
     usdtBalance: 0n,

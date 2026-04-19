@@ -1,0 +1,25 @@
+
+> incubator@0.1.0 upgrade:cncMainnet
+> hardhat run scripts/upgrade-contracts.ts --network cncMainnet
+
+[dotenv@17.3.1] injecting env (36) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+Starting contract upgrade...
+Upgrading with account: 0x744447d8580EB900b199e852C132F626247a36F7
+
+1. Upgrading IncubatorCore...
+Warning: Potentially unsafe deployment of contracts/IncubatorCore.sol:IncubatorCore
+
+    You are using the `unsafeAllow.constructor` flag.
+
+❌ Upgrade failed: ProviderError: max code size exceeded
+    at HttpProvider.request (/home/ubuntu/Incubator/node_modules/hardhat/src/internal/core/providers/http.ts:116:21)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async HardhatEthersProvider.estimateGas (/home/ubuntu/Incubator/node_modules/@nomicfoundation/hardhat-ethers/src/internal/hardhat-ethers-provider.ts:246:27)
+    at async /home/ubuntu/Incubator/node_modules/@nomicfoundation/hardhat-ethers/src/signers.ts:339:35
+    at async Promise.all (index 0)
+    at async HardhatEthersSigner._sendUncheckedTransaction (/home/ubuntu/Incubator/node_modules/@nomicfoundation/hardhat-ethers/src/signers.ts:360:7)
+    at async HardhatEthersSigner.sendTransaction (/home/ubuntu/Incubator/node_modules/@nomicfoundation/hardhat-ethers/src/signers.ts:185:18)
+    at async ContractFactory.deploy (/home/ubuntu/Incubator/node_modules/ethers/src.ts/contract/factory.ts:111:24)
+    at async ethersDeploy (/home/ubuntu/Incubator/node_modules/@openzeppelin/hardhat-upgrades/src/utils/deploy.ts:36:28)
+    at async deploy (/home/ubuntu/Incubator/node_modules/@openzeppelin/hardhat-upgrades/src/utils/deploy.ts:28:12)

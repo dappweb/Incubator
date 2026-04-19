@@ -242,8 +242,8 @@ const App = () => {
     poolLight: lang === "zh" ? "Light算力合约池" : "Light Computing Pool",
     poolSuperNode: lang === "zh" ? "超级节点奖励" : "Super Node Rewards",
     poolNode: lang === "zh" ? "节点奖励" : "Node Rewards",
-    poolPlatform: lang === "zh" ? "USDT契约池" : "USDT Contract Pool",
     poolLeaderboard: lang === "zh" ? "FOMO奖励" : "FOMO Rewards",
+    poolContract: lang === "zh" ? "契约池" : "Contract Pool",
     myWallet: lang === "zh" ? "我的钱包" : "My Wallet",
     buyNodeNow: lang === "zh" ? "抢购节点" : "Buy Node",
     addTokenTitle: lang === "zh" ? "复制代币地址" : "Copy Token Addresses",
@@ -598,8 +598,8 @@ const App = () => {
   const [lightPoolReserve, setLightPoolReserve] = useState<{ light: bigint; ico: bigint }>({ light: 0n, ico: 0n });
   const [superNodePoolBalance, setSuperNodePoolBalance] = useState<bigint>(0n);
   const [nodePoolBalance, setNodePoolBalance] = useState<bigint>(0n);
-  const [platformPoolBalance, setPlatformPoolBalance] = useState<bigint>(0n);
   const [leaderboardPoolBalance, setLeaderboardPoolBalance] = useState<bigint>(0n);
+  const [contractPoolBalance, setContractPoolBalance] = useState<bigint>(0n);
   const [machineOrderCount, setMachineOrderCount] = useState(0);
   const [orders, setOrders] = useState<MachineOrder[]>([]);
   const [orderLedgers, setOrderLedgers] = useState<Map<string, OrderRewardLedger>>(new Map());
@@ -756,8 +756,8 @@ const App = () => {
       }
       setSuperNodePoolBalance(accBalances.superNodePool);
       setNodePoolBalance(accBalances.nodePool);
-      setPlatformPoolBalance(accBalances.platformPool);
       setLeaderboardPoolBalance(accBalances.leaderboardPool);
+      setContractPoolBalance(accBalances.contractPool);
     } catch (e) {
       console.error("Failed to fetch public pool data", e);
     }
@@ -1233,8 +1233,8 @@ const App = () => {
       }
       setSuperNodePoolBalance(accBalances.superNodePool);
       setNodePoolBalance(accBalances.nodePool);
-      setPlatformPoolBalance(accBalances.platformPool);
       setLeaderboardPoolBalance(accBalances.leaderboardPool);
+      setContractPoolBalance(accBalances.contractPool);
     } catch (e) {
       console.error("Failed to fetch pool panel data", e);
     }
@@ -1969,7 +1969,7 @@ const App = () => {
             >
               {firstConnectGuideRunning ? t.firstGuideRunning : t.firstGuideRun}
             </button>
-            <button className="ghost-btn" type="button" onClick={markFirstConnectGuideDone} disabled={firstConnectGuideRunning}>
+            <button className="ghost-btn" type="button" onClick={markFirstConnectGuideDone}>
               {t.firstGuideLater}
             </button>
           </div>
@@ -2091,12 +2091,12 @@ const App = () => {
                 <p className="pool-panel-value">{fmtUsdtCompact(nodePoolBalance)} USDT</p>
               </div>
               <div className="pool-panel-cell">
-                <p className="pool-panel-label">{t.poolPlatform}</p>
-                <p className="pool-panel-value">{fmtUsdtCompact(platformPoolBalance)} USDT</p>
-              </div>
-              <div className="pool-panel-cell">
                 <p className="pool-panel-label">{t.poolLeaderboard}</p>
                 <p className="pool-panel-value">{fmtUsdtCompact(leaderboardPoolBalance)} USDT</p>
+              </div>
+              <div className="pool-panel-cell">
+                <p className="pool-panel-label">{t.poolContract}</p>
+                <p className="pool-panel-value">{fmtUsdtCompact(contractPoolBalance)} USDT</p>
               </div>
             </div>
             <div className="actions" style={{ marginTop: "1rem" }}>

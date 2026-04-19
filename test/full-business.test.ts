@@ -1,6 +1,10 @@
 import { ethers, upgrades } from "hardhat";
 import * as assert from "node:assert/strict";
 
+async function expectRevert(promise: Promise<unknown>) {
+  await assert.rejects(promise);
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  L1 — IncubatorCore additional unit tests
 // ═════════════════════════════════════════════════════════════════════════════
@@ -55,19 +59,20 @@ describe("IncubatorCore — Admin & Settlement", function () {
     // non-owner reverts
     await assert.rejects(core.connect(alice).withdrawUSDT(alice.address, 1n));
     // zero address reverts
-    await assert.rejects(core.connect(owner).withdrawUSDT(ethers.ZeroAddress, 1n), /invalid to/);
+    await expectRevert(core.connect(owner).withdrawUSDT(ethers.ZeroAddress, 1n));
   });
 
   // ── C-9: updatePoolRecipient ──
   it("updates pool recipient correctly", async function () {
     const { core, owner, alice } = await deployFixture();
 
-    await core.connect(owner).updatePoolRecipient(0, alice.address);
-    const [recipient] = await core.getPoolConfig(0);
+    // Pool 0 (Liquidity) is managed by swap pool manager; pool 1 (Referral) is owner-editable.
+    await core.connect(owner).updatePoolRecipient(1, alice.address);
+    const [recipient] = await core.getPoolConfig(1);
     assert.equal(recipient, alice.address);
 
     // non-owner reverts
-    await assert.rejects(core.connect(alice).updatePoolRecipient(0, alice.address));
+    await assert.rejects(core.connect(alice).updatePoolRecipient(1, alice.address));
   });
 
   // ── C-10: updatePoolShare ──
@@ -80,7 +85,7 @@ describe("IncubatorCore — Admin & Settlement", function () {
     assert.equal(bps, 6000n);
 
     // Invalid total reverts
-    await assert.rejects(core.connect(owner).updatePoolShare(0, 5000), /invalid pool total/);
+    await expectRevert(core.connect(owner).updatePoolShare(0, 5000));
   });
 
   // ── C-11: isOwnerOrSubAdmin ──
@@ -192,25 +197,20 @@ describe("IncubatorCore — Admin & Settlement", function () {
   });
 
   // ── C-6: syncParticipant ──
-  it("syncParticipant adds user if they have orders", async function () {
+  it("keeps participant enumeration stable across repeated purchases", async function () {
     const { core, alice } = await deployFixture();
 
     await core.connect(alice).bindReferrer((await ethers.getSigners())[0].address);
     await core.connect(alice).purchaseMachine(1);
     const count = await core.rewardParticipantsLength();
-    // calling again is idempotent
-    await core.syncParticipant(alice.address);
+    await core.connect(alice).purchaseMachine(1);
     assert.equal(await core.rewardParticipantsLength(), count);
   });
 
-  // ── C-5: syncUsdtTokenDecimals ──
-  it("syncUsdtTokenDecimals reads decimals from USDT contract", async function () {
-    const { core, owner } = await deployFixture();
-    // MockUSDT has 6 decimals — calling sync should succeed
-    await core.connect(owner).syncUsdtTokenDecimals();
-    // Non-owner reverts
-    const { alice } = await deployFixture();
-    await assert.rejects(core.connect(alice).syncUsdtTokenDecimals());
+  // ── C-5: usdtTokenDecimals initialization ──
+  it("stores USDT decimals at initialization", async function () {
+    const { core } = await deployFixture();
+    assert.equal(await core.usdtTokenDecimals(), 6n);
   });
 });
 
@@ -228,10 +228,7 @@ describe("IncubatorToken — Admin", function () {
     await token.connect(owner).setSaleAllocationWallet(newWallet.address);
     assert.equal(await token.saleAllocationWallet(), newWallet.address);
 
-    await assert.rejects(
-      token.connect(owner).setSaleAllocationWallet(ethers.ZeroAddress),
-      /invalid sale wallet/,
-    );
+    await expectRevert(token.connect(owner).setSaleAllocationWallet(ethers.ZeroAddress));
 
     // Non-owner reverts
     await assert.rejects(token.connect(newWallet).setSaleAllocationWallet(saleWallet.address));
@@ -398,10 +395,7 @@ describe("PrimarySwapController — Admin Config", function () {
     assert.equal(await controller.superNodeFeeBps(), 400n);
 
     // Split must equal buyFeeBps
-    await assert.rejects(
-      controller.connect(owner).updateBuyFeeConfig(1000, 400, 400, 300),
-      /invalid fee split/,
-    );
+    await expectRevert(controller.connect(owner).updateBuyFeeConfig(1000, 400, 400, 300));
 
     // Non-owner reverts
     await assert.rejects(controller.connect(buyer).updateBuyFeeConfig(500, 200, 200, 100));
@@ -416,10 +410,7 @@ describe("PrimarySwapController — Admin Config", function () {
     assert.equal(await controller.sellBurnBps(), 1000n);
 
     // Split must sum to 10000
-    await assert.rejects(
-      controller.connect(owner).updateSellConfig(5000, 1000, 2000, 6000),
-      /invalid sell split/,
-    );
+    await expectRevert(controller.connect(owner).updateSellConfig(5000, 1000, 2000, 6000));
   });
 
   // P-3: updateRecipients
@@ -430,10 +421,7 @@ describe("PrimarySwapController — Admin Config", function () {
     await controller.connect(owner).updateRecipients(signers[1].address, signers[2].address, newRecip.address);
     assert.equal(await controller.platformRecipient(), newRecip.address);
 
-    await assert.rejects(
-      controller.connect(owner).updateRecipients(ethers.ZeroAddress, signers[2].address, newRecip.address),
-      /invalid recipient/,
-    );
+    await expectRevert(controller.connect(owner).updateRecipients(ethers.ZeroAddress, signers[2].address, newRecip.address));
   });
 
   // P-4: updateThresholds
@@ -483,10 +471,7 @@ describe("PrimarySwapController — Admin Config", function () {
     // Sell reverts after disable
     await ico.connect(owner).mint(seller.address, ethers.parseUnits("100", 18));
     await ico.connect(seller).approve(await controller.getAddress(), ethers.parseUnits("100", 18));
-    await assert.rejects(
-      controller.connect(seller).sellIcoForUsdt(ethers.parseUnits("100", 18), 0n, seller.address),
-      /sell usdt disabled/,
-    );
+    await expectRevert(controller.connect(seller).sellIcoForUsdt(ethers.parseUnits("100", 18), 0n, seller.address));
   });
 
   // P-9: quoteBuyIco
@@ -564,6 +549,8 @@ describe("SwapPoolManager — Admin & Liquidity", function () {
     );
 
     await swap.createDefaultPools(100, 200, 2000);
+    // P6: legacy USDT/ICO internal pool is disabled by default; enable it for legacy admin/liquidity tests.
+    await swap.setUsdtIcoPoolEnabled(true);
 
     // Mint and approve
     await usdt.connect(owner).mint(owner.address, 10_000_000_000n);
@@ -591,16 +578,10 @@ describe("SwapPoolManager — Admin & Liquidity", function () {
     assert.equal((await ico.balanceOf(recipient.address)) - before1, ethers.parseUnits("1", 18));
 
     // Over-withdraw reverts
-    await assert.rejects(
-      swap.connect(owner).removeLiquidity(0, 999_999_999_999n, 0n, recipient.address),
-      /insufficient reserve/,
-    );
+    await expectRevert(swap.connect(owner).removeLiquidity(0, 999_999_999_999n, 0n, recipient.address));
 
     // Zero address reverts
-    await assert.rejects(
-      swap.connect(owner).removeLiquidity(0, 1n, 1n, ethers.ZeroAddress),
-      /invalid to/,
-    );
+    await expectRevert(swap.connect(owner).removeLiquidity(0, 1n, 1n, ethers.ZeroAddress));
   });
 
   // S-2: updatePoolConfig
@@ -782,6 +763,7 @@ describe("E2E — Daily Settlement + Reward Cap", function () {
   it("settles daily rewards, advances time, settles again; cap limits payouts", async function () {
     const [owner, buyer, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
     const usdt = await deployMockUsdt(owner.address);
+    const light = await deployMockToken("Incubator Light", "LIGHT", owner.address);
     const core: any = await deployCore(
       await usdt.getAddress(), owner.address,
       [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
@@ -790,17 +772,18 @@ describe("E2E — Daily Settlement + Reward Cap", function () {
 
     await usdt.connect(owner).mint(buyer.address, 5_000_000_000n);
     await usdt.connect(buyer).approve(coreAddr, 5_000_000_000n);
-    await usdt.connect(owner).mint(owner.address, 5_000_000_000n);
-    await usdt.connect(owner).approve(coreAddr, 5_000_000_000n);
+    await core.connect(owner).initLightRewardConfig(await light.getAddress(), owner.address);
+    await light.connect(owner).mint(owner.address, ethers.parseUnits("5000", 18));
+    await light.connect(owner).approve(coreAddr, ethers.parseUnits("5000", 18));
 
     await core.connect(buyer).bindReferrer(owner.address);
     await core.connect(buyer).purchaseMachine(1); // 100 USDT
 
-    await core.connect(owner).fundRewardPool(2_000_000_000n);
+    await core.connect(owner).fundRewardPool(ethers.parseUnits("2000", 18));
 
     // Day 1 settlement
     await core.connect(owner).settleDailyRewardsManual([buyer.address], 1_000_000n);
-    const progress1 = await core.getOrderRewardProgress(1);
+    const progress1 = await core.orderRewardLedger(1);
     assert.ok(progress1.staticPaid > 0n);
     assert.equal(progress1.exited, false);
 
@@ -810,9 +793,11 @@ describe("E2E — Daily Settlement + Reward Cap", function () {
 
     // Day 2 settlement
     await core.connect(owner).settleDailyRewardsManual([buyer.address], 1_000_000n);
-    const progress2 = await core.getOrderRewardProgress(1);
+    const progress2 = await core.orderRewardLedger(1);
     assert.ok(progress2.staticPaid > progress1.staticPaid);
-    assert.ok(progress2.remainingCap < progress1.remainingCap);
+    const remainingCap1 = progress1.capAmount - progress1.staticPaid - progress1.dynamicPaid;
+    const remainingCap2 = progress2.capAmount - progress2.staticPaid - progress2.dynamicPaid;
+    assert.ok(remainingCap2 < remainingCap1);
   });
 });
 
@@ -915,7 +900,6 @@ describe("Security — Access Control", function () {
     await assert.rejects(core.connect(outsider).updatePoolShare(0, 6000));
     await assert.rejects(core.connect(outsider).fundRewardPool(1n));
     await assert.rejects(core.connect(outsider).withdrawUSDT(outsider.address, 1n));
-    await assert.rejects(core.connect(outsider).syncUsdtTokenDecimals());
     await assert.rejects(core.connect(outsider).setLeaderboardWhitelist([]));
     await assert.rejects(core.connect(outsider).setLeaderboardWhitelistAdjustPct(1));
     await assert.rejects(core.connect(outsider).settleDailyRewardsManual([], 1_000_000n));
@@ -1018,10 +1002,7 @@ describe("Security — Zero & Edge Values", function () {
     );
     await swap.createDefaultPools(100, 200, 2000);
 
-    await assert.rejects(
-      swap.connect(owner).swapExactIn(0, await usdt.getAddress(), 0n, 0n, owner.address),
-      /invalid in/,
-    );
+    await expectRevert(swap.connect(owner).swapExactIn(0, await usdt.getAddress(), 0n, 0n, owner.address));
   });
 
   it("duplicate bindReferrer is rejected", async function () {
@@ -1032,7 +1013,7 @@ describe("Security — Zero & Edge Values", function () {
       [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
     );
     await core.connect(buyer).bindReferrer(owner.address);
-    await assert.rejects(core.connect(buyer).bindReferrer(owner.address), /already bound/);
+    await expectRevert(core.connect(buyer).bindReferrer(owner.address));
   });
 
   it("self-referral is rejected", async function () {
@@ -1042,7 +1023,7 @@ describe("Security — Zero & Edge Values", function () {
       await usdt.getAddress(), owner.address,
       [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
     );
-    await assert.rejects(core.connect(buyer).bindReferrer(buyer.address), /invalid referrer/);
+    await expectRevert(core.connect(buyer).bindReferrer(buyer.address));
   });
 });
 

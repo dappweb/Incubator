@@ -1,0 +1,25 @@
+[settlement] start at 2026-04-18T11:00:01+00:00
+[settlement] running LIGHT settlement
+
+> incubator@0.1.0 settle:light:cncMainnet
+> hardhat run scripts/settle-light.ts --network cncMainnet
+
+[dotenv@17.3.1] injecting env (36) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+Warning: Contract code size is 27812 bytes and exceeds 24576 bytes (a limit introduced in Spurious Dragon). This contract may not be deployable on Mainnet. Consider enabling the optimizer (with a low "runs" value!), turning off revert strings, or using libraries.
+  --> contracts/IncubatorCore.sol:20:1:
+   |
+20 | contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
+   | ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Compiled 35 Solidity files successfully (evm target: paris).
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[settle-light] signer: 0x744447d8580EB900b199e852C132F626247a36F7
+[settle-light] swap: 0xc732FB1ee86A4B29D2d3E4b4d4c2492D01131f81
+[settle-light] light: 0xe426aA3fe3F7eDA4D89b79c8011a1259eB2cCf92
+[settle-light] pairId: 1
+[settle-light] pending light fee: 0
+[settle-light] last settled day: 0
+[settle-light] no pending fee, skip
+[settlement] done at 2026-04-18T11:00:22+00:00

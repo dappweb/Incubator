@@ -2,93 +2,110 @@ import { BrowserProvider, formatUnits, isAddress, parseUnits } from "ethers";
 import React, { useEffect, useMemo, useState } from "react";
 import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, JSONBIN_MASTER_KEY, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, PRIMARY_SWAP_CONTROLLER_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
 import {
-  createEmptyAnnouncement,
-  fetchPublishedAnnouncements,
-  publishAnnouncementsToJsonBin,
-  type Announcement,
+    createEmptyAnnouncement,
+    fetchPublishedAnnouncements,
+    publishAnnouncementsToJsonBin,
+    type Announcement,
 } from "../lib/announcements";
-import type { CorePoolConfig } from "../lib/coreContract";
+import type { CorePoolConfig, CoreTreasuryStatus } from "../lib/coreContract";
 import {
-  fundRewardPool,
-  getContractOwner,
-  getCorePoolConfig,
-  getCoreUsdtAddress,
-  getCurrentDay,
-  getCycleDuration,
-  getIdentityMarket,
-  getLeaderboardWhitelist,
-  getLeaderboardWhitelistAdjustPct,
-  getMachineUnitPrice,
-  getNodePrice,
-  getRewardConfig,
-  getRewardPoolBalance,
-  getSubAdmins,
-  getSuperNodePrice,
-  isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
-  isCorePaused,
-  pauseCore,
-  setCoreManager,
-  setCoreSubAdmin,
-  setCoreUsdtAddress,
-  setCycleDuration,
-  setIdentityMarket,
-  setLeaderboardWhitelist,
-  setLeaderboardWhitelistAdjustPct,
-  settleDailyRewardsManual,
-  settleLeaderboard,
-  settlePoolRewards,
-  transferCoreOwnership,
-  unpauseCore,
-  updateCoreNodePrice,
-  updateCorePoolRecipient,
-  updateCorePoolShare,
-  updateCoreSuperNodePrice,
-  updateMachinePrice,
-  updateRewardConfig,
-  withdrawCoreUSDT
+    emergencyWithdrawCoreLight,
+    emergencyWithdrawCoreUSDT,
+    fundRewardPool,
+    getContractOwner,
+    getCorePoolConfig,
+    getCoreTreasuryStatus,
+    getCoreUsdtAddress,
+    getCurrentDay,
+    getCycleDuration,
+    getIdentityMarket,
+    getLeaderboardWhitelist,
+    getLeaderboardWhitelistAdjustPct,
+    getMachineUnitPrice,
+    getNodePrice,
+    getRewardConfig,
+    getRewardPoolBalance,
+    getSubAdmins,
+    getSuperNodePrice,
+    isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
+    isCorePaused,
+    pauseCore,
+    setCoreManager,
+    setCoreSubAdmin,
+    setCoreUsdtAddress,
+    setCycleDuration,
+    setIdentityMarket,
+    setLeaderboardWhitelist,
+    setLeaderboardWhitelistAdjustPct,
+    setRewardWeight,
+    settleDailyRewardsManual,
+    settleLeaderboard,
+    settlePoolRewards,
+    transferCoreOwnership,
+    unpauseCore,
+    updateCoreNodePrice,
+    updateCorePoolRecipient,
+    updateCorePoolShare,
+    updateCoreSuperNodePrice,
+    updateMachinePrice,
+    updateRewardConfig,
+    withdrawCoreAccumulatedPool,
+    withdrawCoreLight,
+    withdrawCoreUSDT
 } from "../lib/coreContract";
 import { parseContractError } from "../lib/errorParser";
 import { cleanupLowerOrders, getOtcFeeConfig, getOtcUsdtAddress, setOtcUsdtAddress, updateOtcFeeConfig } from "../lib/otcContract";
 import {
-  addSwapLiquidity,
-  createDefaultPools,
-  distributeSwapFees,
-  forceSetSellEnabled,
-  getLightFeeConfig,
-  getPancakeV2PrimaryReserves,
-  getPrimarySwapConfig,
-  getPrimaryUsdtAddress,
-  getSwapCycleDuration,
-  getSwapFeeVault,
-  getSwapPool,
-  getUsdtAddress,
-  isSwapPaused,
-  pauseSwap,
-  removeSwapLiquidity,
-  reportIcoHolderCount,
-  setPairTokens as setPairTokensOnChain,
-  setPrimaryUsdtAddress,
-  setUsdtAddress as setUsdtAddressOnChain,
-  settleLightFees,
-  unpauseSwap,
-  updatePrimaryBuyFeeConfig,
-  updatePrimaryPair,
-  updatePrimaryRecipients,
-  updatePrimarySellConfig,
-  updatePrimaryThresholds,
-  updateSwapLightFeeConfig,
-  updateSwapPoolConfig,
-  withdrawPrimaryTreasury,
-  type LightFeeConfig,
-  type PrimarySwapConfig,
-  type SwapPool
+    addSwapLiquidity,
+    createDefaultPools,
+    distributeSwapFees,
+    forceSetSellEnabled,
+    getBottomPoolConfig,
+    getContractPoolStats,
+    getLightFeeConfig,
+    getLightRealtimeDistribute,
+    getPancakeV2PrimaryReserves,
+    getPrimarySwapConfig,
+    getPrimaryUsdtAddress,
+    getSwapCycleDuration,
+    getSwapFeeVault,
+    getSwapPool,
+    getUsdtAddress,
+    getUsdtIcoPoolEnabled,
+    injectBottomPool,
+    isSwapPaused,
+    migrateUsdtIcoLiquidity,
+    pauseSwap,
+    removeSwapLiquidity,
+    reportIcoHolderCount,
+    setLightRealtimeDistribute,
+    setPairTokens as setPairTokensOnChain,
+    setPrimaryUsdtAddress,
+    setSwapCycleDuration as setSwapCycleDurationOnChain,
+    setUsdtAddress as setUsdtAddressOnChain,
+    setUsdtIcoPoolEnabled,
+    settleLightFees,
+    tryAutoEnableSellUsdt,
+    unpauseSwap,
+    updateBottomPoolConfig,
+    updatePrimaryBuyFeeConfig,
+    updatePrimaryPair,
+    updatePrimaryRecipients,
+    updatePrimarySellConfig,
+    updatePrimaryThresholds,
+    updateSwapLightFeeConfig,
+    updateSwapPoolConfig,
+    withdrawPrimaryTreasury,
+    type LightFeeConfig,
+    type PrimarySwapConfig,
+    type SwapPool
 } from "../lib/swapContract";
 import {
-  burnUnsold,
-  getIcoTokenInfo,
-  mintIcoToken,
-  setBurnExecutor,
-  setSaleAllocationWallet,
+    burnUnsold,
+    getIcoTokenInfo,
+    mintIcoToken,
+    setBurnExecutor,
+    setSaleAllocationWallet,
 } from "../lib/tokenContract";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
 import AdminSettlementPanel from "./AdminSettlementPanel";
@@ -328,6 +345,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       { name: "每日结算参与者地址", business: biz("指定本轮参与日结的地址集合。", "Address set for daily settlement."), example: biz("示例：输入 A,B,C，仅对三者执行本轮日结。", "Example: settle only A/B/C this cycle.") },
       { name: "排行榜 Day ID", business: biz("指定要结算的榜单日编号。", "Day id to settle leaderboard."), example: biz("示例：输入 42，结算第 42 天榜单。", "Example: day 42 leaderboard.") },
       { name: "节点/超级节点接收地址与份额", business: biz("手动分配池余额到指定地址。", "Manual split of pool to recipients."), example: biz("示例：两地址份额 7000,3000 即 7:3 分配。", "Example: 7000/3000 split.") },
+      { name: "平台池接收地址与份额", business: biz("手动填写平台池分账地址与份额（总和=10000）并执行结算。", "Manually input platform pool recipients/shares (sum=10000) and settle."), example: biz("示例：A/B/C=5000/3000/2000，点击『平台池结算』。", "Example: A/B/C=5000/3000/2000 then settle platform pool.") },
     ],
     identityWeightWithdraw: [
       { name: "身份市场地址", business: biz("定义身份资产交易市场合约。", "Identity market contract pointer."), example: biz("示例：升级市场合约后更新到新地址。", "Example: point to upgraded market contract.") },
@@ -338,13 +356,13 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       { name: "身份类型 + 最大撤销数", business: biz("批量清理低价 OTC 订单。", "Batch cleanup low-price OTC listings."), example: biz("示例：类型=1，最大=50，单次最多处理 50 个节点单。", "Example: role 1, max 50 listings.") },
     ],
     primaryBuy: [
-      { name: "Buy / SuperNode / NodePool / Platform BPS", business: biz("定义一级市场买入手续费及其分账结构。", "Primary buy fee and split structure."), example: biz("示例：Buy=500，Super=100，Node=200，Platform=200。", "Example: total 500 split 100/200/200.") },
+      { name: "Buy / SuperNode / NodePool / Contract BPS", business: biz("定义一级市场买入手续费及其分账结构。", "Primary buy fee and split structure."), example: biz("示例：Buy=500，Super=200，Node=100，Contract=200。", "Example: total 500 split 200/100/200.") },
     ],
     primarySell: [
-      { name: "Sell/Burn/PlatformICO/LiquidityICO BPS", business: biz("定义卖出时 USDT 抽成与 ICO 去向比例。", "Defines sell fee and ICO routing split."), example: biz("示例：Burn=1000, PlatformICO=2000, LiquidityICO=7000。", "Example: 10/20/70 sell ICO split.") },
+      { name: "Sell/Burn/ContractICO/LiquidityICO BPS", business: biz("定义卖出时 USDT 抽成与 ICO 去向比例。", "Defines sell fee and ICO routing split."), example: biz("示例：Burn=1000, ContractICO=2000, LiquidityICO=7000。", "Example: 10/20/70 sell ICO split.") },
     ],
     primaryRecipients: [
-      { name: "SuperNode/NodePool/Platform Recipient", business: biz("仅影响 USDT→ICO 兑换时的手续费分账接收人，不影响购买算力/节点/超级节点的资金分发。", "Only affects fee split recipients on USDT→ICO swaps. Does NOT affect machine/node/super-node purchase allocation."), example: biz("示例：平台接收地址配置为财务合约地址。购买算力的 Platform 接收人请到『资金池』页修改。", "Example: set platform recipient to treasury. To change machine-purchase Platform recipient, use the Pools tab.") },
+      { name: "SuperNode/NodePool/Contract Recipient", business: biz("仅影响 USDT→ICO 兑换时的手续费分账接收人，不影响购买算力/节点/超级节点的资金分发。", "Only affects fee split recipients on USDT→ICO swaps. Does NOT affect machine/node/super-node purchase allocation."), example: biz("示例：Contract 接收地址配置为结算外部地址。购买算力的 Platform 接收人请到『资金池』页修改。", "Example: set Contract recipient to settlement address. To change machine-purchase Platform recipient, use the Pools tab.") },
     ],
     primaryThreshold: [
       { name: "最低 USDT 储备 + 最低持有人数", business: biz("满足后才允许启用卖出。", "Prerequisites for enabling sell."), example: biz("示例：储备>=5000万且持有人>=10万才开放卖出。", "Example: reserve and holders must pass threshold.") },
@@ -384,6 +402,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       lang === "zh" ? "节点池" : "Node",
       lang === "zh" ? "平台池" : "Platform",
       lang === "zh" ? "排行榜池" : "Leaderboard",
+      lang === "zh" ? "契约池" : "Contract",
     ],
     [lang],
   );
@@ -460,6 +479,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     settleNodeAddrs: "", settleNodeShares: "",
     settleSuperAddrs: "", settleSuperShares: "",
     settleNodeCandidates: "", settleSuperCandidates: "",
+    settlePlatformAddrs: "", settlePlatformShares: "",
     backfillUsers: "",
     treasuryWithdrawTo: "", treasuryWithdrawAmt: "",
     treasuryPoolType: "3", treasuryPoolTo: "", treasuryPoolAmt: "",
@@ -477,7 +497,15 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     minReserve: "", minHolders: "",
     holderCount: "", pairAddr: "",
     treasuryToken: "", treasuryTo: "", treasuryAmount: "",
+    migrateTo: "",
+    bottomLpRecipient: "", bottomAutoBps: "0",
+    injectUsdt: "", injectIco: "", injectMinUsdt: "0", injectMinIco: "0",
   });
+  // P1/P3/P6 status state
+  const [contractPoolStats, setContractPoolStatsState] = useState<{ usdtTotal: bigint; icoTotal: bigint }>({ usdtTotal: 0n, icoTotal: 0n });
+  const [lightRealtime, setLightRealtimeState] = useState<boolean>(false);
+  const [usdtIcoLegacyEnabled, setUsdtIcoLegacyEnabledState] = useState<boolean>(false);
+  const [bottomPoolCfg, setBottomPoolCfgState] = useState<{ lpRecipient: string; autoInjectBps: number }>({ lpRecipient: "", autoInjectBps: 0 });
 
   // ── 代币 tab state ──
   const [icoTokenInfo, setIcoTokenInfoState] = useState<{ totalSupply: bigint; totalBurned: bigint; saleAllocationWallet: string; owner: string } | null>(null);
@@ -531,13 +559,26 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         getLeaderboardWhitelistAdjustPct(provider),
       ]);
 
-      const nextPools = await Promise.all(poolLabels.map((label, poolType) => getCorePoolConfig(provider, poolType).then((config) => ({
-        label,
-        recipient: config.recipient,
-        bps: config.bps,
-        recipientInput: config.recipient,
-        bpsInput: String(config.bps),
-      }))));
+      const nextPools = await Promise.all(poolLabels.map(async (label, poolType) => {
+        try {
+          const config = await getCorePoolConfig(provider, poolType);
+          return {
+            label,
+            recipient: config.recipient,
+            bps: config.bps,
+            recipientInput: config.recipient,
+            bpsInput: String(config.bps),
+          };
+        } catch {
+          return {
+            label,
+            recipient: "",
+            bps: 0,
+            recipientInput: "",
+            bpsInput: "0",
+          };
+        }
+      }));
 
       const nextSwapPools = await Promise.all([
         getPancakeV2PrimaryReserves(provider),
@@ -619,6 +660,25 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
           platRecip: pCfg.platformRecipient, minReserve: formatUnits(pCfg.minUsdtReserve, 18),
           minHolders: String(pCfg.minIcoHolderCount), holderCount: String(pCfg.reportedIcoHolderCount),
           pairAddr: pCfg.pair,
+        }));
+      } catch { /* optional */ }
+
+      // P1/P3/P6 best-effort status reads
+      try {
+        const [stats, realtime, legacyEnabled, bpCfg] = await Promise.all([
+          getContractPoolStats(provider),
+          getLightRealtimeDistribute(provider),
+          getUsdtIcoPoolEnabled(provider),
+          getBottomPoolConfig(provider),
+        ]);
+        setContractPoolStatsState(stats);
+        setLightRealtimeState(realtime);
+        setUsdtIcoLegacyEnabledState(legacyEnabled);
+        setBottomPoolCfgState(bpCfg);
+        setPrimaryInputs(prev => ({
+          ...prev,
+          bottomLpRecipient: bpCfg.lpRecipient,
+          bottomAutoBps: String(bpCfg.autoInjectBps),
         }));
       } catch { /* optional */ }
 
@@ -1174,16 +1234,31 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                       <input
                         value={pool.recipientInput}
                         placeholder={pool.recipient}
+                        disabled={index === 0}
                         onChange={(event) => updatePoolConfigInput(index, { recipientInput: event.target.value })}
                       />
                     </label>
+                    {index === 0 ? (
+                      <p className="hint-text" style={{ marginTop: 6 }}>
+                        {lang === "zh"
+                          ? "Liquidity 地址由系统管理并直接注入 Swap，不在 Admin 手动配置。"
+                          : "Liquidity recipient is system-managed and directly injected into Swap."}
+                      </p>
+                    ) : null}
+                    {index === 6 ? (
+                      <p className="hint-text" style={{ marginTop: 6 }}>
+                        {lang === "zh"
+                          ? "Contract 池需配置外部结算地址，池内金额按链内累积口径处理。"
+                          : "Contract pool requires an external settlement address while balances accrue in-contract."}
+                      </p>
+                    ) : null}
                     <div className="actions admin-actions-tight">
                       <button className="ghost-btn" type="button"
                         onClick={() => void executeAction(`pool-recipient-${index}`, async () => {
                           validateAddress(pool.recipientInput);
                           await updateCorePoolRecipient(provider!, index, pool.recipientInput.trim());
                         }, lang === "zh" ? `${pool.label} 接收地址已更新。` : `${pool.label} recipient updated.`)}
-                        disabled={actionKey !== ""}>
+                        disabled={actionKey !== "" || index === 0}>
                         {actionKey === `pool-recipient-${index}` ? t.loading : t.saveRecipient}
                       </button>
                     </div>
@@ -1483,7 +1558,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   onClick={() => void executeAction("set-cycle", async () => {
                     const dur = BigInt(cycleDurationInput || "0");
                     await setCycleDuration(provider!, dur);
-                    await setSwapCycleDuration(provider!, dur);
+                    await setSwapCycleDurationOnChain(provider!, dur);
                   }, lang === "zh" ? "结算周期已更新（Core + Swap）。" : "Settlement cycle updated (Core + Swap).")}
                   disabled={actionKey !== ""}>
                   {actionKey === "set-cycle" ? t.loading : lang === "zh" ? "设置周期" : "Set Cycle"}
@@ -1543,7 +1618,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   onClick={() => void executeAction("settle-daily", async () => {
                     const addrs = settlementInputs.settleDailyAddrs.split(",").map(s => s.trim()).filter(Boolean);
                     addrs.forEach(validateAddress);
-                    await settleDailyRewardsManual(provider!, addrs);
+                    await settleDailyRewardsManual(provider!, addrs, parseUnits("1", 18));
                   }, lang === "zh" ? "每日结算完成。" : "Daily settlement done.")} disabled={actionKey !== ""}>
                   {actionKey === "settle-daily" ? t.loading : lang === "zh" ? "每日结算" : "Settle Daily"}
                 </button>
@@ -1611,6 +1686,28 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   {actionKey === "settle-super" ? t.loading : lang === "zh" ? "超级节点结算" : "Settle Super-Nodes"}
                 </button>
               </div>
+
+              <label className="field" style={{ marginTop: "12px" }}>{lang === "zh" ? "平台池配置-接收地址(逗号分隔)" : "Platform Config - Recipients (comma-separated)"}
+                <input value={settlementInputs.settlePlatformAddrs} onChange={e => setSettlementInputs(p => ({ ...p, settlePlatformAddrs: e.target.value }))} />
+              </label>
+              <label className="field">{lang === "zh" ? "平台池配置-份额(逗号分隔, 总和10000)" : "Platform Config - Shares (comma-separated, sum=10000)"}
+                <input value={settlementInputs.settlePlatformShares} onChange={e => setSettlementInputs(p => ({ ...p, settlePlatformShares: e.target.value }))} />
+              </label>
+              <div className="actions admin-actions-tight">
+                <button className="primary-btn" type="button"
+                  onClick={() => void executeAction("settle-platform", async () => {
+                    const addrs = settlementInputs.settlePlatformAddrs.split(",").map(s => s.trim()).filter(Boolean);
+                    addrs.forEach(validateAddress);
+                    const shares = settlementInputs.settlePlatformShares.split(",").map(s => Number(s.trim())).filter(n => Number.isFinite(n));
+                    if (addrs.length !== shares.length || addrs.length === 0) throw new Error(lang === "zh" ? "地址和份额数量不一致" : "Recipients and shares length mismatch");
+                    const total = shares.reduce((a, b) => a + b, 0);
+                    if (total !== 10000) throw new Error(lang === "zh" ? "份额总和必须为10000" : "Shares sum must be 10000");
+                    await settlePoolRewards(provider!, 4, addrs, shares);
+                  }, lang === "zh" ? "平台池结算完成。" : "Platform pool settled.")}
+                  disabled={actionKey !== ""}>
+                  {actionKey === "settle-platform" ? t.loading : (lang === "zh" ? "平台池结算" : "Settle Platform Pool")}
+                </button>
+              </div>
             </Card>
 
             <Card title={lang === "zh" ? "身份市场 / 权重 / 提取" : "Identity Market / Weight / Withdraw"} hint={lang === "zh" ? "设置身份市场合约、奖励权重和提取 USDT" : "Set identity market, reward weight, and withdraw USDT"}>
@@ -1671,7 +1768,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                       const s = await getCoreTreasuryStatus(provider);
                       setTreasuryStatus(s);
                     } catch (e) {
-                      setStatusMessage({ type: "error", text: parseContractError(e) });
+                      const msg = parseContractError(e, lang);
+                      setLocalStatus(msg);
+                      onStatusChange(msg);
                     } finally {
                       setTreasuryLoading(false);
                     }
@@ -1683,7 +1782,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <div style={{ fontSize: 12, lineHeight: 1.7, background: "var(--color-surface-2, #f7f7fb)", padding: 10, borderRadius: 6, marginBottom: 10 }}>
                   <div><strong>USDT:</strong> {formatUsdt(treasuryStatus.usdtBalance)} · {lang === "zh" ? "池锁定" : "reserved"} {formatUsdt(treasuryStatus.reservedForPools)} · {lang === "zh" ? "自由余额" : "free"} <strong style={{ color: "#15803d" }}>{formatUsdt(treasuryStatus.freeUSDT)}</strong></div>
                   <div style={{ marginTop: 4 }}>
-                    {(["Liquidity", "Referral", "SuperNode", "Node", "Platform", "Leaderboard"] as const).map((name, i) => (
+                    {(["Liquidity", "Referral", "SuperNode", "Node", "Platform", "Leaderboard", "Contract"] as const).map((name, i) => (
                       <span key={name} style={{ marginRight: 12 }}>
                         [{i}] {name}: <strong>{formatUsdt(treasuryStatus.poolAccumulated[i] ?? 0n)}</strong>
                       </span>
@@ -1706,6 +1805,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                       <option value="3">3 Node</option>
                       <option value="4">4 Platform</option>
                       <option value="5">5 Leaderboard</option>
+                      <option value="6">6 Contract</option>
                     </select>
                   </label>
                   <label className="field">{lang === "zh" ? "收款地址" : "To"}
@@ -1804,9 +1904,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   <KVRow label="Sell Fee BPS" value={String(primaryConfig.sellFeeBps)} />
                   <KVRow label="SuperNode Fee BPS" value={String(primaryConfig.superNodeFeeBps)} />
                   <KVRow label="NodePool Fee BPS" value={String(primaryConfig.nodePoolFeeBps)} />
-                  <KVRow label="Platform Fee BPS" value={String(primaryConfig.platformFeeBps)} />
+                  <KVRow label="Contract Fee BPS" value={String(primaryConfig.platformFeeBps)} />
                   <KVRow label="Sell Burn BPS" value={String(primaryConfig.sellBurnBps)} />
-                  <KVRow label="Sell Platform ICO BPS" value={String(primaryConfig.sellPlatformIcoBps)} />
+                  <KVRow label="Sell Contract ICO BPS" value={String(primaryConfig.sellPlatformIcoBps)} />
                   <KVRow label="Sell Liquidity ICO BPS" value={String(primaryConfig.sellLiquidityIcoBps)} />
                   <KVRow label={lang === "zh" ? "卖出 USDT 已启用" : "Sell USDT Enabled"} value={primaryConfig.sellUsdtEnabled ? "Yes" : "No"} />
                   <KVRow label={lang === "zh" ? "可启用卖出" : "Can Enable Sell"} value={primaryConfig.canEnableSell ? "Yes" : "No"} />
@@ -1815,7 +1915,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   <KVRow label="Reported Holders" value={String(primaryConfig.reportedIcoHolderCount)} />
                   <KVRow label="SuperNode Recipient" value={primaryConfig.superNodeFeeRecipient || "-"} />
                   <KVRow label="NodePool Recipient" value={primaryConfig.nodePoolFeeRecipient || "-"} />
-                  <KVRow label="Platform Recipient" value={primaryConfig.platformRecipient || "-"} />
+                  <KVRow label="Contract Recipient" value={primaryConfig.platformRecipient || "-"} />
                   <KVRow label="Pair" value={primaryConfig.pair || "-"} />
                 </>
               ) : <p>{t.loading}</p>}
@@ -1827,7 +1927,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <label className="field">Buy BPS<input value={primaryInputs.buyBps} onChange={e => setPrimaryInputs(p => ({ ...p, buyBps: e.target.value }))} /></label>
                 <label className="field">SuperNode BPS<input value={primaryInputs.superBps} onChange={e => setPrimaryInputs(p => ({ ...p, superBps: e.target.value }))} /></label>
                 <label className="field">NodePool BPS<input value={primaryInputs.nodeBps} onChange={e => setPrimaryInputs(p => ({ ...p, nodeBps: e.target.value }))} /></label>
-                <label className="field">Platform BPS<input value={primaryInputs.platBps} onChange={e => setPrimaryInputs(p => ({ ...p, platBps: e.target.value }))} /></label>
+                <label className="field">Contract BPS<input value={primaryInputs.platBps} onChange={e => setPrimaryInputs(p => ({ ...p, platBps: e.target.value }))} /></label>
               </div>
               <div className="actions">
                 <button className="primary-btn" type="button"
@@ -1844,7 +1944,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="admin-form-grid">
                 <label className="field">Sell BPS<input value={primaryInputs.sellBps} onChange={e => setPrimaryInputs(p => ({ ...p, sellBps: e.target.value }))} /></label>
                 <label className="field">Burn BPS<input value={primaryInputs.burnBps} onChange={e => setPrimaryInputs(p => ({ ...p, burnBps: e.target.value }))} /></label>
-                <label className="field">Platform ICO BPS<input value={primaryInputs.platIcoBps} onChange={e => setPrimaryInputs(p => ({ ...p, platIcoBps: e.target.value }))} /></label>
+                <label className="field">Contract ICO BPS<input value={primaryInputs.platIcoBps} onChange={e => setPrimaryInputs(p => ({ ...p, platIcoBps: e.target.value }))} /></label>
                 <label className="field">Liquidity ICO BPS<input value={primaryInputs.liqIcoBps} onChange={e => setPrimaryInputs(p => ({ ...p, liqIcoBps: e.target.value }))} /></label>
               </div>
               <div className="actions">
@@ -1866,7 +1966,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <ParamGuide title={guideLabel} items={paramGuides.primaryRecipients} />
               <label className="field">SuperNode Recipient<input value={primaryInputs.superRecip} onChange={e => setPrimaryInputs(p => ({ ...p, superRecip: e.target.value }))} /></label>
               <label className="field">NodePool Recipient<input value={primaryInputs.nodeRecip} onChange={e => setPrimaryInputs(p => ({ ...p, nodeRecip: e.target.value }))} /></label>
-              <label className="field">Platform Recipient<input value={primaryInputs.platRecip} onChange={e => setPrimaryInputs(p => ({ ...p, platRecip: e.target.value }))} /></label>
+              <label className="field">Contract Recipient<input value={primaryInputs.platRecip} onChange={e => setPrimaryInputs(p => ({ ...p, platRecip: e.target.value }))} /></label>
               <div className="actions">
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("pri-recip", async () => {
@@ -1941,6 +2041,127 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                     await withdrawPrimaryTreasury(provider!, primaryInputs.treasuryToken.trim(), primaryInputs.treasuryTo.trim(), BigInt(primaryInputs.treasuryAmount || "0"));
                   }, lang === "zh" ? "资金已提取。" : "Treasury withdrawn.")} disabled={actionKey !== ""}>
                   {actionKey === "pri-withdraw" ? t.loading : lang === "zh" ? "提取" : "Withdraw"}
+                </button>
+              </div>
+            </Card>
+
+            {/* P1: Contract pool read-only stats */}
+            <Card title={lang === "zh" ? "契约池累计 (只读)" : "Contract Pool Accumulated (read-only)"} hint={lang === "zh" ? "仅展示金额，不展示地址/流向" : "Amounts only; address/flow not exposed"}>
+              <div className="admin-form-grid">
+                <div className="field"><span>{lang === "zh" ? "USDT 累计" : "USDT total"}</span><strong>{formatUnits(contractPoolStats.usdtTotal, 18)}</strong></div>
+                <div className="field"><span>{lang === "zh" ? "ICO 累计" : "ICO total"}</span><strong>{formatUnits(contractPoolStats.icoTotal, 18)}</strong></div>
+              </div>
+            </Card>
+
+            {/* P3: Auto-enable + LIGHT realtime */}
+            <Card title={lang === "zh" ? "自动开盘 / 实时分账" : "Auto-Open / Realtime Distribution"} hint={lang === "zh" ? "P3：达标后任意人可触发开盘；LIGHT 可切换实时" : "P3: anyone can trigger auto-open once thresholds met; LIGHT realtime toggle"}>
+              <div className="actions" style={{ marginBottom: "12px" }}>
+                <button className="primary-btn" type="button"
+                  disabled={actionKey !== "" || !!primaryConfig?.sellUsdtEnabled || !primaryConfig?.canEnableSell}
+                  onClick={() => void executeAction("pri-auto-enable", () => tryAutoEnableSellUsdt(provider!), lang === "zh" ? "已自动开盘。" : "Auto-enabled.")}
+                >
+                  {actionKey === "pri-auto-enable" ? t.loading : (lang === "zh" ? "自动开盘 (任意人)" : "Auto-Enable (anyone)")}
+                </button>
+                <span style={{ marginLeft: 12, fontSize: 12, opacity: 0.7 }}>
+                  {primaryConfig?.sellUsdtEnabled
+                    ? (lang === "zh" ? "已开盘" : "enabled")
+                    : primaryConfig?.canEnableSell
+                      ? (lang === "zh" ? "阈值已达,可触发" : "ready")
+                      : (lang === "zh" ? "未达阈值" : "threshold not met")}
+                </span>
+              </div>
+              <div className="actions">
+                <button className={lightRealtime ? "ghost-btn" : "primary-btn"} type="button"
+                  disabled={actionKey !== ""}
+                  onClick={() => {
+                    const next = !lightRealtime;
+                    void executeAction("pri-light-realtime", async () => {
+                      await setLightRealtimeDistribute(provider!, next);
+                      setLightRealtimeState(next);
+                    }, next ? (lang === "zh" ? "已开启 LIGHT 实时分账。" : "LIGHT realtime ON.") : (lang === "zh" ? "已关闭 LIGHT 实时分账。" : "LIGHT realtime OFF."));
+                  }}>
+                  {actionKey === "pri-light-realtime" ? t.loading : lightRealtime ? (lang === "zh" ? "关闭 LIGHT 实时" : "Disable LIGHT realtime") : (lang === "zh" ? "开启 LIGHT 实时" : "Enable LIGHT realtime")}
+                </button>
+              </div>
+            </Card>
+
+            {/* P6: Legacy USDT/ICO internal pool migration */}
+            <Card title={lang === "zh" ? "Legacy USDT/ICO 池 (P6 已废弃)" : "Legacy USDT/ICO Pool (P6 deprecated)"} hint={lang === "zh" ? "USDT/ICO 已合并到主市场;此处仅用于残值迁移" : "USDT/ICO merged into primary market; for residual migration only"}>
+              <div className="actions" style={{ marginBottom: "12px" }}>
+                <button className={usdtIcoLegacyEnabled ? "primary-btn" : "ghost-btn"} type="button"
+                  disabled={actionKey !== ""}
+                  style={usdtIcoLegacyEnabled ? { background: "var(--color-warning, #f59e0b)" } : undefined}
+                  onClick={() => {
+                    const next = !usdtIcoLegacyEnabled;
+                    void executeAction("pri-legacy-toggle", async () => {
+                      await setUsdtIcoPoolEnabled(provider!, next);
+                      setUsdtIcoLegacyEnabledState(next);
+                    }, next ? (lang === "zh" ? "Legacy 池已启用 (慎用)。" : "Legacy pool enabled (caution).") : (lang === "zh" ? "Legacy 池已禁用。" : "Legacy pool disabled."));
+                  }}>
+                  {actionKey === "pri-legacy-toggle" ? t.loading : usdtIcoLegacyEnabled ? (lang === "zh" ? "禁用 Legacy 池" : "Disable Legacy") : (lang === "zh" ? "启用 Legacy 池 (仅诊断)" : "Enable Legacy (diag only)")}
+                </button>
+                <span style={{ marginLeft: 12, fontSize: 12, opacity: 0.7 }}>
+                  {usdtIcoLegacyEnabled ? (lang === "zh" ? "已启用" : "enabled") : (lang === "zh" ? "已禁用 (默认)" : "disabled (default)")}
+                </span>
+              </div>
+              <label className="field">{lang === "zh" ? "残值迁移到 (一次性)" : "Migrate residual to (one-shot)"}<input value={primaryInputs.migrateTo} onChange={e => setPrimaryInputs(p => ({ ...p, migrateTo: e.target.value }))} placeholder="0x..." /></label>
+              <div className="actions">
+                <button className="primary-btn" type="button" style={{ background: "var(--color-warning, #f59e0b)" }}
+                  disabled={actionKey !== ""}
+                  onClick={() => void executeAction("pri-legacy-migrate", async () => {
+                    validateAddress(primaryInputs.migrateTo);
+                    await migrateUsdtIcoLiquidity(provider!, primaryInputs.migrateTo.trim());
+                  }, lang === "zh" ? "Legacy 池残值已迁移。" : "Legacy residual migrated.")}>
+                  {actionKey === "pri-legacy-migrate" ? t.loading : (lang === "zh" ? "迁移残值" : "Migrate Residual")}
+                </button>
+              </div>
+            </Card>
+
+            {/* P2: Bottom-pool injection */}
+            <Card title={lang === "zh" ? "底池注资 (P2)" : "Bottom-Pool Injection (P2)"} hint={lang === "zh" ? "用契约池累计资金注资 USDT/ICO 主池;自动比例 0=关闭" : "Inject USDT/ICO into AMM pool from contract-pool funds; auto-bps 0=disabled"}>
+              <div className="admin-form-grid">
+                <label className="field">{lang === "zh" ? "LP 接收地址 (空=平台)" : "LP recipient (empty=platform)"}<input value={primaryInputs.bottomLpRecipient} onChange={e => setPrimaryInputs(p => ({ ...p, bottomLpRecipient: e.target.value }))} placeholder="0x..." /></label>
+                <label className="field">{lang === "zh" ? "自动注资比例 (bps,每笔 sell)" : "Auto-inject bps (per sell)"}<input value={primaryInputs.bottomAutoBps} onChange={e => setPrimaryInputs(p => ({ ...p, bottomAutoBps: e.target.value }))} placeholder="0" /></label>
+              </div>
+              <div className="actions admin-actions-tight">
+                <button className="ghost-btn" type="button"
+                  disabled={actionKey !== ""}
+                  onClick={() => void executeAction("pri-bottom-cfg", async () => {
+                    const lp = primaryInputs.bottomLpRecipient.trim() || "0x0000000000000000000000000000000000000000";
+                    if (lp !== "0x0000000000000000000000000000000000000000") validateAddress(lp);
+                    const bps = Number(primaryInputs.bottomAutoBps || "0");
+                    if (!Number.isInteger(bps) || bps < 0 || bps > 10000) {
+                      throw new Error(lang === "zh" ? "比例需 0-10000" : "bps must be 0-10000");
+                    }
+                    await updateBottomPoolConfig(provider!, lp, bps);
+                    setBottomPoolCfgState({ lpRecipient: lp, autoInjectBps: bps });
+                  }, lang === "zh" ? "底池配置已更新。" : "Bottom-pool config updated.")}>
+                  {actionKey === "pri-bottom-cfg" ? t.loading : t.saveParam}
+                </button>
+                <span style={{ marginLeft: 12, fontSize: 12, opacity: 0.7 }}>
+                  {bottomPoolCfg.autoInjectBps > 0
+                    ? (lang === "zh" ? `自动: ${bottomPoolCfg.autoInjectBps} bps` : `auto: ${bottomPoolCfg.autoInjectBps} bps`)
+                    : (lang === "zh" ? "自动注资关闭" : "auto disabled")}
+                </span>
+              </div>
+              <div className="admin-form-grid" style={{ marginTop: 12 }}>
+                <label className="field">{lang === "zh" ? "手动注资 USDT (wei)" : "Manual USDT (wei)"}<input value={primaryInputs.injectUsdt} onChange={e => setPrimaryInputs(p => ({ ...p, injectUsdt: e.target.value }))} /></label>
+                <label className="field">{lang === "zh" ? "手动注资 ICO (wei)" : "Manual ICO (wei)"}<input value={primaryInputs.injectIco} onChange={e => setPrimaryInputs(p => ({ ...p, injectIco: e.target.value }))} /></label>
+                <label className="field">{lang === "zh" ? "min USDT (滑点)" : "min USDT (slip)"}<input value={primaryInputs.injectMinUsdt} onChange={e => setPrimaryInputs(p => ({ ...p, injectMinUsdt: e.target.value }))} /></label>
+                <label className="field">{lang === "zh" ? "min ICO (滑点)" : "min ICO (slip)"}<input value={primaryInputs.injectMinIco} onChange={e => setPrimaryInputs(p => ({ ...p, injectMinIco: e.target.value }))} /></label>
+              </div>
+              <div className="actions">
+                <button className="primary-btn" type="button"
+                  disabled={actionKey !== ""}
+                  onClick={() => void executeAction("pri-bottom-inject", async () => {
+                    const u = BigInt(primaryInputs.injectUsdt || "0");
+                    const i = BigInt(primaryInputs.injectIco || "0");
+                    const mU = BigInt(primaryInputs.injectMinUsdt || "0");
+                    const mI = BigInt(primaryInputs.injectMinIco || "0");
+                    if (u <= 0n || i <= 0n) throw new Error(lang === "zh" ? "数量必须 > 0" : "amount must be > 0");
+                    await injectBottomPool(provider!, u, i, mU, mI);
+                  }, lang === "zh" ? "已手动注资底池。" : "Manual injection done.")}>
+                  {actionKey === "pri-bottom-inject" ? t.loading : (lang === "zh" ? "立即注资" : "Inject Now")}
                 </button>
               </div>
             </Card>

@@ -78,6 +78,46 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     // === Settlement cycle config ===
     uint256 public cycleDuration;  // seconds per cycle; 0 means default 1 day
 
+    // === P3/P6 appended storage (UUPS-safe append) ===
+    /// @notice When true, LIGHT/ICO swap fees are distributed in the same tx (no day-batch).
+    bool public lightRealtimeDistribute;
+    /// @notice When false, the legacy internal USDT/ICO pool is frozen (P6: merged into PrimarySwapController).
+    bool public usdtIcoPoolEnabled;
+
+    // === P7 · U-based LIGHT → ICO swap (60/30/7/3 split) ===
+    /// @notice Reserved for future realtime acc-per-share integration with IncubatorCore.
+    /// @dev Currently unused; the 3%+7% LIGHT share is sent to `lightRewardTreasury` instead.
+    address public incubatorCore;
+    /// @notice LIGHT price in USDT, scaled by 1e18 (e.g. 0.05 USDT/LIGHT = 5e16).
+    uint256 public lightPriceUsdtE18;
+    /// @notice ICO price in USDT, scaled by 1e18 (e.g. 1.0 USDT/ICO = 1e18).
+    uint256 public icoPriceUsdtE18;
+    /// @notice Split basis points for LIGHT → ICO (must sum to 10000).
+    uint16 public lightBurnSplitBps;
+    uint16 public lightPoolSplitBps;
+    uint16 public lightSuperSplitBps;
+    uint16 public lightNodeSplitBps;
+    /// @notice Treasury address that receives the combined 3%+7% LIGHT share pending future
+    ///         realtime distribution. Owner-configurable.
+    address public lightRewardTreasury;
+
+    event LightRealtimeDistributeUpdated(bool enabled);
+    event UsdtIcoPoolEnabledUpdated(bool enabled);
+    event UsdtIcoPoolMigrated(address indexed to, uint256 usdtAmount, uint256 icoAmount);
+    event IncubatorCoreUpdated(address indexed core);
+    event LightUsdPriceUpdated(uint256 lightPriceUsdtE18, uint256 icoPriceUsdtE18);
+    event LightSplitBpsUpdated(uint16 burnBps, uint16 poolBps, uint16 superBps, uint16 nodeBps);
+    event LightRewardTreasuryUpdated(address indexed treasury);
+    event LightSwappedForIcoU(
+        address indexed trader,
+        uint256 lightIn,
+        uint256 icoOut,
+        uint256 burnAmount,
+        uint256 poolBackAmount,
+        uint256 superAmount,
+        uint256 nodeAmount
+    );
+
     event PoolCreated(
         uint8 indexed pairId,
         address indexed token0,
@@ -139,6 +179,9 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     function addLiquidity(uint8 pairId, uint256 amount0, uint256 amount1) external onlyOwner whenNotPaused {
         Pool storage pool = _getPoolStorage(pairId);
         require(amount0 > 0 && amount1 > 0, "invalid amount");
+        if (pairId == uint8(PairId.UsdtIco)) {
+            require(usdtIcoPoolEnabled, "PoolDeprecated");
+        }
 
         IERC20(pool.token0).safeTransferFrom(msg.sender, address(this), amount0);
         IERC20(pool.token1).safeTransferFrom(msg.sender, address(this), amount1);
@@ -223,6 +266,20 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         feeVault[pairId][tokenIn] += fee;
 
         emit SwapExecuted(pairId, msg.sender, tokenIn, amountIn, tokenOut, quotedOut, fee, impact);
+
+        // P3: realtime LIGHT settlement when enabled.
+        if (
+            lightRealtimeDistribute &&
+            pairId == uint8(PairId.LightIco) &&
+            tokenIn == address(light)
+        ) {
+            uint256 vaultBal = feeVault[pairId][address(light)];
+            if (vaultBal > 0) {
+                _distributeLightFees(vaultBal);
+                emit LightSettlementTriggered(msg.sender, _currentDay(), false);
+            }
+        }
+
         return quotedOut;
     }
 
@@ -320,7 +377,12 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
 
     function _settleLightFees(uint256 dayId, uint256 totalAmount) private {
         require(dayId > lastLightSettlementDay, "already settled today");
+        _distributeLightFees(totalAmount);
+        lastLightSettlementDay = dayId;
+    }
 
+    /// @dev Pure distribution helper shared by daily settlement and realtime mode.
+    function _distributeLightFees(uint256 totalAmount) private {
         uint8 pairId = uint8(PairId.LightIco);
 
         uint256 burnedAmount = (totalAmount * lightBurnBps) / BPS_DENOMINATOR;
@@ -350,7 +412,6 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
             emit FeeDistributed(pairId, address(light), lightSuperNodeRecipient, superNodeAmount);
         }
 
-        lastLightSettlementDay = dayId;
         emit LightFeesSettled(totalAmount, burnedAmount, bootstrapAmount, nodeAmount, superNodeAmount);
     }
 
@@ -420,6 +481,158 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         emit CycleDurationUpdated(old, newDuration);
     }
 
+    /// @notice P3: enable/disable realtime LIGHT fee distribution at swap time.
+    function setLightRealtimeDistribute(bool enabled) external onlyOwner {
+        lightRealtimeDistribute = enabled;
+        emit LightRealtimeDistributeUpdated(enabled);
+    }
+
+    /// @notice P6: enable/disable the legacy internal USDT/ICO pool (default disabled).
+    function setUsdtIcoPoolEnabled(bool enabled) external onlyOwner {
+        usdtIcoPoolEnabled = enabled;
+        emit UsdtIcoPoolEnabledUpdated(enabled);
+    }
+
+    // ==================================================================
+    // === P7 · U-based LIGHT → ICO swap (60% burn / 30% pool / 3% / 7%)
+    // ==================================================================
+
+    function setIncubatorCore(address core) external onlyOwner {
+        require(core != address(0), "invalid core");
+        incubatorCore = core;
+        emit IncubatorCoreUpdated(core);
+    }
+
+    /// @notice Set treasury address that holds the combined 3%+7% LIGHT share until
+    ///         a future acc-per-share distribution contract (IncubatorCore or LightRewardVault)
+    ///         is deployed and linked. Owner-only.
+    function setLightRewardTreasury(address treasury) external onlyOwner {
+        require(treasury != address(0), "invalid treasury");
+        lightRewardTreasury = treasury;
+        emit LightRewardTreasuryUpdated(treasury);
+    }
+
+    /// @notice Owner / oracle-writer setter for U-based prices (scaled by 1e18).
+    function setLightUsdPrice(uint256 lightPriceE18, uint256 icoPriceE18) external onlyOwner {
+        require(lightPriceE18 > 0 && icoPriceE18 > 0, "invalid price");
+        lightPriceUsdtE18 = lightPriceE18;
+        icoPriceUsdtE18 = icoPriceE18;
+        emit LightUsdPriceUpdated(lightPriceE18, icoPriceE18);
+    }
+
+    /// @notice Configure the 60/30/7/3 split. Must sum to BPS_DENOMINATOR.
+    function setLightSplitBps(
+        uint16 burnBps,
+        uint16 poolBps,
+        uint16 superBps,
+        uint16 nodeBps
+    ) external onlyOwner {
+        require(
+            uint256(burnBps) + uint256(poolBps) + uint256(superBps) + uint256(nodeBps) == BPS_DENOMINATOR,
+            "invalid split total"
+        );
+        lightBurnSplitBps = burnBps;
+        lightPoolSplitBps = poolBps;
+        lightSuperSplitBps = superBps;
+        lightNodeSplitBps = nodeBps;
+        emit LightSplitBpsUpdated(burnBps, poolBps, superBps, nodeBps);
+    }
+
+    /// @notice Quote the U-based LIGHT → ICO conversion.
+    /// @dev icoOut = lightIn * lightPriceUsdtE18 / icoPriceUsdtE18
+    function quoteLightForIcoUsdBased(uint256 lightIn) public view returns (uint256 icoOut) {
+        require(lightIn > 0, "invalid in");
+        require(lightPriceUsdtE18 > 0 && icoPriceUsdtE18 > 0, "price unset");
+        icoOut = (lightIn * lightPriceUsdtE18) / icoPriceUsdtE18;
+    }
+
+    /// @notice Execute a U-based LIGHT → ICO swap and distribute LIGHT as 60/30/7/3.
+    /// @param lightIn  Amount of LIGHT user provides.
+    /// @param minIcoOut Slippage bound on ICO delivered.
+    /// @param to        Recipient of the ICO tokens.
+    function swapLightForIcoUsdBased(uint256 lightIn, uint256 minIcoOut, address to)
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256 icoOut)
+    {
+        require(to != address(0), "invalid to");
+        require(lightIn > 0, "invalid in");
+        require(lightRewardTreasury != address(0), "treasury unset");
+        uint16 totalBps = lightBurnSplitBps + lightPoolSplitBps + lightSuperSplitBps + lightNodeSplitBps;
+        require(totalBps == BPS_DENOMINATOR, "split unset");
+
+        Pool storage pool = pools[uint8(PairId.LightIco)];
+        require(pool.exists, "pair not found");
+
+        icoOut = quoteLightForIcoUsdBased(lightIn);
+        require(icoOut >= minIcoOut, "slippage exceeded");
+        require(icoOut > 0, "ico out zero");
+        require(icoOut < pool.reserve1, "insufficient ico reserve");
+
+        // Pull LIGHT from user.
+        light.safeTransferFrom(msg.sender, address(this), lightIn);
+
+        // Compute split (last share absorbs rounding to preserve exact total).
+        uint256 burnAmount = (lightIn * lightBurnSplitBps) / BPS_DENOMINATOR;
+        uint256 poolBackAmount = (lightIn * lightPoolSplitBps) / BPS_DENOMINATOR;
+        uint256 superAmount = (lightIn * lightSuperSplitBps) / BPS_DENOMINATOR;
+        uint256 nodeAmount = lightIn - burnAmount - poolBackAmount - superAmount;
+
+        // 60% burn
+        if (burnAmount > 0) {
+            IERC20Burnable(address(light)).burn(burnAmount);
+            emit TokenBurned(address(light), burnAmount, uint8(PairId.LightIco));
+        }
+
+        // 30% back into LIGHT/ICO pool reserve0 (LIGHT side).
+        if (poolBackAmount > 0) {
+            pool.reserve0 += poolBackAmount;
+        }
+
+        // Deliver ICO from reserve1.
+        pool.reserve1 -= icoOut;
+        IERC20(pool.token1).safeTransfer(to, icoOut);
+
+        // 3% super + 7% (node ∪ super) → sent to treasury as a lump sum pending
+        // future realtime acc-per-share distribution.
+        if (superAmount + nodeAmount > 0) {
+            light.safeTransfer(lightRewardTreasury, superAmount + nodeAmount);
+        }
+
+        emit LightSwappedForIcoU(
+            msg.sender,
+            lightIn,
+            icoOut,
+            burnAmount,
+            poolBackAmount,
+            superAmount,
+            nodeAmount
+        );
+    }
+
+    /// @notice P6: one-shot drain of residual reserves from the deprecated USDT/ICO pool.
+    /// @dev Owner-only. Sends both reserves to `to` and zeroes the pool reserves so the legacy pool stops affecting reads.
+    function migrateUsdtIcoLiquidity(address to) external onlyOwner returns (uint256 usdtAmount, uint256 icoAmount) {
+        require(to != address(0), "invalid to");
+        Pool storage pool = pools[uint8(PairId.UsdtIco)];
+        require(pool.exists, "pair not found");
+
+        usdtAmount = pool.reserve0;
+        icoAmount = pool.reserve1;
+        pool.reserve0 = 0;
+        pool.reserve1 = 0;
+
+        if (usdtAmount > 0) {
+            IERC20(pool.token0).safeTransfer(to, usdtAmount);
+        }
+        if (icoAmount > 0) {
+            IERC20(pool.token1).safeTransfer(to, icoAmount);
+        }
+
+        emit UsdtIcoPoolMigrated(to, usdtAmount, icoAmount);
+    }
+
     function withdrawLightForRewards(uint256 amount) external whenNotPaused {
         require(msg.sender == rewardController, "not authorized");
         require(amount > 0, "invalid amount");
@@ -480,6 +693,9 @@ contract SwapPoolManager is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     function _validateSwapDirection(uint8 pairId, address tokenIn) private view {
         if (pairId == uint8(PairId.LightIco)) {
             require(tokenIn == address(light), "LIGHT->ICO only");
+        }
+        if (pairId == uint8(PairId.UsdtIco)) {
+            require(usdtIcoPoolEnabled, "PoolDeprecated");
         }
     }
 

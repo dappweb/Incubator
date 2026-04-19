@@ -7475,7 +7475,7 @@
             "label": "pools",
             "offset": 0,
             "slot": "6",
-            "type": "t_mapping(t_uint8,t_struct(Pool)12589_storage)",
+            "type": "t_mapping(t_uint8,t_struct(Pool)12118_storage)",
             "contract": "SwapPoolManager",
             "src": "contracts/SwapPoolManager.sol:71"
           },
@@ -7579,11 +7579,11 @@
             "label": "mapping(uint8 => mapping(address => uint256))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint8,t_struct(Pool)12589_storage)": {
+          "t_mapping(t_uint8,t_struct(Pool)12118_storage)": {
             "label": "mapping(uint8 => struct SwapPoolManager.Pool)",
             "numberOfBytes": "32"
           },
-          "t_struct(Pool)12589_storage": {
+          "t_struct(Pool)12118_storage": {
             "label": "struct SwapPoolManager.Pool",
             "members": [
               {
@@ -7971,7 +7971,7 @@
             "label": "coreIdentity",
             "offset": 0,
             "slot": "1",
-            "type": "t_contract(IIncubatorCoreIdentity)9792",
+            "type": "t_contract(IIncubatorCoreIdentity)9916",
             "contract": "NodeOTCMarket",
             "src": "contracts/NodeOTCMarket.sol:36"
           },
@@ -8003,7 +8003,7 @@
             "label": "orders",
             "offset": 0,
             "slot": "5",
-            "type": "t_mapping(t_uint256,t_struct(Order)9815_storage)",
+            "type": "t_mapping(t_uint256,t_struct(Order)9939_storage)",
             "contract": "NodeOTCMarket",
             "src": "contracts/NodeOTCMarket.sol:41"
           },
@@ -8091,11 +8091,11 @@
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
-          "t_contract(IIncubatorCoreIdentity)9792": {
+          "t_contract(IIncubatorCoreIdentity)9916": {
             "label": "contract IIncubatorCoreIdentity",
             "numberOfBytes": "20"
           },
-          "t_mapping(t_uint256,t_struct(Order)9815_storage)": {
+          "t_mapping(t_uint256,t_struct(Order)9939_storage)": {
             "label": "mapping(uint256 => struct NodeOTCMarket.Order)",
             "numberOfBytes": "32"
           },
@@ -8107,7 +8107,7 @@
             "label": "mapping(uint8 => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(Order)9815_storage": {
+          "t_struct(Order)9939_storage": {
             "label": "struct NodeOTCMarket.Order",
             "members": [
               {
@@ -8208,7 +8208,7 @@
             "label": "ico",
             "offset": 0,
             "slot": "1",
-            "type": "t_contract(IERC20BurnableExt)10815",
+            "type": "t_contract(IERC20BurnableExt)10344",
             "contract": "PrimarySwapController",
             "src": "contracts/PrimarySwapController.sol:53"
           },
@@ -8216,7 +8216,7 @@
             "label": "router",
             "offset": 0,
             "slot": "2",
-            "type": "t_contract(IRouterV2Like)10844",
+            "type": "t_contract(IRouterV2Like)10373",
             "contract": "PrimarySwapController",
             "src": "contracts/PrimarySwapController.sol:54"
           },
@@ -8224,7 +8224,7 @@
             "label": "factory",
             "offset": 0,
             "slot": "3",
-            "type": "t_contract(IFactoryV2Like)10854",
+            "type": "t_contract(IFactoryV2Like)10383",
             "contract": "PrimarySwapController",
             "src": "contracts/PrimarySwapController.sol:55"
           },
@@ -8404,15 +8404,15 @@
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
-          "t_contract(IERC20BurnableExt)10815": {
+          "t_contract(IERC20BurnableExt)10344": {
             "label": "contract IERC20BurnableExt",
             "numberOfBytes": "20"
           },
-          "t_contract(IFactoryV2Like)10854": {
+          "t_contract(IFactoryV2Like)10383": {
             "label": "contract IFactoryV2Like",
             "numberOfBytes": "20"
           },
-          "t_contract(IRouterV2Like)10844": {
+          "t_contract(IRouterV2Like)10373": {
             "label": "contract IRouterV2Like",
             "numberOfBytes": "20"
           },
@@ -10049,6 +10049,2751 @@
               }
             ],
             "numberOfBytes": "32"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "72ff2ab6fadc3caefbdaab0057f1d91b93c810be711c0482f2c5d36bf0ea5c72": {
+      "address": "0xA272a9E8648418A2116902003003Ca86b4d4a39A",
+      "txHash": "0x5a23158378e6f0e976fbb861aab78ee6b42aaaae82e689f19dbfb4da5134c1ec",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "usdt",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IERC20)1341",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:71"
+          },
+          {
+            "label": "machineUnitPrice",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:76"
+          },
+          {
+            "label": "nodePrice",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:80"
+          },
+          {
+            "label": "superNodePrice",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:81"
+          },
+          {
+            "label": "nextIdentityId",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:83"
+          },
+          {
+            "label": "identityMarket",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:84"
+          },
+          {
+            "label": "identities",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(IdentityAccount)2739_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:85"
+          },
+          {
+            "label": "ownedIdentityId",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:86"
+          },
+          {
+            "label": "identityOperatorApproval",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_bool))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:87"
+          },
+          {
+            "label": "machineOrders",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_uint256,t_struct(MachineOrder)2715_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:89"
+          },
+          {
+            "label": "userOrderIds",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:90"
+          },
+          {
+            "label": "poolConfigs",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_array(t_struct(PoolConfig)2729_storage)6_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:91"
+          },
+          {
+            "label": "nextMachineOrderId",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:92"
+          },
+          {
+            "label": "referralOf",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:94"
+          },
+          {
+            "label": "personalPower",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:95"
+          },
+          {
+            "label": "rewardWeight",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:96"
+          },
+          {
+            "label": "directReferralCount",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:99"
+          },
+          {
+            "label": "teamTotalMemberCount",
+            "offset": 0,
+            "slot": "22",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:100"
+          },
+          {
+            "label": "directReferralVolume",
+            "offset": 0,
+            "slot": "23",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:101"
+          },
+          {
+            "label": "teamTotalVolume",
+            "offset": 0,
+            "slot": "24",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:102"
+          },
+          {
+            "label": "rewardParticipants",
+            "offset": 0,
+            "slot": "25",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:105"
+          },
+          {
+            "label": "isRewardParticipant",
+            "offset": 0,
+            "slot": "26",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:106"
+          },
+          {
+            "label": "leaderboards",
+            "offset": 0,
+            "slot": "27",
+            "type": "t_mapping(t_uint256,t_struct(LeaderboardState)7860_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:108"
+          },
+          {
+            "label": "dailyVolume",
+            "offset": 0,
+            "slot": "28",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:109"
+          },
+          {
+            "label": "rankShares",
+            "offset": 0,
+            "slot": "29",
+            "type": "t_array(t_uint16)10_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:111"
+          },
+          {
+            "label": "poolAccumulated",
+            "offset": 0,
+            "slot": "30",
+            "type": "t_mapping(t_uint8,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:115"
+          },
+          {
+            "label": "usdtTokenDecimals",
+            "offset": 0,
+            "slot": "31",
+            "type": "t_uint8",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:118"
+          },
+          {
+            "label": "usdtScaleMigrated",
+            "offset": 1,
+            "slot": "31",
+            "type": "t_bool",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:119"
+          },
+          {
+            "label": "subAdmins",
+            "offset": 0,
+            "slot": "32",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:122"
+          },
+          {
+            "label": "subAdminList",
+            "offset": 0,
+            "slot": "33",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:123"
+          },
+          {
+            "label": "subAdminIndexPlusOne",
+            "offset": 0,
+            "slot": "34",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:124"
+          },
+          {
+            "label": "releaseDailyBps",
+            "offset": 0,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:129"
+          },
+          {
+            "label": "releaseImmediateBurnBps",
+            "offset": 2,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:130"
+          },
+          {
+            "label": "releaseSecondaryBurnBps",
+            "offset": 4,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:131"
+          },
+          {
+            "label": "releaseStaticBps",
+            "offset": 6,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:132"
+          },
+          {
+            "label": "releaseDynamicBps",
+            "offset": 8,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:133"
+          },
+          {
+            "label": "rewardCapBps",
+            "offset": 10,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:134"
+          },
+          {
+            "label": "rewardPoolBalance",
+            "offset": 0,
+            "slot": "36",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:135"
+          },
+          {
+            "label": "lastRewardSettlementDay",
+            "offset": 0,
+            "slot": "37",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:136"
+          },
+          {
+            "label": "rewardBurnAddress",
+            "offset": 0,
+            "slot": "38",
+            "type": "t_address",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:137"
+          },
+          {
+            "label": "orderRewardLedger",
+            "offset": 0,
+            "slot": "39",
+            "type": "t_mapping(t_uint256,t_struct(OrderRewardLedger)2724_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:138"
+          },
+          {
+            "label": "directNodeReferralCount",
+            "offset": 0,
+            "slot": "40",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:141"
+          },
+          {
+            "label": "directSuperNodeReferralCount",
+            "offset": 0,
+            "slot": "41",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:142"
+          },
+          {
+            "label": "leaderboardWhitelistAdjustPct",
+            "offset": 0,
+            "slot": "42",
+            "type": "t_uint8",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:144"
+          },
+          {
+            "label": "leaderboardWhitelist",
+            "offset": 0,
+            "slot": "43",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:145"
+          },
+          {
+            "label": "leaderboardWhitelistIndexPlusOne",
+            "offset": 0,
+            "slot": "44",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:146"
+          },
+          {
+            "label": "dailyFirstOrderSeq",
+            "offset": 0,
+            "slot": "45",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:147"
+          },
+          {
+            "label": "dailyOrderSeq",
+            "offset": 0,
+            "slot": "46",
+            "type": "t_mapping(t_uint256,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:148"
+          },
+          {
+            "label": "lightToken",
+            "offset": 0,
+            "slot": "47",
+            "type": "t_contract(IERC20)1341",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:151"
+          },
+          {
+            "label": "swapPoolManager",
+            "offset": 0,
+            "slot": "48",
+            "type": "t_address",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:152"
+          },
+          {
+            "label": "_transientLightPrice",
+            "offset": 0,
+            "slot": "49",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:153"
+          },
+          {
+            "label": "cycleDuration",
+            "offset": 0,
+            "slot": "50",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:156"
+          },
+          {
+            "label": "managers",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:159"
+          },
+          {
+            "label": "nodeList",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:163"
+          },
+          {
+            "label": "superNodeList",
+            "offset": 0,
+            "slot": "53",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:164"
+          },
+          {
+            "label": "nodeIndexPlusOne",
+            "offset": 0,
+            "slot": "54",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:165"
+          },
+          {
+            "label": "superNodeIndexPlusOne",
+            "offset": 0,
+            "slot": "55",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:166"
+          },
+          {
+            "label": "lastNodePoolSettleDay",
+            "offset": 0,
+            "slot": "56",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:169"
+          },
+          {
+            "label": "lastSuperNodePoolSettleDay",
+            "offset": 0,
+            "slot": "57",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:170"
+          },
+          {
+            "label": "leaderboardSettledDay",
+            "offset": 0,
+            "slot": "58",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:171"
+          },
+          {
+            "label": "minPoolSettleAmount",
+            "offset": 0,
+            "slot": "59",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:174"
+          },
+          {
+            "label": "publicSettleEnabled",
+            "offset": 0,
+            "slot": "60",
+            "type": "t_bool",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:178"
+          },
+          {
+            "label": "roleListsBootstrapped",
+            "offset": 1,
+            "slot": "60",
+            "type": "t_bool",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:181"
+          },
+          {
+            "label": "contractPoolConfig",
+            "offset": 0,
+            "slot": "61",
+            "type": "t_struct(PoolConfig)2729_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:184"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)365_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)111_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_array(t_address)10_storage": {
+            "label": "address[10]",
+            "numberOfBytes": "320"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(PoolConfig)2729_storage)6_storage": {
+            "label": "struct IncubatorCore.PoolConfig[6]",
+            "numberOfBytes": "192"
+          },
+          "t_array(t_uint16)10_storage": {
+            "label": "uint16[10]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)10_storage": {
+            "label": "uint256[10]",
+            "numberOfBytes": "320"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)1341": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_enum(Role)2694": {
+            "label": "enum IncubatorCore.Role",
+            "members": [
+              "None",
+              "Node",
+              "SuperNode"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+            "label": "mapping(address => uint256[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_bool))": {
+            "label": "mapping(uint256 => mapping(address => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(uint256 => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(IdentityAccount)2739_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.IdentityAccount)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(LeaderboardState)7860_storage)": {
+            "label": "mapping(uint256 => struct LeaderboardLib.LeaderboardState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MachineOrder)2715_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.MachineOrder)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(OrderRewardLedger)2724_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.OrderRewardLedger)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint8,t_uint256)": {
+            "label": "mapping(uint8 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(IdentityAccount)2739_storage": {
+            "label": "struct IncubatorCore.IdentityAccount",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "role",
+                "type": "t_enum(Role)2694",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "updatedAt",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(LeaderboardState)7860_storage": {
+            "label": "struct LeaderboardLib.LeaderboardState",
+            "members": [
+              {
+                "label": "topUsers",
+                "type": "t_array(t_address)10_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "topVolumes",
+                "type": "t_array(t_uint256)10_storage",
+                "offset": 0,
+                "slot": "10"
+              },
+              {
+                "label": "topCount",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "20"
+              },
+              {
+                "label": "lastUsers",
+                "type": "t_array(t_address)10_storage",
+                "offset": 0,
+                "slot": "21"
+              },
+              {
+                "label": "lastCount",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "31"
+              }
+            ],
+            "numberOfBytes": "1024"
+          },
+          "t_struct(MachineOrder)2715_storage": {
+            "label": "struct IncubatorCore.MachineOrder",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "user",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "quantity",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "amountUSDT",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "referrer",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "createdAt",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(OrderRewardLedger)2724_storage": {
+            "label": "struct IncubatorCore.OrderRewardLedger",
+            "members": [
+              {
+                "label": "capAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "staticPaid",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "dynamicPaid",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "exited",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(PoolConfig)2729_storage": {
+            "label": "struct IncubatorCore.PoolConfig",
+            "members": [
+              {
+                "label": "recipient",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "bps",
+                "type": "t_uint16",
+                "offset": 20,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "32ace6432fe746592546173a552ee1893a3cb3f5454aceacc20b24caddf7ef9a": {
+      "address": "0xe12eC708F0D14289Fe13A473C3aA10d43252Fc38",
+      "txHash": "0x686d1a5c3bae4f372387b1f5150263f34d87177e7444ae5b95d6c050d3877ce1",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "usdt",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IERC20)1341",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:59"
+          },
+          {
+            "label": "ico",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_contract(IERC20)1341",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:60"
+          },
+          {
+            "label": "light",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_contract(IERC20)1341",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:61"
+          },
+          {
+            "label": "lightBurnBps",
+            "offset": 20,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:63"
+          },
+          {
+            "label": "lightBootstrapBps",
+            "offset": 22,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:64"
+          },
+          {
+            "label": "lightNodeBps",
+            "offset": 24,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:65"
+          },
+          {
+            "label": "lightSuperNodeBps",
+            "offset": 26,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:66"
+          },
+          {
+            "label": "lightBootstrapRecipient",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:67"
+          },
+          {
+            "label": "lightNodeRecipient",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:68"
+          },
+          {
+            "label": "lightSuperNodeRecipient",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:69"
+          },
+          {
+            "label": "pools",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint8,t_struct(Pool)4531_storage)",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:71"
+          },
+          {
+            "label": "feeVault",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_uint8,t_mapping(t_address,t_uint256))",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:72"
+          },
+          {
+            "label": "lastLightSettlementDay",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_uint256",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:75"
+          },
+          {
+            "label": "rewardController",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:76"
+          },
+          {
+            "label": "cycleDuration",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_uint256",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:79"
+          },
+          {
+            "label": "lightRealtimeDistribute",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_bool",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:83"
+          },
+          {
+            "label": "usdtIcoPoolEnabled",
+            "offset": 1,
+            "slot": "11",
+            "type": "t_bool",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:85"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)365_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)111_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_contract(IERC20)1341": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint8,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(uint8 => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint8,t_struct(Pool)4531_storage)": {
+            "label": "mapping(uint8 => struct SwapPoolManager.Pool)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Pool)4531_storage": {
+            "label": "struct SwapPoolManager.Pool",
+            "members": [
+              {
+                "label": "token0",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "token1",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "reserve0",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "reserve1",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "feeBps",
+                "type": "t_uint16",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "maxPriceImpactBps",
+                "type": "t_uint16",
+                "offset": 2,
+                "slot": "4"
+              },
+              {
+                "label": "exists",
+                "type": "t_bool",
+                "offset": 4,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "6ec240a62bba775c65de3957b5d8a59cf6518d456a3dc153f84ea185c531a89e": {
+      "address": "0x7893848afFBc2AE909EDd70b1AF20C77Ec70Cca1",
+      "txHash": "0x2ce316a13b74656f47db7b7ce97e112ce33288ff588d3c7f744c7628db984530",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "usdt",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IERC20)2141",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:65"
+          },
+          {
+            "label": "ico",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_contract(IERC20BurnableExt)10939",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:66"
+          },
+          {
+            "label": "router",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_contract(IRouterV2Like)10993",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:67"
+          },
+          {
+            "label": "factory",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_contract(IFactoryV2Like)11003",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:68"
+          },
+          {
+            "label": "pair",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:69"
+          },
+          {
+            "label": "superNodeFeeRecipient",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:71"
+          },
+          {
+            "label": "nodePoolFeeRecipient",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_address",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:72"
+          },
+          {
+            "label": "platformRecipient",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_address",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:73"
+          },
+          {
+            "label": "buyFeeBps",
+            "offset": 20,
+            "slot": "7",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:75"
+          },
+          {
+            "label": "sellFeeBps",
+            "offset": 22,
+            "slot": "7",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:76"
+          },
+          {
+            "label": "superNodeFeeBps",
+            "offset": 24,
+            "slot": "7",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:77"
+          },
+          {
+            "label": "nodePoolFeeBps",
+            "offset": 26,
+            "slot": "7",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:78"
+          },
+          {
+            "label": "platformFeeBps",
+            "offset": 28,
+            "slot": "7",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:79"
+          },
+          {
+            "label": "sellBurnBps",
+            "offset": 30,
+            "slot": "7",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:81"
+          },
+          {
+            "label": "sellPlatformIcoBps",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:82"
+          },
+          {
+            "label": "sellLiquidityIcoBps",
+            "offset": 2,
+            "slot": "8",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:83"
+          },
+          {
+            "label": "sellUsdtEnabled",
+            "offset": 4,
+            "slot": "8",
+            "type": "t_bool",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:85"
+          },
+          {
+            "label": "minUsdtReserveToEnableSell",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_uint256",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:86"
+          },
+          {
+            "label": "minIcoHolderCountToEnableSell",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_uint256",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:87"
+          },
+          {
+            "label": "reportedIcoHolderCount",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_uint256",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:88"
+          },
+          {
+            "label": "contractUsdtAccumulated",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_uint256",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:93"
+          },
+          {
+            "label": "contractIcoAccumulated",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_uint256",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:94"
+          },
+          {
+            "label": "bottomPoolLpRecipient",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_address",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:98"
+          },
+          {
+            "label": "bottomPoolAutoInjectBps",
+            "offset": 20,
+            "slot": "14",
+            "type": "t_uint16",
+            "contract": "PrimarySwapController",
+            "src": "contracts/PrimarySwapController.sol:101"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)452_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_contract(IERC20)2141": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IERC20BurnableExt)10939": {
+            "label": "contract IERC20BurnableExt",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IFactoryV2Like)11003": {
+            "label": "contract IFactoryV2Like",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IRouterV2Like)10993": {
+            "label": "contract IRouterV2Like",
+            "numberOfBytes": "20"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "f3fa06ef6761a6bfdb2c58cb4850d559d6060a5c355334cf53658587f74c5544": {
+      "address": "0x046A8aFec333214E03F915Cf614745424c47853d",
+      "txHash": "0x7655a78716d3caeb0b67cc5f40602aa4ffa592c734639a416aba9d147d586390",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "usdt",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IERC20)1341",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:71"
+          },
+          {
+            "label": "machineUnitPrice",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:76"
+          },
+          {
+            "label": "nodePrice",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:80"
+          },
+          {
+            "label": "superNodePrice",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:81"
+          },
+          {
+            "label": "nextIdentityId",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:83"
+          },
+          {
+            "label": "identityMarket",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:84"
+          },
+          {
+            "label": "identities",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(IdentityAccount)2739_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:85"
+          },
+          {
+            "label": "ownedIdentityId",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:86"
+          },
+          {
+            "label": "identityOperatorApproval",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_bool))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:87"
+          },
+          {
+            "label": "machineOrders",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_uint256,t_struct(MachineOrder)2715_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:89"
+          },
+          {
+            "label": "userOrderIds",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:90"
+          },
+          {
+            "label": "poolConfigs",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_array(t_struct(PoolConfig)2729_storage)6_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:91"
+          },
+          {
+            "label": "nextMachineOrderId",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:92"
+          },
+          {
+            "label": "referralOf",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:94"
+          },
+          {
+            "label": "personalPower",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:95"
+          },
+          {
+            "label": "rewardWeight",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:96"
+          },
+          {
+            "label": "directReferralCount",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:99"
+          },
+          {
+            "label": "teamTotalMemberCount",
+            "offset": 0,
+            "slot": "22",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:100"
+          },
+          {
+            "label": "directReferralVolume",
+            "offset": 0,
+            "slot": "23",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:101"
+          },
+          {
+            "label": "teamTotalVolume",
+            "offset": 0,
+            "slot": "24",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:102"
+          },
+          {
+            "label": "rewardParticipants",
+            "offset": 0,
+            "slot": "25",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:105"
+          },
+          {
+            "label": "isRewardParticipant",
+            "offset": 0,
+            "slot": "26",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:106"
+          },
+          {
+            "label": "leaderboards",
+            "offset": 0,
+            "slot": "27",
+            "type": "t_mapping(t_uint256,t_struct(LeaderboardState)7868_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:108"
+          },
+          {
+            "label": "dailyVolume",
+            "offset": 0,
+            "slot": "28",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:109"
+          },
+          {
+            "label": "rankShares",
+            "offset": 0,
+            "slot": "29",
+            "type": "t_array(t_uint16)10_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:111"
+          },
+          {
+            "label": "poolAccumulated",
+            "offset": 0,
+            "slot": "30",
+            "type": "t_mapping(t_uint8,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:115"
+          },
+          {
+            "label": "usdtTokenDecimals",
+            "offset": 0,
+            "slot": "31",
+            "type": "t_uint8",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:118"
+          },
+          {
+            "label": "usdtScaleMigrated",
+            "offset": 1,
+            "slot": "31",
+            "type": "t_bool",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:119"
+          },
+          {
+            "label": "subAdmins",
+            "offset": 0,
+            "slot": "32",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:122"
+          },
+          {
+            "label": "subAdminList",
+            "offset": 0,
+            "slot": "33",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:123"
+          },
+          {
+            "label": "subAdminIndexPlusOne",
+            "offset": 0,
+            "slot": "34",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:124"
+          },
+          {
+            "label": "releaseDailyBps",
+            "offset": 0,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:129"
+          },
+          {
+            "label": "releaseImmediateBurnBps",
+            "offset": 2,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:130"
+          },
+          {
+            "label": "releaseSecondaryBurnBps",
+            "offset": 4,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:131"
+          },
+          {
+            "label": "releaseStaticBps",
+            "offset": 6,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:132"
+          },
+          {
+            "label": "releaseDynamicBps",
+            "offset": 8,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:133"
+          },
+          {
+            "label": "rewardCapBps",
+            "offset": 10,
+            "slot": "35",
+            "type": "t_uint16",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:134"
+          },
+          {
+            "label": "rewardPoolBalance",
+            "offset": 0,
+            "slot": "36",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:135"
+          },
+          {
+            "label": "lastRewardSettlementDay",
+            "offset": 0,
+            "slot": "37",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:136"
+          },
+          {
+            "label": "rewardBurnAddress",
+            "offset": 0,
+            "slot": "38",
+            "type": "t_address",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:137"
+          },
+          {
+            "label": "orderRewardLedger",
+            "offset": 0,
+            "slot": "39",
+            "type": "t_mapping(t_uint256,t_struct(OrderRewardLedger)2724_storage)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:138"
+          },
+          {
+            "label": "directNodeReferralCount",
+            "offset": 0,
+            "slot": "40",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:141"
+          },
+          {
+            "label": "directSuperNodeReferralCount",
+            "offset": 0,
+            "slot": "41",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:142"
+          },
+          {
+            "label": "leaderboardWhitelistAdjustPct",
+            "offset": 0,
+            "slot": "42",
+            "type": "t_uint8",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:144"
+          },
+          {
+            "label": "leaderboardWhitelist",
+            "offset": 0,
+            "slot": "43",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:145"
+          },
+          {
+            "label": "leaderboardWhitelistIndexPlusOne",
+            "offset": 0,
+            "slot": "44",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:146"
+          },
+          {
+            "label": "dailyFirstOrderSeq",
+            "offset": 0,
+            "slot": "45",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:147"
+          },
+          {
+            "label": "dailyOrderSeq",
+            "offset": 0,
+            "slot": "46",
+            "type": "t_mapping(t_uint256,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:148"
+          },
+          {
+            "label": "lightToken",
+            "offset": 0,
+            "slot": "47",
+            "type": "t_contract(IERC20)1341",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:151"
+          },
+          {
+            "label": "swapPoolManager",
+            "offset": 0,
+            "slot": "48",
+            "type": "t_address",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:152"
+          },
+          {
+            "label": "_transientLightPrice",
+            "offset": 0,
+            "slot": "49",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:153"
+          },
+          {
+            "label": "cycleDuration",
+            "offset": 0,
+            "slot": "50",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:156"
+          },
+          {
+            "label": "managers",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:159"
+          },
+          {
+            "label": "nodeList",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:163"
+          },
+          {
+            "label": "superNodeList",
+            "offset": 0,
+            "slot": "53",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:164"
+          },
+          {
+            "label": "nodeIndexPlusOne",
+            "offset": 0,
+            "slot": "54",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:165"
+          },
+          {
+            "label": "superNodeIndexPlusOne",
+            "offset": 0,
+            "slot": "55",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:166"
+          },
+          {
+            "label": "lastNodePoolSettleDay",
+            "offset": 0,
+            "slot": "56",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:169"
+          },
+          {
+            "label": "lastSuperNodePoolSettleDay",
+            "offset": 0,
+            "slot": "57",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:170"
+          },
+          {
+            "label": "leaderboardSettledDay",
+            "offset": 0,
+            "slot": "58",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:171"
+          },
+          {
+            "label": "minPoolSettleAmount",
+            "offset": 0,
+            "slot": "59",
+            "type": "t_uint256",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:174"
+          },
+          {
+            "label": "publicSettleEnabled",
+            "offset": 0,
+            "slot": "60",
+            "type": "t_bool",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:178"
+          },
+          {
+            "label": "roleListsBootstrapped",
+            "offset": 1,
+            "slot": "60",
+            "type": "t_bool",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:181"
+          },
+          {
+            "label": "contractPoolConfig",
+            "offset": 0,
+            "slot": "61",
+            "type": "t_struct(PoolConfig)2729_storage",
+            "contract": "IncubatorCore",
+            "src": "contracts/IncubatorCore.sol:184"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)365_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)111_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_array(t_address)10_storage": {
+            "label": "address[10]",
+            "numberOfBytes": "320"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(PoolConfig)2729_storage)6_storage": {
+            "label": "struct IncubatorCore.PoolConfig[6]",
+            "numberOfBytes": "192"
+          },
+          "t_array(t_uint16)10_storage": {
+            "label": "uint16[10]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)10_storage": {
+            "label": "uint256[10]",
+            "numberOfBytes": "320"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)1341": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_enum(Role)2694": {
+            "label": "enum IncubatorCore.Role",
+            "members": [
+              "None",
+              "Node",
+              "SuperNode"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+            "label": "mapping(address => uint256[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_bool))": {
+            "label": "mapping(uint256 => mapping(address => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(uint256 => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(IdentityAccount)2739_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.IdentityAccount)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(LeaderboardState)7868_storage)": {
+            "label": "mapping(uint256 => struct LeaderboardLib.LeaderboardState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MachineOrder)2715_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.MachineOrder)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(OrderRewardLedger)2724_storage)": {
+            "label": "mapping(uint256 => struct IncubatorCore.OrderRewardLedger)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint8,t_uint256)": {
+            "label": "mapping(uint8 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(IdentityAccount)2739_storage": {
+            "label": "struct IncubatorCore.IdentityAccount",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "role",
+                "type": "t_enum(Role)2694",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "updatedAt",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(LeaderboardState)7868_storage": {
+            "label": "struct LeaderboardLib.LeaderboardState",
+            "members": [
+              {
+                "label": "topUsers",
+                "type": "t_array(t_address)10_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "topVolumes",
+                "type": "t_array(t_uint256)10_storage",
+                "offset": 0,
+                "slot": "10"
+              },
+              {
+                "label": "topCount",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "20"
+              },
+              {
+                "label": "lastUsers",
+                "type": "t_array(t_address)10_storage",
+                "offset": 0,
+                "slot": "21"
+              },
+              {
+                "label": "lastCount",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "31"
+              }
+            ],
+            "numberOfBytes": "1024"
+          },
+          "t_struct(MachineOrder)2715_storage": {
+            "label": "struct IncubatorCore.MachineOrder",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "user",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "quantity",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "amountUSDT",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "referrer",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "createdAt",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(OrderRewardLedger)2724_storage": {
+            "label": "struct IncubatorCore.OrderRewardLedger",
+            "members": [
+              {
+                "label": "capAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "staticPaid",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "dynamicPaid",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "exited",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(PoolConfig)2729_storage": {
+            "label": "struct IncubatorCore.PoolConfig",
+            "members": [
+              {
+                "label": "recipient",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "bps",
+                "type": "t_uint16",
+                "offset": 20,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "7a9e4da9b92d497dec2f3342500946fcde9db9c8d19cf6c3f8a1e9d7624dc149": {
+      "address": "0x7d162AAB31f39F76680F907f46325677B171350b",
+      "txHash": "0x723881b78e2642dc432b2bc46f1e5b0ae6bed464de4e6ee995ae772611e25696",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "usdt",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IERC20)1341",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:59"
+          },
+          {
+            "label": "ico",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_contract(IERC20)1341",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:60"
+          },
+          {
+            "label": "light",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_contract(IERC20)1341",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:61"
+          },
+          {
+            "label": "lightBurnBps",
+            "offset": 20,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:63"
+          },
+          {
+            "label": "lightBootstrapBps",
+            "offset": 22,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:64"
+          },
+          {
+            "label": "lightNodeBps",
+            "offset": 24,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:65"
+          },
+          {
+            "label": "lightSuperNodeBps",
+            "offset": 26,
+            "slot": "2",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:66"
+          },
+          {
+            "label": "lightBootstrapRecipient",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:67"
+          },
+          {
+            "label": "lightNodeRecipient",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:68"
+          },
+          {
+            "label": "lightSuperNodeRecipient",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:69"
+          },
+          {
+            "label": "pools",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint8,t_struct(Pool)9485_storage)",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:71"
+          },
+          {
+            "label": "feeVault",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_uint8,t_mapping(t_address,t_uint256))",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:72"
+          },
+          {
+            "label": "lastLightSettlementDay",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_uint256",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:75"
+          },
+          {
+            "label": "rewardController",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:76"
+          },
+          {
+            "label": "cycleDuration",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_uint256",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:79"
+          },
+          {
+            "label": "lightRealtimeDistribute",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_bool",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:83"
+          },
+          {
+            "label": "usdtIcoPoolEnabled",
+            "offset": 1,
+            "slot": "11",
+            "type": "t_bool",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:85"
+          },
+          {
+            "label": "incubatorCore",
+            "offset": 2,
+            "slot": "11",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:90"
+          },
+          {
+            "label": "lightPriceUsdtE18",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_uint256",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:92"
+          },
+          {
+            "label": "icoPriceUsdtE18",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_uint256",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:94"
+          },
+          {
+            "label": "lightBurnSplitBps",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:96"
+          },
+          {
+            "label": "lightPoolSplitBps",
+            "offset": 2,
+            "slot": "14",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:97"
+          },
+          {
+            "label": "lightSuperSplitBps",
+            "offset": 4,
+            "slot": "14",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:98"
+          },
+          {
+            "label": "lightNodeSplitBps",
+            "offset": 6,
+            "slot": "14",
+            "type": "t_uint16",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:99"
+          },
+          {
+            "label": "lightRewardTreasury",
+            "offset": 8,
+            "slot": "14",
+            "type": "t_address",
+            "contract": "SwapPoolManager",
+            "src": "contracts/SwapPoolManager.sol:102"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)365_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)111_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_contract(IERC20)1341": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint8,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(uint8 => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint8,t_struct(Pool)9485_storage)": {
+            "label": "mapping(uint8 => struct SwapPoolManager.Pool)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Pool)9485_storage": {
+            "label": "struct SwapPoolManager.Pool",
+            "members": [
+              {
+                "label": "token0",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "token1",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "reserve0",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "reserve1",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "feeBps",
+                "type": "t_uint16",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "maxPriceImpactBps",
+                "type": "t_uint16",
+                "offset": 2,
+                "slot": "4"
+              },
+              {
+                "label": "exists",
+                "type": "t_bool",
+                "offset": 4,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
           },
           "t_uint16": {
             "label": "uint16",

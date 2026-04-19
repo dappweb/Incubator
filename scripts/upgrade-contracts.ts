@@ -24,11 +24,18 @@ async function main() {
   console.log(`Upgrading with account: ${deployer.address}`);
 
   const targets: UpgradeTarget[] = [
-    { label: "IncubatorCore", envKey: "INCUBATOR_CORE_PROXY", contractName: "IncubatorCore" },
+    // NOTE: IncubatorCore is intentionally skipped on CNC mainnet because its current
+    // implementation already exceeds EIP-170 limits when new features are added.
+    // Re-enable only after code-size reduction lands.
+    // { label: "IncubatorCore", envKey: "INCUBATOR_CORE_PROXY", contractName: "IncubatorCore" },
     { label: "NodeOTCMarket", envKey: "NODE_OTC_MARKET_PROXY", contractName: "NodeOTCMarket" },
     { label: "SwapPoolManager", envKey: "SWAP_POOL_MANAGER_PROXY", contractName: "SwapPoolManager" },
     { label: "IdentityNFT", envKey: "IDENTITY_NFT_PROXY", contractName: "IdentityNFT" },
-    { label: "PrimarySwapController", envKey: "PRIMARY_SWAP_CONTROLLER_PROXY", contractName: "PrimarySwapController" },
+    // PrimarySwapController intentionally skipped: deployed storage layout contains
+    // P1 vars (contractUsdtAccumulated, contractIcoAccumulated, bottomPoolLpRecipient,
+    // bottomPoolAutoInjectBps) that do not exist in current source. Re-enable after
+    // source is aligned with on-chain storage (append-only).
+    // { label: "PrimarySwapController", envKey: "PRIMARY_SWAP_CONTROLLER_PROXY", contractName: "PrimarySwapController" },
   ];
 
   try {
@@ -177,6 +184,69 @@ async function main() {
       }
 
       console.log("🔧 On-chain settlement configuration complete.");
+    }
+
+    // Post-upgrade: wire SwapPoolManager with LIGHT reward treasury + 60/30/3/7 split + U-based price
+    const swapEntry = summary.find((x) => x.label === "SwapPoolManager");
+    if (swapEntry) {
+      console.log("\n🔧 Configuring SwapPoolManager LIGHT→ICO U-based flow...");
+      const swap = await ethers.getContractAt("SwapPoolManager", swapEntry.proxy);
+
+      // a) setLightRewardTreasury (holds combined 3%+7% share until realtime distribution is deployed)
+      try {
+        const treasuryEnv = process.env.LIGHT_REWARD_TREASURY?.trim();
+        const treasury = treasuryEnv && ethers.isAddress(treasuryEnv) ? treasuryEnv : deployer.address;
+        const current: string = await swap.lightRewardTreasury();
+        if (current.toLowerCase() !== treasury.toLowerCase()) {
+          const tx = await swap.setLightRewardTreasury(treasury);
+          await tx.wait();
+          console.log(`  ✓ lightRewardTreasury → ${treasury}`);
+        } else {
+          console.log(`  - lightRewardTreasury already set (${current})`);
+        }
+      } catch (err) {
+        console.warn("  ⚠ setLightRewardTreasury failed:", (err as Error).message);
+      }
+
+      // b) setLightSplitBps: default 60/30/3/7 per whitepaper 1.3.4.4.1.1
+      try {
+        const burn = await swap.lightBurnSplitBps();
+        const poolBack = await swap.lightPoolSplitBps();
+        const sup = await swap.lightSuperSplitBps();
+        const nod = await swap.lightNodeSplitBps();
+        const total = Number(burn) + Number(poolBack) + Number(sup) + Number(nod);
+        if (total !== 10000) {
+          const tx = await swap.setLightSplitBps(6000, 3000, 300, 700);
+          await tx.wait();
+          console.log("  ✓ setLightSplitBps(60/30/3/7) applied");
+        } else {
+          console.log(`  - light split already configured (${burn}/${poolBack}/${sup}/${nod})`);
+        }
+      } catch (err) {
+        console.warn("  ⚠ setLightSplitBps failed:", (err as Error).message);
+      }
+
+      // c) setLightUsdPrice: read from env (scaled 1e18). Skip if not provided.
+      try {
+        const lightP = process.env.LIGHT_PRICE_USDT_E18?.trim();
+        const icoP = process.env.ICO_PRICE_USDT_E18?.trim();
+        if (lightP && icoP) {
+          const current: bigint = await swap.lightPriceUsdtE18();
+          if (current.toString() !== lightP) {
+            const tx = await swap.setLightUsdPrice(lightP, icoP);
+            await tx.wait();
+            console.log(`  ✓ setLightUsdPrice(light=${lightP}, ico=${icoP})`);
+          } else {
+            console.log("  - light/ico USD price already configured");
+          }
+        } else {
+          console.log("  - LIGHT_PRICE_USDT_E18 / ICO_PRICE_USDT_E18 not set, skipping price setter");
+        }
+      } catch (err) {
+        console.warn("  ⚠ setLightUsdPrice failed:", (err as Error).message);
+      }
+
+      console.log("🔧 SwapPoolManager LIGHT flow configuration complete.");
     }
   } catch (error) {
     console.error("❌ Upgrade failed:", error);

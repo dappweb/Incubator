@@ -78,6 +78,15 @@ async function watchTokenInWallet(token: WalletWatchToken) {
   }
 }
 
+async function watchTokenInWalletWithTimeout(token: WalletWatchToken, timeoutMs = 15000) {
+  return Promise.race<boolean>([
+    watchTokenInWallet(token),
+    new Promise<boolean>((resolve) => {
+      window.setTimeout(() => resolve(false), timeoutMs);
+    }),
+  ]);
+}
+
 export async function addProjectTokenToWallet(symbol: "ICO" | "LIGHT") {
   const token = PROJECT_TOKENS[symbol];
   if (!token?.address) {
@@ -102,8 +111,15 @@ export async function setupWalletAfterConnect(): Promise<WalletSetupResult> {
     return { addedTokenCount: 0, attemptedTokenCount: 0 };
   }
 
-  const watchResults = await Promise.all(validTokens.map((token) => watchTokenInWallet(token)));
-  const addedTokenCount = watchResults.filter(Boolean).length;
+  // Run wallet_watchAsset in sequence with timeout to avoid blocking the guide forever
+  // when a wallet popup is ignored or the wallet does not respond.
+  let addedTokenCount = 0;
+  for (const token of validTokens) {
+    const added = await watchTokenInWalletWithTimeout(token);
+    if (added) {
+      addedTokenCount += 1;
+    }
+  }
 
   return {
     addedTokenCount,

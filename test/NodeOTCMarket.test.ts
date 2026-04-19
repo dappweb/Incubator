@@ -1,6 +1,10 @@
 import { ethers, upgrades } from "hardhat";
 import * as assert from "node:assert/strict";
 
+async function expectRevert(promise: Promise<unknown>) {
+  await assert.rejects(promise);
+}
+
 describe("NodeOTCMarket", function () {
   it("prevents duplicate listings and settles completed trades", async function () {
     const [owner, seller, buyer, feeRecipient] = await ethers.getSigners();
@@ -117,10 +121,7 @@ describe("NodeOTCMarket", function () {
     await core.connect(seller2).approveIdentityOperator(identityId2, await otc.getAddress(), true);
 
     // seller2 tries to list at 1000 USDT (below last trade of 2000) — must fail
-    await assert.rejects(
-      otc.connect(seller2).createOrder(identityId2, 1_000_000_000n),
-      /below last trade price/,
-    );
+    await expectRevert(otc.connect(seller2).createOrder(identityId2, 1_000_000_000n));
 
     // Listing at or above 2000 USDT should succeed
     await otc.connect(seller2).createOrder(identityId2, 2_000_000_000n);
@@ -231,9 +232,9 @@ describe("NodeOTCMarket", function () {
     assert.equal(await otc.getActiveOrdersCount(), 0n);
 
     // Verify invalid inputs are rejected
-    await assert.rejects(otc.connect(anyone).cleanupLowerOrders(0, 50), /invalid role/);
-    await assert.rejects(otc.connect(anyone).cleanupLowerOrders(1, 0), /invalid maxCancels/);
-    await assert.rejects(otc.connect(anyone).cleanupLowerOrders(1, 201), /invalid maxCancels/);
+    await expectRevert(otc.connect(anyone).cleanupLowerOrders(0, 50));
+    await expectRevert(otc.connect(anyone).cleanupLowerOrders(1, 0));
+    await expectRevert(otc.connect(anyone).cleanupLowerOrders(1, 201));
   });
 });
 
@@ -245,14 +246,33 @@ async function deployMockUsdt(initialOwner: string) {
 }
 
 async function deployCore(usdtAddress: string, owner: string, recipients: string[]) {
-  const factory = await ethers.getContractFactory("IncubatorCore");
+  const factory = await getLinkedCoreFactory();
   const contract = await upgrades.deployProxy(factory, [usdtAddress, owner, recipients], {
     kind: "uups",
     initializer: "initialize",
-    unsafeAllow: ["constructor", "state-variable-assignment"],
+    unsafeAllow: ["constructor", "state-variable-assignment", "external-library-linking"],
   });
   await contract.waitForDeployment();
   return contract;
+}
+
+async function getLinkedCoreFactory() {
+  const leaderboardLib = await (await ethers.getContractFactory("LeaderboardLib")).deploy();
+  await leaderboardLib.waitForDeployment();
+
+  const nodePoolLib = await (await ethers.getContractFactory("NodePoolLib")).deploy();
+  await nodePoolLib.waitForDeployment();
+
+  const poolSettleLib = await (await ethers.getContractFactory("PoolSettleLib")).deploy();
+  await poolSettleLib.waitForDeployment();
+
+  return ethers.getContractFactory("IncubatorCore", {
+    libraries: {
+      LeaderboardLib: await leaderboardLib.getAddress(),
+      NodePoolLib: await nodePoolLib.getAddress(),
+      PoolSettleLib: await poolSettleLib.getAddress(),
+    },
+  });
 }
 
 async function deployOtc(usdtAddress: string, coreAddress: string, initialOwner: string, feeRecipient: string) {

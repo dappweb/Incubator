@@ -1,5 +1,5 @@
-import * as assert from "node:assert/strict";
 import { ethers, upgrades } from "hardhat";
+import * as assert from "node:assert/strict";
 
 async function main() {
   await validateIcoBurnFlow(ethers);
@@ -44,7 +44,7 @@ async function validateCoreFlow(hardhatEthers: typeof ethers) {
   await core.connect(buyer).bindReferrer(owner.address);
 
   await core.connect(buyer).purchaseMachine(2);
-  const order = await core.getMachineOrder(1);
+  const order = await core.machineOrders(1);
   assert.equal(order.quantity, 2n);
   assert.equal(order.amountUSDT, 200_000_000n);
 
@@ -57,10 +57,10 @@ async function validateCoreFlow(hardhatEthers: typeof ethers) {
   assert.equal(await usdt.balanceOf(buyer.address), 9_800_000_000n);
 
   await core.connect(buyer).buyNode();
-  assert.equal(await core.roles(buyer.address), 1n);
+  assert.equal(await core.getUserRole(buyer.address), 1n);
 
   await core.connect(buyer).buySuperNode();
-  assert.equal(await core.roles(buyer.address), 2n);
+  assert.equal(await core.getUserRole(buyer.address), 2n);
 
   const identityId = await core.getUserIdentityId(buyer.address);
   const identity = await core.getIdentity(identityId);
@@ -117,6 +117,8 @@ async function validateSwapFlow(hardhatEthers: typeof ethers) {
   const swap = await deploySwap(hardhatEthers, await usdt.getAddress(), await ico.getAddress(), await light.getAddress(), owner.address);
 
   await swap.connect(owner).createDefaultPools(50, 200, 3000);
+  // P6: legacy USDT/ICO internal pool is disabled by default; enable for this validation script.
+  await swap.connect(owner).setUsdtIcoPoolEnabled(true);
 
   await usdt.connect(owner).mint(owner.address, 20_000_000_000n);
   await ico.connect(owner).mint(owner.address, 2_000_000_000_000_000_000_000_000n);
@@ -181,14 +183,26 @@ async function deployCore(
   owner: string,
   recipients: string[],
 ) {
-  const factory = await hardhatEthers.getContractFactory("IncubatorCore");
+  const libraries = await deployCoreLibraries(hardhatEthers);
+  const factory = await hardhatEthers.getContractFactory("IncubatorCore", { libraries });
   const contract = await upgrades.deployProxy(factory, [usdtAddress, owner, recipients], {
     kind: "uups",
     initializer: "initialize",
-    unsafeAllow: ["constructor", "state-variable-assignment"],
+    unsafeAllow: ["constructor", "state-variable-assignment", "external-library-linking"],
   });
   await contract.waitForDeployment();
   return contract;
+}
+
+async function deployCoreLibraries(hardhatEthers: typeof ethers) {
+  const libraries: Record<string, string> = {};
+  for (const name of ["LeaderboardLib", "NodePoolLib", "PoolSettleLib"] as const) {
+    const factory = await hardhatEthers.getContractFactory(name);
+    const contract = await factory.deploy();
+    await contract.waitForDeployment();
+    libraries[name] = await contract.getAddress();
+  }
+  return libraries;
 }
 
 async function deployMockToken(

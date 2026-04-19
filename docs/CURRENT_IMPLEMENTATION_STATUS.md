@@ -1,4 +1,4 @@
-# 当前实现状态（2026-03-29）
+# 当前实现状态（2026-04-18）
 
 本文档用于说明“当前代码已实现内容”与“仍待补齐内容”，避免将早期路线图误读为当前真实状态。
 
@@ -30,14 +30,36 @@
 
 ### 3) Swap（SwapPoolManager）
 
-- 双池模型：`USDT/ICO` + `LIGHT/ICO`
+- 双池模型：`USDT/ICO`（已下线，见下）+ `LIGHT/ICO`（主用）
 - 方向限制：`LIGHT/ICO` 仅支持 `LIGHT -> ICO`
 - 报价与成交：`quoteExactIn`、`swapExactIn`
 - 风控：`minOut` 滑点保护 + `maxPriceImpactBps` 价格冲击保护
-- LIGHT 手续费清算：新增 `settleLightFees()`，支持按 `60%` 销毁、`30%` 启动池、`7%` 节点池、`3%` 超级节点池清算
+- LIGHT 手续费清算：
+  - `settleLightFees()`：批结算口径 `60%` 销毁、`30%` 启动池、`7%` 节点池、`3%` 超级节点池
+  - **新增 `lightRealtimeDistribute` 开关**（默认关闭）：开启后 `LIGHT -> ICO` 每笔交易实时按同样比例销毁/分账，无需 `settleLightFees`；公共逻辑统一抽到 `_distributeLightFees()`
+  - 切换接口：`setLightRealtimeDistribute(bool)`
+- **USDT/ICO 池下线（P6）**：`usdtIcoPoolEnabled` 默认 `false`；新增 `setUsdtIcoPoolEnabled(bool)` + `migrateUsdtIcoLiquidity(to)` 迁移历史 LP；测试夹具显式开启该池才可继续使用旧接口。生产侧由 `PrimarySwapController` 承接 USDT↔ICO 流量。
 - 暂停机制：`pause()` / `unpause()`
 
 对应文件：`contracts/SwapPoolManager.sol`
+
+### 3.1) Primary Swap（PrimarySwapController）
+
+承接 USDT↔ICO 主市场流量，对接外部 V2 Router；UUPS 可升级。
+
+- 默认费率切片（**P0**）：`superNode = 100 bps`、`nodePool = 200 bps`、`platform = 200 bps`（合计 5%）
+- 卖出闸门：`sellEnabled` + `sellEnablerThresholdUsdt`；**新增 `tryAutoEnableSellUsdt()`**（**P3**），任何人在累计 USDT 达阈值后可触发开闸，无需 owner
+- 平台累计池视图（**P1**）：
+  - 状态：`contractUsdtAccumulated` / `contractIcoAccumulated`
+  - 视图：`getContractPoolStats()`
+  - 事件：`ContractPoolAccrued(token, amount, totalAfter)`
+- 底池注资（**P2**）：
+  - 配置：`bottomPoolLpRecipient`、`bottomPoolAutoInjectBps`
+  - 接口：`updateBottomPoolConfig(lp, bps)`、`injectBottomPool(usdt, ico, minU, minI)`（owner）
+  - `sellIcoForUsdt` 末尾自动注资钩子：`bottomPoolAutoInjectBps>0` 时按比例从契约池抽 ICO 切片，按当前 pair 储备配比 USDT，调用 `IRouterV2Like.addLiquidity` 加入主池；余额不足时安全跳过；累计器按 `min(used, accrued)` 递减
+  - 事件：`BottomPoolInjected`、`BottomPoolConfigUpdated`
+
+对应文件：`contracts/PrimarySwapController.sol`
 
 ### 4) ICO 代币（IncubatorToken）
 
@@ -54,8 +76,14 @@
 - 钱包连接 + CNC Mainnet 校验 + 授权流程提示
 - Core / OTC / Swap 核心交互已接入
 - Appwrite 仅用于公告读取
+- **Admin 新增 4 张卡片**（与本轮 P0/P1/P2/P3/P6 配套，用户端 UI 无改动）：
+  - 「契约池累计」只读视图（P1）
+  - 「自动开闸 + LIGHT 实时分配」开关（P3）
+  - 「USDT/ICO 旧池迁移」（P6，含 `setUsdtIcoPoolEnabled` / `migrateUsdtIcoLiquidity`）
+  - 「底池注资」（P2，含配置 + 手动注资）
+- `src/lib/swapContract.ts` 同步暴露：`getContractPoolStats`、`tryAutoEnableSellUsdt`、`getLightRealtimeDistribute` / `setLightRealtimeDistribute`、`getUsdtIcoPoolEnabled` / `setUsdtIcoPoolEnabled` / `migrateUsdtIcoLiquidity`、`getBottomPoolConfig` / `updateBottomPoolConfig` / `injectBottomPool`
 
-对应文件：`src/App.tsx`、`src/lib/*.ts`
+对应文件：`src/App.tsx`、`src/components/Admin.tsx`、`src/lib/*.ts`
 
 ---
 
