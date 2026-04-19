@@ -2302,6 +2302,7 @@ const App = () => {
           </Card>
 
           {/* 节点购买卡 */}
+          {role !== 2 && (
           <Card title={t.nodeTitle}>
             <KVRow label={t.nodePrice} value={formatUsdt(nodePrice) + " USDT"} />
             <p className="hint">{t.nodeDesc}</p>
@@ -2337,6 +2338,7 @@ const App = () => {
             </div>
             {nodeDisabledReason && role === 0 ? <p className="action-hint">{nodeDisabledReason}</p> : null}
           </Card>
+          )}
 
           {/* 超级节点购买卡 */}
           <Card title={t.superNodeTitle}>

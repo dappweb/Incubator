@@ -13,6 +13,33 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // One-time auto-reload guard for stale lazy-loaded chunks after redeploy.
+      // Pattern: "<Var> is not defined" or Vite "Failed to fetch dynamically imported module".
+      (function () {
+        var RELOAD_KEY = "__incubator_stale_reload_at";
+        function maybeReload(msg) {
+          if (!msg) return;
+          var stale =
+            /is not defined/.test(msg) ||
+            /Failed to fetch dynamically imported module/.test(msg) ||
+            /Importing a module script failed/.test(msg);
+          if (!stale) return;
+          var last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
+          if (Date.now() - last < 15000) return; // avoid reload loop
+          sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+          location.reload();
+        }
+        window.addEventListener("error", function (ev) {
+          maybeReload(ev && ev.message);
+        });
+        window.addEventListener("unhandledrejection", function (ev) {
+          var reason = ev && ev.reason;
+          var msg = reason && (reason.message || String(reason));
+          maybeReload(msg);
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
