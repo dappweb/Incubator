@@ -7,6 +7,11 @@ import {
     type MachineOrder
 } from "../lib/coreContract";
 import {
+    claimLightReward,
+    getLightClaimable,
+    hasLightRewardVault,
+} from "../lib/lightRewardVault";
+import {
     getActiveOrderIds,
     getOrder
 } from "../lib/otcContract";
@@ -113,9 +118,9 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
           : "Unknown"
       );
 
-      // LIGHT realtime reward (acc-per-share) pending balance
+      // LIGHT reward (vault-based, pulled on claim)
       try {
-        const pending = await getPendingLightReward(provider, address);
+        const pending = await getLightClaimable(provider, address);
         setPendingLight(pending);
       } catch {
         setPendingLight(0n);
@@ -200,15 +205,16 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
         </div>
       </Card>
 
-      {/* LIGHT Realtime Reward */}
-      <Card title={t.lightRewardTitle || "LIGHT 实时奖励 (节点/超级节点)"}>
+      {/* LIGHT Reward (Vault) */}
+      {hasLightRewardVault() && (
+      <Card title={t.lightRewardTitle || "LIGHT 奖励 (节点/超级节点)"}>
         <KVRow
           label={t.lightPendingLabel || "待领取 LIGHT"}
           value={`${(Number(pendingLight) / 1e18).toFixed(6)} LIGHT`}
         />
         <p className="hint">
           {t.lightRewardHint ||
-            "LIGHT→ICO 兑换的 3% / 7% 按小区业绩加权实时入账，可随时领取。"}
+            "LIGHT→ICO 兑换的 3% + 7% 份额由 LightRewardVault 按小区业绩加权分配，可随时领取。"}
         </p>
         <div className="actions">
           <button
@@ -221,7 +227,7 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
                 onLoadingChange(true);
                 await claimLightReward(provider);
                 onStatusChange(t.lightClaimOk || "LIGHT 奖励已领取");
-                const next = await getPendingLightReward(provider, address);
+                const next = await getLightClaimable(provider, address);
                 setPendingLight(next);
               } catch (err) {
                 onStatusChange(err instanceof Error ? err.message : "claim failed");
@@ -239,6 +245,7 @@ export const MyAssets: React.FC<MyAssetsProps> = ({
           </button>
         </div>
       </Card>
+      )}
 
       {/* Quick Actions */}
       <Card title={t.quickActions || "Quick Actions"}>
