@@ -73,7 +73,7 @@ import {
     setupWalletAfterConnect
 } from "./lib/wallet";
 
-type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "assets" | "admin";
+type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
 type SwapSubTab = "primary" | "light";
 type SwapDirection = "forward" | "reverse";
 
@@ -84,7 +84,6 @@ const INOUT_PREVIEW_LIMIT = 12;
 
 const Admin = lazy(() => import("./components/Admin"));
 const Leaderboard = lazy(() => import("./components/Leaderboard").then((module) => ({ default: module.Leaderboard })));
-const MyAssets = lazy(() => import("./components/MyAssets").then((module) => ({ default: module.MyAssets })));
 const OtcMarket = lazy(() => import("./components/OtcMarket").then((module) => ({ default: module.OtcMarket })));
 const TokenHistory = lazy(() => import("./components/TokenHistory").then((module) => ({ default: module.TokenHistory })));
 
@@ -140,7 +139,6 @@ const DESKTOP_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
   { key: "mine", label: "记录" },
-  { key: "assets", label: "资产" },
 ];
 
 const MOBILE_TABS: Array<{ key: TabKey; label: string }> = [
@@ -149,7 +147,6 @@ const MOBILE_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "otc", label: "市场" },
   { key: "swap", label: "兑换" },
   { key: "mine", label: "记录" },
-  { key: "assets", label: "资产" },
 ];
 
 function DeferredSectionFallback({ title, hint }: { title: string; hint?: string }) {
@@ -606,6 +603,8 @@ const App = () => {
   const [orders, setOrders] = useState<MachineOrder[]>([]);
   const [orderLedgers, setOrderLedgers] = useState<Map<string, OrderRewardLedger>>(new Map());
   const [rewardRecords, setRewardRecords] = useState<RewardRecord[]>([]);
+  const [lightClaimable, setLightClaimable] = useState<bigint>(0n);
+  const [claimingLight, setClaimingLight] = useState(false);
   const [teamStats, setTeamStats] = useState<TeamStats>({
     directCount: 0n,
     teamCount: 0n,
@@ -702,6 +701,7 @@ const App = () => {
     setMachineOrderCount(0);
     setOrders([]);
     setRewardRecords([]);
+    setLightClaimable(0n);
     setMyReferrer("");
     setDirectReferrals([]);
     setIdentityId(null);
@@ -1408,6 +1408,19 @@ const App = () => {
     } catch (error) {
       console.error("Failed to fetch reward records", error);
       setRewardRecords([]);
+    }
+
+    // LIGHT Vault claimable
+    try {
+      if (hasLightRewardVault()) {
+        const claimable = await getLightClaimable(connectedProvider, wallet);
+        setLightClaimable(claimable);
+      } else {
+        setLightClaimable(0n);
+      }
+    } catch (error) {
+      console.error("Failed to fetch LIGHT claimable", error);
+      setLightClaimable(0n);
     }
 
     // 身份 ID
@@ -2637,21 +2650,6 @@ const App = () => {
         </section>
       ) : null}
 
-      {activeTab === "assets" ? (
-        <Suspense fallback={<DeferredSectionFallback title={t.tab_assets} hint={t.portfolioHint} />}>
-          <MyAssets
-            t={t}
-            address={address}
-            provider={provider ?? undefined}
-            identityId={identityId ?? undefined}
-            role={role}
-            loading={loading}
-            onStatusChange={setStatus}
-            onLoadingChange={setLoading}
-          />
-        </Suspense>
-      ) : null}
-
       {activeTab === "mine" ? (
         historyToken && provider && address ? (
           <Suspense fallback={<DeferredSectionFallback title={lang === "zh" ? "钱包流水" : "Token History"} />}>
@@ -2696,6 +2694,70 @@ const App = () => {
               <KVRow label={t.loadedRecentRewards} value={rewardRecords.length} />
             </div>
           </Card>
+
+          {/* 身份资产 */}
+          {isConnected && address && (
+            <Card title={t.identity || (lang === "zh" ? "身份资产" : "My Identity Assets")}>
+              <div className="stats-grid">
+                <div className="stat-pill">
+                  <span>{t.node || (lang === "zh" ? "节点" : "Nodes")}</span>
+                  <strong>{identityId && role === 1 ? 1 : 0}</strong>
+                </div>
+                <div className="stat-pill">
+                  <span>{t.superNode || (lang === "zh" ? "超级节点" : "SuperNodes")}</span>
+                  <strong>{identityId && role === 2 ? 1 : 0}</strong>
+                </div>
+                <div className="stat-pill">
+                  <span>{t.otcListings || (lang === "zh" ? "OTC挂单" : "OTC Listings")}</span>
+                  <strong>{activeOrders.filter((o) => o.seller?.toLowerCase?.() === address.toLowerCase()).length}</strong>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* LIGHT 奖励金库 */}
+          {isConnected && address && provider && hasLightRewardVault() && (
+            <Card title={lang === "zh" ? "LIGHT 奖励 (节点/超级节点)" : "LIGHT Rewards (Node/SuperNode)"}>
+              <KVRow
+                label={lang === "zh" ? "待领取 LIGHT" : "Claimable LIGHT"}
+                value={`${(Number(lightClaimable) / 1e18).toFixed(6)} LIGHT`}
+              />
+              <p className="hint">
+                {lang === "zh"
+                  ? "LIGHT→ICO 兑换的 3% + 7% 份额由 LightRewardVault 按小区业绩加权分配，可随时领取。"
+                  : "The 3% + 7% LIGHT slice from LIGHT→ICO swaps is allocated by performance and claimable anytime."}
+              </p>
+              <div className="actions">
+                <button
+                  className="primary-btn"
+                  disabled={claimingLight || lightClaimable === 0n}
+                  onClick={async () => {
+                    if (!provider || !address) return;
+                    try {
+                      setClaimingLight(true);
+                      setLoading(true);
+                      await claimLightReward(provider);
+                      setStatus(lang === "zh" ? "LIGHT 奖励已领取" : "LIGHT reward claimed");
+                      const next = await getLightClaimable(provider, address);
+                      setLightClaimable(next);
+                    } catch (err) {
+                      setStatus(err instanceof Error ? err.message : "claim failed");
+                    } finally {
+                      setClaimingLight(false);
+                      setLoading(false);
+                    }
+                  }}
+                  type="button"
+                >
+                  {claimingLight
+                    ? (t.loading || "Loading...")
+                    : lightClaimable === 0n
+                      ? (lang === "zh" ? "无可领取" : "Nothing to claim")
+                      : (lang === "zh" ? "领取 LIGHT" : "Claim LIGHT")}
+                </button>
+              </div>
+            </Card>
+          )}
 
           {/* 钱包流水入口 */}
           {isConnected && address && provider && (
@@ -2842,7 +2904,6 @@ const App = () => {
               {tab.key === "otc" && "🤝"}
               {tab.key === "swap" && "🔄"}
               {tab.key === "mine" && "📋"}
-              {tab.key === "assets" && "💰"}
               {tab.key === "admin" && "⚙️"}
             </div>
             <span>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</span>
