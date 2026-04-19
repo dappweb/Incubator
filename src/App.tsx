@@ -616,7 +616,7 @@ const App = () => {
 
   const [identityId, setIdentityId] = useState<bigint | null>(null);
   const [, setIdentityApproved] = useState(false);
-  const [, setActiveOrders] = useState<OtcOrder[]>([]);
+  const [activeOrders, setActiveOrders] = useState<OtcOrder[]>([]);
   const [, setOtcFeeBps] = useState(0);
   const [, setLastNodeTradePrice] = useState<bigint>(0n);
   const [, setLastSuperTradePrice] = useState<bigint>(0n);
