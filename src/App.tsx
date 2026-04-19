@@ -55,10 +55,13 @@ import {
     getPrimarySwapSpender,
     getSwapPool,
     getSwapPoolsInfo,
+    isLightUsdPriceReady,
+    quoteLightForIcoUsdBased,
     quotePrimarySwapExactIn,
     quoteSwapExactIn,
     resolvePrimarySwapTokens,
     swapExactIn,
+    swapLightForIcoUsdBased,
     swapPrimaryExactIn,
 } from "./lib/swapContract";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
@@ -1183,6 +1186,23 @@ const App = () => {
     }
 
     const amountInRaw = parseTokenAmount(amountInput, tokenInMeta.decimals);
+    // P7: LIGHT → ICO uses U-based pricing (60/30/3/7 split) when configured.
+    if (
+      pairId === LIGHT_ICO_PAIR_ID &&
+      LIGHT_TOKEN_ADDRESS &&
+      tokenInAddress.toLowerCase() === LIGHT_TOKEN_ADDRESS.toLowerCase() &&
+      (await isLightUsdPriceReady(connectedProvider))
+    ) {
+      try {
+        const icoOut = await quoteLightForIcoUsdBased(connectedProvider, amountInRaw);
+        setSwapQuoteOut(icoOut);
+        setSwapQuoteFee(0n); // fee is embedded as 60/30/3/7 split, not a single fee number
+        setSwapQuoteImpactBps(0);
+        return;
+      } catch {
+        // fall through to AMM quote if view call fails
+      }
+    }
     const quote = await quoteSwapExactIn(connectedProvider, pairId, tokenInAddress, amountInRaw);
     setSwapQuoteOut(quote.amountOut);
     setSwapQuoteFee(quote.fee);
@@ -1933,7 +1953,16 @@ const App = () => {
     const minOut = (swapQuoteOut * BigInt(10_000 - swapSlippageBps)) / 10_000n;
     setStatus(`${t.swapping} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}...`);
     if (activePairId === LIGHT_ICO_PAIR_ID) {
-      await swapExactIn(provider!, activePairId, swapTokenInAddress, amountInRaw, minOut, address, signerRef.current ?? undefined);
+      // P7: prefer U-based path when Owner has configured LIGHT/ICO U prices on-chain.
+      const useUsdPath =
+        LIGHT_TOKEN_ADDRESS &&
+        swapTokenInAddress.toLowerCase() === LIGHT_TOKEN_ADDRESS.toLowerCase() &&
+        (await isLightUsdPriceReady(provider!));
+      if (useUsdPath) {
+        await swapLightForIcoUsdBased(provider!, amountInRaw, minOut, address, signerRef.current ?? undefined);
+      } else {
+        await swapExactIn(provider!, activePairId, swapTokenInAddress, amountInRaw, minOut, address, signerRef.current ?? undefined);
+      }
     } else {
       await swapPrimaryExactIn(provider!, activeSwapDirection, amountInRaw, minOut, address, signerRef.current ?? undefined);
     }

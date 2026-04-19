@@ -55,6 +55,8 @@ const swapAbi = [
   "function setLightUsdPrice(uint256 lightPriceE18, uint256 icoPriceE18)",
   "function setLightSplitBps(uint16 burnBps, uint16 poolBps, uint16 superBps, uint16 nodeBps)",
   "function setIncubatorCore(address core)",
+  "function lightRewardTreasury() view returns (address)",
+  "function setLightRewardTreasury(address treasury)",
 ];
 
 const pancakeRouterV2Abi = [
@@ -360,6 +362,47 @@ export async function swapExactIn(
   if (!signer) signer = await provider.getSigner();
   const contract = getSwapContract(provider).connect(signer) as any;
   const tx = await contract.swapExactIn(pairId, tokenIn, amountIn, minOut, to, { gasLimit: 500_000n });
+  return tx.wait();
+}
+
+// ===== P7 · U-based LIGHT → ICO swap =====
+
+/**
+ * True iff the SwapPoolManager has U-based pricing configured. When false,
+ * `swapLightForIcoUsdBased` will revert with `"price unset"` and the frontend
+ * should fall back to the legacy AMM path or surface a clear error.
+ */
+export async function isLightUsdPriceReady(provider: BrowserProvider): Promise<boolean> {
+  const contract = getSwapContract(provider) as any;
+  try {
+    const [lp, ip] = await Promise.all([
+      contract.lightPriceUsdtE18() as Promise<bigint>,
+      contract.icoPriceUsdtE18() as Promise<bigint>,
+    ]);
+    return lp > 0n && ip > 0n;
+  } catch {
+    return false;
+  }
+}
+
+export async function quoteLightForIcoUsdBased(
+  provider: BrowserProvider,
+  lightIn: bigint,
+): Promise<bigint> {
+  const contract = getSwapContract(provider) as any;
+  return (await contract.quoteLightForIcoUsdBased(lightIn)) as bigint;
+}
+
+export async function swapLightForIcoUsdBased(
+  provider: BrowserProvider,
+  lightIn: bigint,
+  minIcoOut: bigint,
+  to: string,
+  signer?: AbstractSigner,
+) {
+  if (!signer) signer = await provider.getSigner();
+  const contract = getSwapContract(provider).connect(signer) as any;
+  const tx = await contract.swapLightForIcoUsdBased(lightIn, minIcoOut, to, { gasLimit: 600_000n });
   return tx.wait();
 }
 
