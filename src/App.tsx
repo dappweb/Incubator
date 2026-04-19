@@ -60,7 +60,6 @@ import {
     quotePrimarySwapExactIn,
     quoteSwapExactIn,
     resolvePrimarySwapTokens,
-    swapExactIn,
     swapLightForIcoUsdBased,
     swapPrimaryExactIn,
 } from "./lib/swapContract";
@@ -1186,22 +1185,25 @@ const App = () => {
     }
 
     const amountInRaw = parseTokenAmount(amountInput, tokenInMeta.decimals);
-    // P7: LIGHT → ICO uses U-based pricing (60/30/3/7 split) when configured.
+    // P7: LIGHT → ICO is exclusively the U-based path (60/30/3/7 split). Legacy
+    // AMM path is deprecated for this pair.
     if (
       pairId === LIGHT_ICO_PAIR_ID &&
       LIGHT_TOKEN_ADDRESS &&
-      tokenInAddress.toLowerCase() === LIGHT_TOKEN_ADDRESS.toLowerCase() &&
-      (await isLightUsdPriceReady(connectedProvider))
+      tokenInAddress.toLowerCase() === LIGHT_TOKEN_ADDRESS.toLowerCase()
     ) {
-      try {
-        const icoOut = await quoteLightForIcoUsdBased(connectedProvider, amountInRaw);
-        setSwapQuoteOut(icoOut);
-        setSwapQuoteFee(0n); // fee is embedded as 60/30/3/7 split, not a single fee number
+      const priceReady = await isLightUsdPriceReady(connectedProvider);
+      if (!priceReady) {
+        setSwapQuoteOut(0n);
+        setSwapQuoteFee(0n);
         setSwapQuoteImpactBps(0);
         return;
-      } catch {
-        // fall through to AMM quote if view call fails
       }
+      const icoOut = await quoteLightForIcoUsdBased(connectedProvider, amountInRaw);
+      setSwapQuoteOut(icoOut);
+      setSwapQuoteFee(0n); // fee is embedded as 60/30/3/7 split
+      setSwapQuoteImpactBps(0);
+      return;
     }
     const quote = await quoteSwapExactIn(connectedProvider, pairId, tokenInAddress, amountInRaw);
     setSwapQuoteOut(quote.amountOut);
@@ -1953,16 +1955,14 @@ const App = () => {
     const minOut = (swapQuoteOut * BigInt(10_000 - swapSlippageBps)) / 10_000n;
     setStatus(`${t.swapping} ${swapTokenInSymbol} -> ${swapTokenOutSymbol}...`);
     if (activePairId === LIGHT_ICO_PAIR_ID) {
-      // P7: prefer U-based path when Owner has configured LIGHT/ICO U prices on-chain.
-      const useUsdPath =
-        LIGHT_TOKEN_ADDRESS &&
-        swapTokenInAddress.toLowerCase() === LIGHT_TOKEN_ADDRESS.toLowerCase() &&
-        (await isLightUsdPriceReady(provider!));
-      if (useUsdPath) {
-        await swapLightForIcoUsdBased(provider!, amountInRaw, minOut, address, signerRef.current ?? undefined);
-      } else {
-        await swapExactIn(provider!, activePairId, swapTokenInAddress, amountInRaw, minOut, address, signerRef.current ?? undefined);
+      // P7: LIGHT → ICO is strictly U-based. Legacy AMM path is deprecated.
+      if (!LIGHT_TOKEN_ADDRESS || swapTokenInAddress.toLowerCase() !== LIGHT_TOKEN_ADDRESS.toLowerCase()) {
+        throw new Error(t.refreshSwapFirst);
       }
+      if (!(await isLightUsdPriceReady(provider!))) {
+        throw new Error("LIGHT/ICO U price not configured on-chain");
+      }
+      await swapLightForIcoUsdBased(provider!, amountInRaw, minOut, address, signerRef.current ?? undefined);
     } else {
       await swapPrimaryExactIn(provider!, activeSwapDirection, amountInRaw, minOut, address, signerRef.current ?? undefined);
     }
