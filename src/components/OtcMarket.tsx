@@ -375,8 +375,9 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       {/* Create Listing Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content otc-create-modal" onClick={(e) => e.stopPropagation()}>
             <h3>{t.createListing || "Create Listing"}</h3>
+            <p className="otc-create-modal-subtitle">{t.otcRuleFloorPrice}</p>
 
             <div className="field-group">
               <label>{t.identityId || "Identity ID"}</label>
