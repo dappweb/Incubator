@@ -2373,6 +2373,112 @@ tr:last-child td {
   opacity: 0.5;
 }
 
+/* OTC create listing modal polish */
+.otc-create-modal {
+  max-width: 540px;
+  border: 1px solid rgba(95, 216, 127, 0.22);
+  background:
+    radial-gradient(120% 100% at 10% 0%, rgba(95, 216, 127, 0.08), rgba(95, 216, 127, 0) 48%),
+    linear-gradient(180deg, rgba(8, 20, 64, 0.94), rgba(6, 16, 52, 0.9));
+  box-shadow: 0 24px 80px rgba(3, 10, 36, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.otc-create-modal h3 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  color: #f4f8ff;
+}
+
+.otc-create-modal-subtitle {
+  margin: 10px 0 20px;
+  color: rgba(193, 214, 255, 0.72);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.otc-create-modal .field-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.otc-create-modal .field-group label {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(197, 218, 255, 0.92);
+  letter-spacing: 0.02em;
+}
+
+.otc-create-modal .field-group input {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid rgba(160, 174, 208, 0.22);
+  background: rgba(15, 24, 58, 0.82);
+  color: #eef4ff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 10px 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.otc-create-modal .field-group input::placeholder {
+  color: rgba(168, 184, 214, 0.68);
+  font-weight: 500;
+}
+
+.otc-create-modal .field-group input:focus {
+  outline: none;
+  border-color: rgba(95, 216, 127, 0.78);
+  box-shadow: 0 0 0 3px rgba(95, 216, 127, 0.18);
+  background: rgba(18, 29, 70, 0.9);
+}
+
+.otc-create-modal .field-group input:disabled {
+  color: rgba(229, 238, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 1;
+}
+
+.otc-create-modal .field-group .hint {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(134, 194, 50, 0.92);
+  font-weight: 700;
+}
+
+.otc-create-modal .modal-actions {
+  margin-top: 18px;
+  padding-top: 14px;
+}
+
+.otc-create-modal .secondary-btn,
+.otc-create-modal .primary-btn {
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.otc-create-modal input[type="number"]::-webkit-outer-spin-button,
+.otc-create-modal input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.otc-create-modal input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 @media (max-width: 768px) {
   .modal-content {
     padding: 24px;
@@ -2391,6 +2497,35 @@ tr:last-child td {
 
   .modal-actions button {
     width: 100%;
+  }
+
+  .otc-create-modal {
+    max-width: 100%;
+    padding: 20px 16px;
+    border-radius: 18px;
+  }
+
+  .otc-create-modal h3 {
+    font-size: 34px;
+  }
+
+  .otc-create-modal .field-group {
+    margin-bottom: 12px;
+    padding: 10px;
+  }
+
+  .otc-create-modal .field-group input {
+    min-height: 44px;
+    font-size: 22px;
+    padding: 8px 10px;
+  }
+
+  .otc-create-modal .field-group label {
+    font-size: 14px;
+  }
+
+  .otc-create-modal .field-group .hint {
+    font-size: 13px;
   }
 }
 

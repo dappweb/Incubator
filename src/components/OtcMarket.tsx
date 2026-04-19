@@ -3,14 +3,14 @@ import React, { useEffect, useState } from "react";
 import { OTC_CONTRACT_ADDRESS } from "../config";
 import { approveIdentityForOtc, isIdentityApproved } from "../lib/identityContract";
 import {
-  cancelOtcOrder,
-  createOtcOrder,
-  fillOtcOrder,
-  getActiveOrderIds,
-  getLastTradePriceByRole,
-  getOrder,
-  getOtcFeeBps,
-  type OtcOrder,
+    cancelOtcOrder,
+    createOtcOrder,
+    fillOtcOrder,
+    getActiveOrderIds,
+    getLastTradePriceByRole,
+    getOrder,
+    getOtcFeeBps,
+    type OtcOrder,
 } from "../lib/otcContract";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, parseUsdt } from "../lib/usdtContract";
 import { Card, KVRow } from "./Common";
@@ -55,6 +55,10 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
   const [createPrice, setCreatePrice] = useState("");
   const [selectedIdentityId, setSelectedIdentityId] = useState<bigint | null>(identityId || null);
   const [identityApproved, setIdentityApproved] = useState(false);
+
+  useEffect(() => {
+    setSelectedIdentityId(identityId || null);
+  }, [identityId]);
 
   // Refresh market data
   const refreshMarketData = async () => {
@@ -420,7 +424,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
               <button
                 className="primary-btn"
                 onClick={handleCreateListing}
-                disabled={loading || !createPrice}
+                disabled={loading || !createPrice || !selectedIdentityId}
               >
                 {loading ? t.creating || "Creating..." : t.confirm || "Confirm"}
               </button>
