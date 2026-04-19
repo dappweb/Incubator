@@ -31,7 +31,7 @@ DO_CHAIN="true"
 DO_WEB="true"
 DO_CRON="true"
 DRY_RUN="false"
-CADDY_SITE_ROOT="/var/www/incubator/dist"
+CADDY_SITE_ROOT="${CADDY_SITE_ROOT:-/var/www/incubator-t3/dist}"
 
 # ── 解析参数 ──
 for arg in "$@"; do
