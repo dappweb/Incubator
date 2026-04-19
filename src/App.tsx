@@ -5,78 +5,78 @@ import "./App.css";
 import { Card, KVRow } from "./components/Common";
 import type { TokenType } from "./components/TokenHistory";
 import {
-    CNC_MAINNET_CHAIN_ID,
-    CNC_MAINNET_CHAIN_NAME,
-    CNC_MAINNET_RPC_URLS,
-    CORE_CONTRACT_ADDRESS,
-    ICO_TOKEN_ADDRESS,
-    LIGHT_TOKEN_ADDRESS,
-    OTC_CONTRACT_ADDRESS,
-    PANCAKE_V3_PRIMARY_FEE_PPM,
-    PRIMARY_SWAP_CONTROLLER_ADDRESS,
-    SWAP_POOL_ADDRESS,
-    USDT_CONTRACT_ADDRESS,
+  CNC_MAINNET_CHAIN_ID,
+  CNC_MAINNET_CHAIN_NAME,
+  CNC_MAINNET_RPC_URLS,
+  CORE_CONTRACT_ADDRESS,
+  ICO_TOKEN_ADDRESS,
+  LIGHT_TOKEN_ADDRESS,
+  OTC_CONTRACT_ADDRESS,
+  PANCAKE_V3_PRIMARY_FEE_PPM,
+  PRIMARY_SWAP_CONTROLLER_ADDRESS,
+  SWAP_POOL_ADDRESS,
+  USDT_CONTRACT_ADDRESS,
 } from "./config";
 import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
 import {
-    bindReferrer,
-    buyNode,
-    buySuperNode,
-    getContractOwner,
-    getDirectReferralsByReferrer,
-    getMachineOrder,
-    getMachineUnitPrice,
-    getNodePrice,
-    getOrderRewardLedger,
-    getPoolAccumulatedBalances,
-    getReferrer,
-    getRewardRecordsByBeneficiary,
-    getSuperNodePrice,
-    getTeamStats,
-    getUserMachineOrderIds,
-    getUserRole,
-    isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
-    purchaseMachine,
-    type MachineOrder,
-    type OrderRewardLedger,
-    type RewardRecord,
-    type TeamStats
+  bindReferrer,
+  buyNode,
+  buySuperNode,
+  getContractOwner,
+  getDirectReferralsByReferrer,
+  getMachineOrder,
+  getMachineUnitPrice,
+  getNodePrice,
+  getOrderRewardLedger,
+  getPoolAccumulatedBalances,
+  getReferrer,
+  getRewardRecordsByBeneficiary,
+  getSuperNodePrice,
+  getTeamStats,
+  getUserMachineOrderIds,
+  getUserRole,
+  isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
+  purchaseMachine,
+  type MachineOrder,
+  type OrderRewardLedger,
+  type RewardRecord,
+  type TeamStats
 } from "./lib/coreContract";
 import { parseContractError } from "./lib/errorParser";
 import { getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
 import {
-    claimLightReward,
-    getLightClaimable,
-    hasLightRewardVault,
+  claimLightReward,
+  getLightClaimable,
+  hasLightRewardVault,
 } from "./lib/lightRewardVault";
 import {
-    getActiveOrderIds,
-    getLastTradePriceByRole,
-    getOrder,
-    getOtcFeeBps,
-    type OtcOrder,
+  getActiveOrderIds,
+  getLastTradePriceByRole,
+  getOrder,
+  getOtcFeeBps,
+  type OtcOrder,
 } from "./lib/otcContract";
 import {
-    getPrimarySwapFeeBps,
-    getPrimarySwapSpender,
-    getSwapPool,
-    getSwapPoolsInfo,
-    isLightUsdPriceReady,
-    quoteLightForIcoUsdBased,
-    quotePrimarySwapExactIn,
-    quoteSwapExactIn,
-    resolvePrimarySwapTokens,
-    swapLightForIcoUsdBased,
-    swapPrimaryExactIn,
+  getPrimarySwapFeeBps,
+  getPrimarySwapSpender,
+  getSwapPool,
+  getSwapPoolsInfo,
+  isLightUsdPriceReady,
+  quoteLightForIcoUsdBased,
+  quotePrimarySwapExactIn,
+  quoteSwapExactIn,
+  resolvePrimarySwapTokens,
+  swapLightForIcoUsdBased,
+  swapPrimaryExactIn,
 } from "./lib/swapContract";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { fetchTokenHistory, type TxRecord } from "./lib/tokenHistory";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, resolveUsdtAddress } from "./lib/usdtContract";
 import {
-    checkConnection,
-    connectWallet,
-    ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
-    setupWalletAfterConnect
+  checkConnection,
+  connectWallet,
+  ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
+  setupWalletAfterConnect
 } from "./lib/wallet";
 
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";

@@ -58,6 +58,11 @@ export async function getOrder(provider: BrowserProvider, orderId: bigint): Prom
   };
 }
 
+export async function getIdentityActiveOrder(provider: BrowserProvider, identityId: bigint): Promise<bigint> {
+  const contract = getOtcContract(provider) as any;
+  return contract.getIdentityActiveOrder(identityId);
+}
+
 export async function createOtcOrder(
   provider: BrowserProvider,
   identityId: bigint,

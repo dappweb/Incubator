@@ -1,12 +1,14 @@
 import { BrowserProvider } from "ethers";
 import React, { useEffect, useState } from "react";
 import { OTC_CONTRACT_ADDRESS } from "../config";
+import { parseContractError } from "../lib/errorParser";
 import { approveIdentityForOtc, isIdentityApproved } from "../lib/identityContract";
 import {
     cancelOtcOrder,
     createOtcOrder,
     fillOtcOrder,
     getActiveOrderIds,
+    getIdentityActiveOrder,
     getLastTradePriceByRole,
     getOrder,
     getOtcFeeBps,
@@ -17,9 +19,11 @@ import { Card, KVRow } from "./Common";
 
 interface OtcMarketProps {
   t: any;
+  lang: "zh" | "en";
   address?: string;
   provider?: BrowserProvider;
   identityId?: bigint;
+  identitySyncError?: string;
   role: number; // 0=user, 1=node, 2=supernode
   loading: boolean;
   onStatusChange: (msg: string) => void;
@@ -30,9 +34,11 @@ const ITEMS_PER_PAGE = 10;
 
 export const OtcMarket: React.FC<OtcMarketProps> = ({
   t,
+  lang,
   address,
   provider,
   identityId,
+  identitySyncError,
   role,
   loading,
   onStatusChange,
@@ -55,6 +61,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
   const [createPrice, setCreatePrice] = useState("");
   const [selectedIdentityId, setSelectedIdentityId] = useState<bigint | null>(identityId || null);
   const [identityApproved, setIdentityApproved] = useState(false);
+  const [activeOrderForIdentity, setActiveOrderForIdentity] = useState<bigint>(0n);
 
   useEffect(() => {
     setSelectedIdentityId(identityId || null);
@@ -108,11 +115,18 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
 
       // Check identity approval
       if (selectedIdentityId && provider && OTC_CONTRACT_ADDRESS) {
-        const approved = await isIdentityApproved(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS);
+        const [approved, activeOrderId] = await Promise.all([
+          isIdentityApproved(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS),
+          getIdentityActiveOrder(provider, selectedIdentityId),
+        ]);
         setIdentityApproved(approved);
+        setActiveOrderForIdentity(activeOrderId);
+      } else {
+        setIdentityApproved(false);
+        setActiveOrderForIdentity(0n);
       }
     } catch (error) {
-      onStatusChange(error instanceof Error ? error.message : "Failed to load market data");
+      onStatusChange(parseContractError(error, lang));
     } finally {
       onLoadingChange(false);
     }
@@ -123,16 +137,87 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
     refreshMarketData();
   }, [provider, address, currentPage, roleFilter, selectedIdentityId]);
 
+  const parsedPrice = createPrice.trim() ? parseUsdt(createPrice) : 0n;
+  const minPrice = role === 1 ? lastNodePrice : role === 2 ? lastSuperPrice : 0n;
+  const canTradeRole = role === 1 || role === 2;
+  const hasIdentity = Boolean(selectedIdentityId);
+  const hasNoActiveOrder = hasIdentity && activeOrderForIdentity === 0n;
+  const hasPositivePrice = parsedPrice > 0n;
+  const meetsFloorPrice = !hasPositivePrice ? false : parsedPrice >= minPrice;
+  const hasNoSyncError = !identitySyncError;
+
+  const precheckItems = [
+    {
+      key: "sync",
+      ok: hasNoSyncError,
+      label: lang === "zh" ? "身份数据同步正常" : "Identity data synchronized",
+      detail: hasNoSyncError ? (lang === "zh" ? "通过" : "Pass") : (identitySyncError || (lang === "zh" ? "身份同步异常" : "Identity sync mismatch")),
+    },
+    {
+      key: "role",
+      ok: canTradeRole,
+      label: lang === "zh" ? "身份类型可交易（节点/超级节点）" : "Role is tradable (Node/Super Node)",
+      detail: canTradeRole ? (lang === "zh" ? "通过" : "Pass") : (lang === "zh" ? "当前身份不可挂单" : "Current role cannot list"),
+    },
+    {
+      key: "identity",
+      ok: hasIdentity,
+      label: lang === "zh" ? "存在可用身份 ID" : "Identity ID is available",
+      detail: hasIdentity ? `${selectedIdentityId}` : (lang === "zh" ? "未读取到身份 ID" : "Identity ID is missing"),
+    },
+    {
+      key: "single-active",
+      ok: hasNoActiveOrder,
+      label: lang === "zh" ? "该身份当前无活跃挂单" : "No active listing for this identity",
+      detail: hasNoActiveOrder
+        ? (lang === "zh" ? "通过" : "Pass")
+        : (activeOrderForIdentity > 0n
+          ? `${lang === "zh" ? "已有活跃订单" : "Active order exists"} #${activeOrderForIdentity}`
+          : (lang === "zh" ? "请先确认身份 ID" : "Confirm identity ID first")),
+    },
+    {
+      key: "approval",
+      ok: identityApproved,
+      label: lang === "zh" ? "身份已授权市场合约" : "Identity approved for market",
+      detail: identityApproved ? (lang === "zh" ? "通过" : "Pass") : (lang === "zh" ? "未授权，将在提交时自动授权" : "Not approved, auto-approve on submit"),
+    },
+    {
+      key: "price-positive",
+      ok: hasPositivePrice,
+      label: lang === "zh" ? "挂单价格大于 0" : "Listing price is greater than 0",
+      detail: hasPositivePrice ? `${formatUsdt(parsedPrice)} USDT` : (lang === "zh" ? "请输入价格" : "Enter a price"),
+    },
+    {
+      key: "price-floor",
+      ok: meetsFloorPrice,
+      label: lang === "zh" ? "价格不低于最近成交价" : "Price is above floor",
+      detail: `${lang === "zh" ? "最低" : "Minimum"} ${formatUsdt(minPrice)} USDT`,
+    },
+  ];
+
+  const failedCheck = precheckItems.find((item) => !item.ok);
+  const allChecksPass = !failedCheck;
+
   // Handle create listing
   const handleCreateListing = async () => {
-    if (!provider || !selectedIdentityId || !createPrice) {
-      onStatusChange(t.missingCreateFields || "Please fill all fields");
+    if (!provider || !selectedIdentityId) {
+      onStatusChange(lang === "zh" ? "缺少钱包或身份 ID，无法创建挂单" : "Missing wallet or identity ID");
+      return;
+    }
+
+    if (identitySyncError) {
+      onStatusChange(identitySyncError);
+      return;
+    }
+
+    if (!allChecksPass && failedCheck) {
+      onStatusChange(`${lang === "zh" ? "挂单前检查未通过" : "Pre-check failed"}: ${failedCheck.label}`);
       return;
     }
 
     try {
       onLoadingChange(true);
-      const price = parseUsdt(createPrice);
+      const price = parsedPrice;
 
       if (price <= 0n) {
         onStatusChange(t.invalidListingPrice || "Price must be greater than 0");
@@ -140,7 +225,6 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       }
 
       // Check price floor
-      const minPrice = role === 1 ? lastNodePrice : lastSuperPrice;
       if (price < minPrice) {
         onStatusChange(
           `${t.priceTooLow || "Price too low"}: minimum ${formatUsdt(minPrice)} USDT`
@@ -163,7 +247,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       setCreatePrice("");
       await refreshMarketData();
     } catch (error) {
-      onStatusChange(error instanceof Error ? error.message : "Failed to create listing");
+      onStatusChange(parseContractError(error, lang));
     } finally {
       onLoadingChange(false);
     }
@@ -203,7 +287,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       onStatusChange(`${t.fillOrderSuccess || "Order filled successfully"} #${orderId}`);
       await refreshMarketData();
     } catch (error) {
-      onStatusChange(error instanceof Error ? error.message : "Failed to fill order");
+      onStatusChange(parseContractError(error, lang));
     } finally {
       onLoadingChange(false);
     }
@@ -221,7 +305,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       onStatusChange(`${t.cancelOrderSuccess || "Order cancelled"} #${orderId}`);
       await refreshMarketData();
     } catch (error) {
-      onStatusChange(error instanceof Error ? error.message : "Failed to cancel order");
+      onStatusChange(parseContractError(error, lang));
     } finally {
       onLoadingChange(false);
     }
@@ -374,6 +458,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
           {t.createListing || "Create Listing"}
         </button>
         <p className="hint">{t.otcAutoApproveHint}</p>
+        {identitySyncError ? <p className="hint">{identitySyncError}</p> : null}
       </Card>
 
       {/* Create Listing Modal */}
@@ -417,6 +502,17 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
               </p>
             </div>
 
+            <div className="field-group">
+              <label>{lang === "zh" ? "挂单前预检查" : "Pre-Listing Checklist"}</label>
+              <div>
+                {precheckItems.map((item) => (
+                  <p key={item.key} className="hint" style={{ margin: "0.25rem 0" }}>
+                    {item.ok ? "[OK]" : "[X]"} {item.label} - {item.detail}
+                  </p>
+                ))}
+              </div>
+            </div>
+
             <div className="modal-actions">
               <button className="secondary-btn" onClick={() => setShowCreateModal(false)}>
                 {t.cancel || "Cancel"}
@@ -424,7 +520,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
               <button
                 className="primary-btn"
                 onClick={handleCreateListing}
-                disabled={loading || !createPrice || !selectedIdentityId}
+                disabled={loading || !selectedIdentityId || !!identitySyncError || !allChecksPass}
               >
                 {loading ? t.creating || "Creating..." : t.confirm || "Confirm"}
               </button>
