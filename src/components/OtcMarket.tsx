@@ -140,11 +140,23 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
   const parsedPrice = createPrice.trim() ? parseUsdt(createPrice) : 0n;
   const minPrice = role === 1 ? lastNodePrice : role === 2 ? lastSuperPrice : 0n;
   const canTradeRole = role === 1 || role === 2;
+  const hasWalletContext = Boolean(address && provider);
   const hasIdentity = Boolean(selectedIdentityId);
   const hasNoActiveOrder = hasIdentity && activeOrderForIdentity === 0n;
   const hasPositivePrice = parsedPrice > 0n;
   const meetsFloorPrice = !hasPositivePrice ? false : parsedPrice >= minPrice;
   const hasNoSyncError = !identitySyncError;
+
+  const createEntryDisabled = loading || !hasWalletContext || !identityId || !canTradeRole;
+  const createEntryDisabledReason = !hasWalletContext
+    ? (lang === "zh" ? "请先连接钱包后再挂单" : "Connect wallet before creating a listing")
+    : loading
+      ? (lang === "zh" ? "数据加载中，请稍候" : "Loading data, please wait")
+      : !canTradeRole
+        ? (lang === "zh" ? "仅节点/超级节点可挂单" : "Only Node/Super Node can list")
+        : !identityId
+          ? (lang === "zh" ? "当前地址未持有身份，无法挂单" : "No identity found for this address")
+          : "";
 
   const precheckItems = [
     {
@@ -245,6 +257,31 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       onStatusChange(t.createListingSuccess || "Listing created successfully");
       setShowCreateModal(false);
       setCreatePrice("");
+      await refreshMarketData();
+    } catch (error) {
+      onStatusChange(parseContractError(error, lang));
+    } finally {
+      onLoadingChange(false);
+    }
+  };
+
+  const handleApproveOnly = async () => {
+    if (!provider || !selectedIdentityId) {
+      onStatusChange(lang === "zh" ? "缺少钱包或身份 ID，无法授权" : "Missing wallet or identity ID");
+      return;
+    }
+
+    if (!OTC_CONTRACT_ADDRESS) {
+      onStatusChange(lang === "zh" ? "OTC 合约地址未配置" : "OTC contract address is not configured");
+      return;
+    }
+
+    try {
+      onLoadingChange(true);
+      onStatusChange(lang === "zh" ? "正在授权 OTC 市场..." : "Approving OTC market...");
+      await approveIdentityForOtc(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS);
+      setIdentityApproved(true);
+      onStatusChange(lang === "zh" ? "OTC 授权成功，可继续挂单" : "OTC approval successful, you can list now");
       await refreshMarketData();
     } catch (error) {
       onStatusChange(parseContractError(error, lang));
@@ -454,9 +491,33 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
 
       {/* Create Listing Button */}
       <Card title={t.createListing || "Create Listing"}>
-        <button className="primary-btn" onClick={() => setShowCreateModal(true)} disabled={loading || !identityId}>
+        <button
+          className="primary-btn"
+          onClick={() => setShowCreateModal(true)}
+          disabled={createEntryDisabled}
+          title={createEntryDisabledReason || undefined}
+        >
           {t.createListing || "Create Listing"}
         </button>
+        {createEntryDisabledReason ? <p className="hint">{createEntryDisabledReason}</p> : null}
+
+        <div style={{ marginTop: "0.75rem" }}>
+          <button
+            className="secondary-btn"
+            onClick={handleApproveOnly}
+            disabled={loading || !hasWalletContext || !selectedIdentityId || identityApproved || !canTradeRole}
+          >
+            {identityApproved
+              ? (lang === "zh" ? "OTC 已授权" : "OTC Already Approved")
+              : (lang === "zh" ? "仅授权 OTC" : "Approve OTC Only")}
+          </button>
+          <p className="hint" style={{ marginTop: "0.5rem" }}>
+            {identityApproved
+              ? (lang === "zh" ? "当前身份已完成 OTC 授权" : "Current identity is approved for OTC")
+              : (lang === "zh" ? "可先单独授权，再执行挂单" : "You can approve first, then create a listing")}
+          </p>
+        </div>
+
         <p className="hint">{t.otcAutoApproveHint}</p>
         {identitySyncError ? <p className="hint">{identitySyncError}</p> : null}
       </Card>
