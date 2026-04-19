@@ -189,7 +189,7 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
     },
     {
       key: "approval",
-      ok: identityApproved,
+      ok: true,
       label: lang === "zh" ? "身份已授权市场合约" : "Identity approved for market",
       detail: identityApproved ? (lang === "zh" ? "通过" : "Pass") : (lang === "zh" ? "未授权，将在提交时自动授权" : "Not approved, auto-approve on submit"),
     },
@@ -257,31 +257,6 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
       onStatusChange(t.createListingSuccess || "Listing created successfully");
       setShowCreateModal(false);
       setCreatePrice("");
-      await refreshMarketData();
-    } catch (error) {
-      onStatusChange(parseContractError(error, lang));
-    } finally {
-      onLoadingChange(false);
-    }
-  };
-
-  const handleApproveOnly = async () => {
-    if (!provider || !selectedIdentityId) {
-      onStatusChange(lang === "zh" ? "缺少钱包或身份 ID，无法授权" : "Missing wallet or identity ID");
-      return;
-    }
-
-    if (!OTC_CONTRACT_ADDRESS) {
-      onStatusChange(lang === "zh" ? "OTC 合约地址未配置" : "OTC contract address is not configured");
-      return;
-    }
-
-    try {
-      onLoadingChange(true);
-      onStatusChange(lang === "zh" ? "正在授权 OTC 市场..." : "Approving OTC market...");
-      await approveIdentityForOtc(provider, selectedIdentityId, OTC_CONTRACT_ADDRESS);
-      setIdentityApproved(true);
-      onStatusChange(lang === "zh" ? "OTC 授权成功，可继续挂单" : "OTC approval successful, you can list now");
       await refreshMarketData();
     } catch (error) {
       onStatusChange(parseContractError(error, lang));
@@ -500,23 +475,6 @@ export const OtcMarket: React.FC<OtcMarketProps> = ({
           {t.createListing || "Create Listing"}
         </button>
         {createEntryDisabledReason ? <p className="hint">{createEntryDisabledReason}</p> : null}
-
-        <div style={{ marginTop: "0.75rem" }}>
-          <button
-            className="secondary-btn"
-            onClick={handleApproveOnly}
-            disabled={loading || !hasWalletContext || !selectedIdentityId || identityApproved || !canTradeRole}
-          >
-            {identityApproved
-              ? (lang === "zh" ? "OTC 已授权" : "OTC Already Approved")
-              : (lang === "zh" ? "仅授权 OTC" : "Approve OTC Only")}
-          </button>
-          <p className="hint" style={{ marginTop: "0.5rem" }}>
-            {identityApproved
-              ? (lang === "zh" ? "当前身份已完成 OTC 授权" : "Current identity is approved for OTC")
-              : (lang === "zh" ? "可先单独授权，再执行挂单" : "You can approve first, then create a listing")}
-          </p>
-        </div>
 
         <p className="hint">{t.otcAutoApproveHint}</p>
         {identitySyncError ? <p className="hint">{identitySyncError}</p> : null}
