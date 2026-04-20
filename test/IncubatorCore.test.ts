@@ -319,6 +319,72 @@ describe("IncubatorCore", function () {
     assert.equal(await core.directSuperNodeReferralCount(superReferrer.address), 1n);
   });
 
+  it("distributes node purchase residual equally across configured recipients", async function () {
+    const [owner, nodeReferrer, buyer, residualA, residualB, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    for (const account of [nodeReferrer, buyer]) {
+      await usdt.connect(owner).mint(account.address, 20_000_000_000n);
+      await usdt.connect(account).approve(coreAddr, 20_000_000_000n);
+    }
+
+    await core.connect(owner).setNodePurchaseResidualRecipients([residualA.address, residualB.address]);
+    await core.connect(nodeReferrer).bindReferrer(owner.address);
+    await core.connect(nodeReferrer).buyNode();
+
+    const referrerBefore = await usdt.balanceOf(nodeReferrer.address);
+    const residualABefore = await usdt.balanceOf(residualA.address);
+    const residualBBefore = await usdt.balanceOf(residualB.address);
+    const platformBefore = await usdt.balanceOf(platform.address);
+
+    await core.connect(buyer).bindReferrer(nodeReferrer.address);
+    await core.connect(buyer).buyNode();
+
+    assert.equal((await usdt.balanceOf(nodeReferrer.address)) - referrerBefore, 300_000_000n);
+    assert.equal((await usdt.balanceOf(residualA.address)) - residualABefore, 350_000_000n);
+    assert.equal((await usdt.balanceOf(residualB.address)) - residualBBefore, 350_000_000n);
+    assert.equal((await usdt.balanceOf(platform.address)) - platformBefore, 0n);
+  });
+
+  it("distributes super-node purchase residual equally across configured recipients", async function () {
+    const [owner, superReferrer, buyer, residualA, residualB, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
+    const usdt = await deployMockUsdt(owner.address);
+    const core: any = await deployCore(
+      await usdt.getAddress(),
+      owner.address,
+      [lp.address, referral.address, superPool.address, nodePool.address, platform.address, leaderboard.address],
+    );
+    const coreAddr = await core.getAddress();
+
+    for (const account of [superReferrer, buyer]) {
+      await usdt.connect(owner).mint(account.address, 30_000_000_000n);
+      await usdt.connect(account).approve(coreAddr, 30_000_000_000n);
+    }
+
+    await core.connect(owner).setSuperNodePurchaseResidualRecipients([residualA.address, residualB.address]);
+    await core.connect(superReferrer).bindReferrer(owner.address);
+    await core.connect(superReferrer).buySuperNode();
+
+    const referrerBefore = await usdt.balanceOf(superReferrer.address);
+    const residualABefore = await usdt.balanceOf(residualA.address);
+    const residualBBefore = await usdt.balanceOf(residualB.address);
+    const platformBefore = await usdt.balanceOf(platform.address);
+
+    await core.connect(buyer).bindReferrer(superReferrer.address);
+    await core.connect(buyer).buySuperNode();
+
+    assert.equal((await usdt.balanceOf(superReferrer.address)) - referrerBefore, 600_000_000n);
+    assert.equal((await usdt.balanceOf(residualA.address)) - residualABefore, 1_200_000_000n);
+    assert.equal((await usdt.balanceOf(residualB.address)) - residualBBefore, 1_200_000_000n);
+    assert.equal((await usdt.balanceOf(platform.address)) - platformBefore, 0n);
+  });
+
   it("does not fund node or super-node pools from role purchases", async function () {
     const [owner, buyer, lp, referral, superPool, nodePool, platform, leaderboard] = await ethers.getSigners();
     const usdt = await deployMockUsdt(owner.address);

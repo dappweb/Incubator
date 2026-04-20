@@ -75,6 +75,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     uint256 public machineUnitPrice;
     uint256 public constant MAX_MACHINE_PER_ORDER = 10;
     uint256 public constant MAX_MACHINE_PER_ADDRESS = 100;
+    uint256 public constant MAX_PURCHASE_RESIDUAL_RECIPIENTS = 20;
 
     uint256 public nodePrice;
     uint256 public superNodePrice;
@@ -179,11 +180,22 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     // One-time flag for bootstrap migration of pre-existing identities.
     bool public roleListsBootstrapped;
 
+    // Purchase residual recipients. When unset, residuals fall back to the platform recipient.
+    address[] private nodePurchaseResidualRecipients;
+    address[] private superNodePurchaseResidualRecipients;
+
     event NodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount);
     event SuperNodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount);
     event LeaderboardPoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance);
     event RoleListUpdated(address indexed account, uint8 indexed role, bool added);
     event SettlementConfigUpdated(uint256 minPoolSettleAmount, bool publicSettleEnabled);
+    event PurchaseResidualRecipientsUpdated(bool indexed isNodePurchase, address[] recipients);
+    event IdentityPurchaseResidualAllocated(
+        uint256 indexed trackingId,
+        bool indexed isNodePurchase,
+        address indexed recipient,
+        uint256 amountUSDT
+    );
 
     event MachinePurchased(
         address indexed user,
@@ -658,6 +670,22 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit PoolConfigUpdated(poolType, poolConfigs[poolType].recipient, newBps);
     }
 
+    function getNodePurchaseResidualRecipients() external view returns (address[] memory) {
+        return nodePurchaseResidualRecipients;
+    }
+
+    function getSuperNodePurchaseResidualRecipients() external view returns (address[] memory) {
+        return superNodePurchaseResidualRecipients;
+    }
+
+    function setNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwner {
+        _setPurchaseResidualRecipients(true, recipients);
+    }
+
+    function setSuperNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwner {
+        _setPurchaseResidualRecipients(false, recipients);
+    }
+
     function setLeaderboardWhitelist(address[] calldata accounts) external onlyOwner {
         for (uint256 i = 0; i < leaderboardWhitelist.length; i++) {
             address oldAccount = leaderboardWhitelist[i];
@@ -1074,7 +1102,8 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     function _allocateIdentityPurchase(uint256 identityId, uint256 totalAmount, address referrer, bool isNode) private {
         // Node / SuperNode purchase split:
         //   1) Direct referrer takes a referral share (dynamic for node, fixed 20% for super node).
-        //   2) ALL remaining USDT is forwarded to the Platform pool recipient.
+        //   2) Remaining USDT is distributed across the configured recipient set.
+        //      When not configured yet, it falls back to the Platform pool recipient.
         // No funds are routed to Liquidity / Leaderboard / Node / SuperNode pools on identity purchases.
         uint16 referralBps;
         if (isNode) {
@@ -1099,7 +1128,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         address referralRecipient = referrer != address(0) ? referrer : poolConfigs[uint8(PoolType.Referral)].recipient;
         _transferPool(trackingId, PoolType.Referral, referralRecipient, referralAmount);
 
-        _transferPool(trackingId, PoolType.Platform, poolConfigs[uint8(PoolType.Platform)].recipient, platformAmount);
+        _distributeIdentityPurchaseResidual(trackingId, platformAmount, isNode);
     }
 
     function _updateLeaderboard(uint256 dayId, address user, uint256 amount) private {
@@ -1183,6 +1212,52 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
             usdt.safeTransfer(recipient, amount);
         }
         emit PoolAllocated(orderId, uint8(poolType), recipient, address(usdt), amount);
+    }
+
+    function _distributeIdentityPurchaseResidual(uint256 trackingId, uint256 amount, bool isNode) private {
+        if (amount == 0) {
+            return;
+        }
+
+        address[] storage recipients = isNode ? nodePurchaseResidualRecipients : superNodePurchaseResidualRecipients;
+        if (recipients.length == 0) {
+            _transferPool(trackingId, PoolType.Platform, poolConfigs[uint8(PoolType.Platform)].recipient, amount);
+            return;
+        }
+
+        uint256 baseShare = amount / recipients.length;
+        uint256 distributed;
+        for (uint256 i = 0; i < recipients.length; i++) {
+            address recipient = recipients[i];
+            require(recipient != address(0), "invalid residual recipient");
+
+            uint256 share = i + 1 == recipients.length ? amount - distributed : baseShare;
+            distributed += share;
+            if (share == 0) {
+                continue;
+            }
+
+            usdt.safeTransfer(recipient, share);
+            emit IdentityPurchaseResidualAllocated(trackingId, isNode, recipient, share);
+        }
+    }
+
+    function _setPurchaseResidualRecipients(bool isNodePurchase, address[] calldata recipients) private {
+        require(recipients.length > 0, "empty residual recipients");
+        require(recipients.length <= MAX_PURCHASE_RESIDUAL_RECIPIENTS, "too many residual recipients");
+
+        address[] storage target = isNodePurchase ? nodePurchaseResidualRecipients : superNodePurchaseResidualRecipients;
+        while (target.length > 0) {
+            target.pop();
+        }
+
+        for (uint256 i = 0; i < recipients.length; i++) {
+            address recipient = recipients[i];
+            require(recipient != address(0), "invalid residual recipient");
+            target.push(recipient);
+        }
+
+        emit PurchaseResidualRecipientsUpdated(isNodePurchase, recipients);
     }
 
     function _poolShareTotal() private view returns (uint16 total) {

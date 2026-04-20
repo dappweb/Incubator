@@ -1,11 +1,13 @@
-import { BrowserProvider, formatUnits, isAddress, parseUnits } from "ethers";
+import { BrowserProvider, formatUnits, getAddress, isAddress, parseUnits } from "ethers";
 import React, { useEffect, useMemo, useState } from "react";
 import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, JSONBIN_MASTER_KEY, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, PRIMARY_SWAP_CONTROLLER_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
 import {
     createEmptyAnnouncement,
+    fetchFrontendFeatureToggles,
     fetchPublishedAnnouncements,
     publishAnnouncementsToJsonBin,
     type Announcement,
+    type FrontendFeatureToggles,
 } from "../lib/announcements";
 import type { CorePoolConfig, CoreTreasuryStatus } from "../lib/coreContract";
 import {
@@ -23,10 +25,12 @@ import {
     getLeaderboardWhitelistAdjustPct,
     getMachineUnitPrice,
     getNodePrice,
+    getNodePurchaseResidualRecipients,
     getRewardConfig,
     getRewardPoolBalance,
     getSubAdmins,
     getSuperNodePrice,
+    getSuperNodePurchaseResidualRecipients,
     isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
     isCorePaused,
     pauseCore,
@@ -37,10 +41,11 @@ import {
     setIdentityMarket,
     setLeaderboardWhitelist,
     setLeaderboardWhitelistAdjustPct,
+    setNodePurchaseResidualRecipients,
     setRewardWeight,
+    setSuperNodePurchaseResidualRecipients,
     settleDailyRewardsManual,
     settleLeaderboard,
-    settlePoolRewards,
     transferCoreOwnership,
     unpauseCore,
     updateCoreNodePrice,
@@ -113,6 +118,17 @@ import { Card, KVRow } from "./Common";
 
 type AdminTabKey = "overview" | "prices" | "pools" | "market" | "settlement" | "primary" | "token" | "system" | "announcements" | "guide";
 
+type RecipientInputRow = {
+  id: number;
+  value: string;
+};
+
+const makeRecipientRows = (values: string[]): RecipientInputRow[] => (
+  values.length > 0
+    ? values.map((value, index) => ({ id: index + 1, value }))
+    : [{ id: 1, value: "" }]
+);
+
 interface AdminProps {
   lang: "zh" | "en";
   address: string;
@@ -120,6 +136,8 @@ interface AdminProps {
   provider: BrowserProvider | null;
   onRefresh: () => Promise<void>;
   onStatusChange: (message: string) => void;
+  featureToggles: FrontendFeatureToggles;
+  onFeatureTogglesChange: (next: FrontendFeatureToggles) => void;
 }
 
 type EditablePoolConfig = CorePoolConfig & {
@@ -159,7 +177,7 @@ const ParamGuide: React.FC<{ title: string; items: ParamGuideItem[] }> = ({ titl
   );
 };
 
-const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, onRefresh, onStatusChange }) => {
+const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, onRefresh, onStatusChange, featureToggles, onFeatureTogglesChange }) => {
   const t = {
     adminTitle: lang === "zh" ? "管理后台" : "Admin Panel",
     adminHint: lang === "zh" ? "仅合约 Owner、链上授权子管理员或经理可访问此页面。" : "Only contract owner, on-chain authorized sub-admins, or managers can access this page.",
@@ -242,8 +260,16 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     pairPrimary: lang === "zh" ? "主池 USDT/ICO" : "Primary USDT/ICO",
     pairLight: lang === "zh" ? "回收池 LIGHT/ICO" : "Recovery LIGHT/ICO",
     invalidAddress: lang === "zh" ? "地址格式无效" : "Invalid address",
-    invalidBps: lang === "zh" ? "请输入有效 BPS 数值" : "Enter a valid BPS value",
+    invalidBps: lang === "zh" ? "请输入 0-10000 之间的整数 BPS" : "Enter an integer BPS between 0 and 10000",
     invalidPrice: lang === "zh" ? "请输入有效 USDT 价格" : "Enter a valid USDT price",
+    invalidAmount: lang === "zh" ? "请输入大于 0 的有效数量" : "Enter a valid amount greater than 0",
+    invalidInteger: lang === "zh" ? "请输入非负整数" : "Enter a non-negative integer",
+    invalidCycleSeconds: lang === "zh" ? "结算周期须为 0 或 ≥60 秒" : "Cycle must be 0 or ≥60 seconds",
+    invalidCleanupRole: lang === "zh" ? "身份类型须为 1(Node) 或 2(SuperNode)" : "Role must be 1 (Node) or 2 (SuperNode)",
+    invalidCleanupMax: lang === "zh" ? "最大撤销数须为 ≥1 的整数" : "Max cancels must be an integer ≥ 1",
+    invalidDistribution: lang === "zh" ? "接收地址与 BPS 数量不一致" : "Recipients and BPS counts do not match",
+    invalidDistributionEmpty: lang === "zh" ? "请至少配置一个接收地址与 BPS" : "Provide at least one recipient and BPS",
+    confirmDangerous: lang === "zh" ? "此操作无法撤销，确认继续？" : "This action cannot be undone. Continue?",
     adminDataRefreshed: lang === "zh" ? "后台数据已刷新。" : "Admin data refreshed.",
     actionSuccess: lang === "zh" ? "操作成功。" : "Action completed.",
     adminNotReady: lang === "zh" ? "钱包或 Provider 尚未就绪。" : "Wallet or provider is not ready.",
@@ -298,6 +324,13 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     transferOwnerBtn: lang === "zh" ? "确认转让 Owner" : "Confirm Transfer",
     ownerTransferred: lang === "zh" ? "Owner 已成功转让。" : "Ownership transferred successfully.",
     ownerTransferWarning: lang === "zh" ? "⚠️ 操作不可逆！请务必确认新地址正确，本操作执行后当前钱包将失去合约控制权。" : "⚠️ Irreversible! Confirm the new address is correct. After this action, the current wallet loses all contract control.",
+    featureToggleTitle: lang === "zh" ? "前端功能开关" : "Frontend Feature Toggles",
+    featureToggleHint: lang === "zh" ? "关闭后前端将隐藏并禁用对应入口。发布后全站生效。" : "When disabled, the corresponding entry is hidden and blocked in frontend. Publish to apply globally.",
+    toggleHomeMachine: lang === "zh" ? "首页购买算力" : "Home Machine Purchase",
+    toggleMarket: lang === "zh" ? "市场" : "Market",
+    toggleSwap: lang === "zh" ? "兑换" : "Swap",
+    toggleAdmin: lang === "zh" ? "Admin 面板" : "Admin Panel",
+    featureToggleSaved: lang === "zh" ? "功能开关已更新，点击发布后生效。" : "Feature toggles updated. Click Publish to apply.",
   };
 
   const guideLabel = lang === "zh" ? "参数业务说明与案例" : "Parameter Business Notes & Examples";
@@ -487,6 +520,8 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   });
   const [treasuryStatus, setTreasuryStatus] = useState<CoreTreasuryStatus | null>(null);
   const [treasuryLoading, setTreasuryLoading] = useState(false);
+  const [nodeResidualRows, setNodeResidualRows] = useState<RecipientInputRow[]>([{ id: 1, value: "" }]);
+  const [superResidualRows, setSuperResidualRows] = useState<RecipientInputRow[]>([{ id: 1, value: "" }]);
 
   // ── 一级市场 tab state ──
   const [primaryConfig, setPrimaryConfigState] = useState<PrimarySwapConfig | null>(null);
@@ -523,6 +558,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   const [annLoading, setAnnLoading] = useState(false);
   const [annEditing, setAnnEditing] = useState<Announcement | null>(null);
   const [annPublishing, setAnnPublishing] = useState(false);
+  const [editingFeatureToggles, setEditingFeatureToggles] = useState<FrontendFeatureToggles>(featureToggles);
 
   const isOwner = Boolean(address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase());
   const isSubAdmin = subAdmins.some((a) => a.toLowerCase() === address?.toLowerCase());
@@ -531,6 +567,10 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   const canManageSystem = isOwner || isSubAdmin;
   const canManagePrices = isAdmin;
   const canManageAnnouncements = isAdmin;
+
+  useEffect(() => {
+    setEditingFeatureToggles(featureToggles);
+  }, [featureToggles]);
 
   const loadAdminState = async () => {
     if (!provider) {
@@ -630,13 +670,15 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
       // Load settlement / primary / token data (best-effort)
       try {
-        const [rPoolBal, idMarket, rwdCfg, coreCycle, swapCycle, dayId] = await Promise.all([
+        const [rPoolBal, idMarket, rwdCfg, coreCycle, swapCycle, dayId, nodeResidualRecipients, superResidualRecipients] = await Promise.all([
           getRewardPoolBalance(provider),
           getIdentityMarket(provider),
           getRewardConfig(provider),
           getCycleDuration(provider),
           getSwapCycleDuration(provider),
           getCurrentDay(provider),
+          getNodePurchaseResidualRecipients(provider),
+          getSuperNodePurchaseResidualRecipients(provider),
         ]);
         setRewardPoolBalance(rPoolBal);
         setIdentityMarketState(idMarket);
@@ -645,6 +687,8 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         setSwapCycleDuration(swapCycle);
         setCurrentDayId(dayId);
         setCycleDurationInput(String(coreCycle === 0n ? 86400n : coreCycle));
+        setNodeResidualRows(makeRecipientRows(nodeResidualRecipients));
+        setSuperResidualRows(makeRecipientRows(superResidualRecipients));
       } catch { /* optional data */ }
 
       try {
@@ -704,9 +748,11 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   useEffect(() => {
     if (adminTab === "announcements" && annList.length === 0 && !annLoading) {
       setAnnLoading(true);
-      fetchPublishedAnnouncements()
-        .then((rows) => {
+      Promise.all([fetchPublishedAnnouncements(), fetchFrontendFeatureToggles()])
+        .then(([rows, toggles]) => {
           setAnnList(rows);
+          setEditingFeatureToggles(toggles);
+          onFeatureTogglesChange(toggles);
           const m = lang === "zh" ? `已加载 ${rows.length} 条公告` : `Loaded ${rows.length} announcements`;
           setLocalStatus(m);
           onStatusChange(m);
@@ -719,7 +765,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
         })
         .finally(() => setAnnLoading(false));
     }
-  }, [adminTab]);
+  }, [adminTab, annList.length, annLoading, lang, onStatusChange, onFeatureTogglesChange]);
 
   const executeAction = async (key: string, action: () => Promise<void>, successMessage = t.actionSuccess) => {
     if (!provider) {
@@ -755,15 +801,30 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     setSwapPools((current) => current.map((item) => (item.pairId === pairId ? { ...item, ...patch } : item)));
   };
 
-  const validateAddress = (value: string) => {
-    if (!isAddress(value.trim())) {
-      throw new Error(t.invalidAddress);
+  // 对任意大小写的 0x 地址都宽容（以太坊地址大小写仅用于 EIP-55 校验和，不影响唯一性）。
+  // 成功返回已校验和化的地址；失败抛出 i18n 错误。
+  const normalizeAddress = (value: string): string => {
+    const raw = (value ?? "").trim();
+    if (!raw) throw new Error(t.invalidAddress);
+    // 先试原始形式（可能已是 EIP-55）
+    if (isAddress(raw)) {
+      try { return getAddress(raw); } catch { /* fallthrough */ }
     }
+    // 回退到全小写（规避 EIP-55 校验和错误）
+    const lower = raw.toLowerCase();
+    if (/^0x[0-9a-f]{40}$/.test(lower)) {
+      try { return getAddress(lower); } catch { /* fallthrough */ }
+    }
+    throw new Error(t.invalidAddress);
+  };
+
+  const validateAddress = (value: string) => {
+    normalizeAddress(value);
   };
 
   const parseBpsInput = (value: string) => {
-    const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < 0) {
+    const parsed = Number((value ?? "").trim());
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10000) {
       throw new Error(t.invalidBps);
     }
     return parsed;
@@ -789,6 +850,89 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     return parsed;
   };
 
+  // 正数数量（使用 18 位精度解析，拒绝 0/负数/非法）
+  const parsePositiveAmount = (value: string, decimals = 18) => {
+    let parsed: bigint;
+    try {
+      parsed = parseUnits(((value ?? "").trim() || "0"), decimals);
+    } catch {
+      throw new Error(t.invalidAmount);
+    }
+    if (parsed <= 0n) throw new Error(t.invalidAmount);
+    return parsed;
+  };
+
+  // 正数 USDT（按 USDT 18 位精度，拒绝 0/负数/非法）
+  const parsePositiveUsdt = (value: string) => {
+    try {
+      const parsed = parseUsdt(value);
+      if (parsed <= 0n) throw new Error(t.invalidAmount);
+      return parsed;
+    } catch {
+      throw new Error(t.invalidAmount);
+    }
+  };
+
+  // 正整数 wei（仅允许数字字符，拒绝 0）
+  const parsePositiveWei = (value: string) => {
+    const v = (value ?? "").trim();
+    if (!/^\d+$/.test(v)) throw new Error(t.invalidAmount);
+    const parsed = BigInt(v);
+    if (parsed <= 0n) throw new Error(t.invalidAmount);
+    return parsed;
+  };
+
+  // 非负整数 BigInt（允许 0 和空）
+  const parseNonNegativeBigInt = (value: string) => {
+    const v = (value ?? "").trim() || "0";
+    if (!/^\d+$/.test(v)) throw new Error(t.invalidInteger);
+    return BigInt(v);
+  };
+
+  // 结算周期：0 或 >=60
+  const parseCycleSecondsInput = (value: string) => {
+    const v = (value ?? "").trim() || "0";
+    if (!/^\d+$/.test(v)) throw new Error(t.invalidCycleSeconds);
+    const n = BigInt(v);
+    if (n !== 0n && n < 60n) throw new Error(t.invalidCycleSeconds);
+    return n;
+  };
+
+  const updateRecipientRows = (
+    setter: React.Dispatch<React.SetStateAction<RecipientInputRow[]>>,
+    id: number,
+    value: string,
+  ) => {
+    setter((current) => current.map((row) => (row.id === id ? { ...row, value } : row)));
+  };
+
+  const addRecipientRow = (setter: React.Dispatch<React.SetStateAction<RecipientInputRow[]>>) => {
+    setter((current) => {
+      const nextId = current.reduce((max, row) => Math.max(max, row.id), 0) + 1;
+      return [...current, { id: nextId, value: "" }];
+    });
+  };
+
+  const removeRecipientRow = (
+    setter: React.Dispatch<React.SetStateAction<RecipientInputRow[]>>,
+    id: number,
+  ) => {
+    setter((current) => {
+      if (current.length === 1) {
+        return [{ id: current[0].id, value: "" }];
+      }
+      return current.filter((row) => row.id !== id);
+    });
+  };
+
+  const collectRecipientRows = (rows: RecipientInputRow[], emptyError: string) => {
+    const recipients = rows.map((row) => row.value.trim()).filter(Boolean);
+    if (recipients.length === 0) {
+      throw new Error(emptyError);
+    }
+    return recipients.map(normalizeAddress);
+  };
+
   const parseWhitelistInput = (value: string) => {
     const rows = value
       .split(/\r?\n|,/)
@@ -799,13 +943,11 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     const normalized: string[] = [];
 
     for (const row of rows) {
-      validateAddress(row);
-      const lower = row.toLowerCase();
-      if (dedup.has(lower)) {
-        continue;
-      }
+      const addr = normalizeAddress(row);
+      const lower = addr.toLowerCase();
+      if (dedup.has(lower)) continue;
       dedup.add(lower);
-      normalized.push(row);
+      normalized.push(addr);
     }
 
     return normalized;
@@ -1556,7 +1698,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions" style={{ marginTop: "8px" }}>
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("set-cycle", async () => {
-                    const dur = BigInt(cycleDurationInput || "0");
+                    const dur = parseCycleSecondsInput(cycleDurationInput);
                     await setCycleDuration(provider!, dur);
                     await setSwapCycleDurationOnChain(provider!, dur);
                   }, lang === "zh" ? "结算周期已更新（Core + Swap）。" : "Settlement cycle updated (Core + Swap).")}
@@ -1574,7 +1716,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions">
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("fund-reward", async () => {
-                    await fundRewardPool(provider!, parseUsdt(settlementInputs.fundAmount));
+                    await fundRewardPool(provider!, parsePositiveAmount(settlementInputs.fundAmount));
                   }, lang === "zh" ? "奖励池注入成功。" : "Reward pool funded.")} disabled={actionKey !== ""}>
                   {actionKey === "fund-reward" ? t.loading : lang === "zh" ? "注入" : "Fund"}
                 </button>
@@ -1617,6 +1759,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("settle-daily", async () => {
                     const addrs = settlementInputs.settleDailyAddrs.split(",").map(s => s.trim()).filter(Boolean);
+                    if (addrs.length === 0) throw new Error(lang === "zh" ? "请输入至少一个参与者地址" : "Enter at least one participant address");
                     addrs.forEach(validateAddress);
                     await settleDailyRewardsManual(provider!, addrs, parseUnits("1", 18));
                   }, lang === "zh" ? "每日结算完成。" : "Daily settlement done.")} disabled={actionKey !== ""}>
@@ -1630,7 +1773,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions admin-actions-tight">
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("settle-leader", async () => {
-                    await settleLeaderboard(provider!, BigInt(settlementInputs.settleLeaderDayId || "0"));
+                    await settleLeaderboard(provider!, parseNonNegativeBigInt(settlementInputs.settleLeaderDayId));
                   }, lang === "zh" ? "排行榜结算完成。" : "Leaderboard settled.")} disabled={actionKey !== ""}>
                   {actionKey === "settle-leader" ? t.loading : lang === "zh" ? "排行榜结算" : "Settle Leaderboard"}
                 </button>
@@ -1647,66 +1790,82 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
 
               <div style={{ marginTop: "16px", fontSize: "12px", color: "#a00" }}>
                 {lang === "zh"
-                  ? "⚠ 以下 shares 手填入口为兼容保留，金额由 owner 决定，不建议作为日常结算路径。"
-                  : "⚠ The BPS-shares inputs below are kept for backwards compatibility only; owner decides the amounts. Prefer the on-chain auto-settlement above."}
+                  ? "⚠ 节点/超级节点购买剩余资金地址在下方维护，已配置时按地址组等额分发。"
+                  : "⚠ Maintain node/super-node residual recipients below. Once configured, residual purchase funds are split evenly across those addresses."}
               </div>
 
-              <label className="field" style={{ marginTop: "12px" }}>{lang === "zh" ? "节点结算-接收地址(逗号分隔)" : "Node - Recipients (comma-separated)"}
-                <input value={settlementInputs.settleNodeAddrs} onChange={e => setSettlementInputs(p => ({ ...p, settleNodeAddrs: e.target.value }))} />
-              </label>
-              <label className="field">{lang === "zh" ? "节点份额(逗号分隔)" : "Node Shares (comma-separated)"}
-                <input value={settlementInputs.settleNodeShares} onChange={e => setSettlementInputs(p => ({ ...p, settleNodeShares: e.target.value }))} />
-              </label>
-              <div className="actions admin-actions-tight">
-                <button className="primary-btn" type="button"
-                  onClick={() => void executeAction("settle-node", async () => {
-                    const addrs = settlementInputs.settleNodeAddrs.split(",").map(s => s.trim()).filter(Boolean);
-                    addrs.forEach(validateAddress);
-                    const shares = settlementInputs.settleNodeShares.split(",").map(s => Number(s.trim()));
-                    await settlePoolRewards(provider!, 3, addrs, shares);
-                  }, lang === "zh" ? "节点结算完成。" : "Node rewards settled.")} disabled={actionKey !== ""}>
-                  {actionKey === "settle-node" ? t.loading : lang === "zh" ? "节点结算" : "Settle Nodes"}
-                </button>
+              <div style={{ marginTop: "12px", padding: "12px", border: "1px solid rgba(45,119,119,0.28)", borderRadius: "10px" }}>
+                <div style={{ fontWeight: 600, marginBottom: "6px" }}>
+                  {lang === "zh" ? "节点购买剩余资金接收地址" : "Node Purchase Residual Recipients"}
+                </div>
+                <div style={{ fontSize: "12px", color: "#8aa0c8", marginBottom: "8px" }}>
+                  {lang === "zh"
+                    ? "购买节点扣除推荐奖励后的剩余资金，会等额分发到以下地址；未配置时回退到平台池地址。"
+                    : "After node referral rewards are paid, the remaining amount is split evenly across the addresses below; if unset, it falls back to the platform recipient."}
+                </div>
+                {nodeResidualRows.map((row, index) => (
+                  <div key={row.id} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: index + 1 === nodeResidualRows.length ? "0" : "8px" }}>
+                    <input
+                      style={{ flex: 1 }}
+                      value={row.value}
+                      onChange={(e) => updateRecipientRows(setNodeResidualRows, row.id, e.target.value)}
+                      placeholder="0x..."
+                    />
+                    <button className="ghost-btn" type="button" onClick={() => removeRecipientRow(setNodeResidualRows, row.id)} disabled={actionKey !== ""}>
+                      {lang === "zh" ? "删除" : "Remove"}
+                    </button>
+                  </div>
+                ))}
+                <div className="actions admin-actions-tight" style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button className="ghost-btn" type="button" onClick={() => addRecipientRow(setNodeResidualRows)} disabled={actionKey !== ""}>
+                    {lang === "zh" ? "➕ 添加地址" : "➕ Add Address"}
+                  </button>
+                  <button className="primary-btn" type="button"
+                    onClick={() => void executeAction("save-node-residual", async () => {
+                      const recipients = collectRecipientRows(nodeResidualRows, lang === "zh" ? "请至少配置一个节点地址" : "Add at least one node recipient");
+                      await setNodePurchaseResidualRecipients(provider!, recipients);
+                    }, lang === "zh" ? "节点购买剩余资金地址已保存。" : "Node residual recipients saved.")}
+                    disabled={actionKey !== ""}>
+                    {actionKey === "save-node-residual" ? t.loading : lang === "zh" ? "保存节点地址配置" : "Save Node Recipients"}
+                  </button>
+                </div>
               </div>
 
-              <label className="field" style={{ marginTop: "12px" }}>{lang === "zh" ? "超级节点-接收地址(逗号分隔)" : "SuperNode - Recipients (comma-separated)"}
-                <input value={settlementInputs.settleSuperAddrs} onChange={e => setSettlementInputs(p => ({ ...p, settleSuperAddrs: e.target.value }))} />
-              </label>
-              <label className="field">{lang === "zh" ? "超级节点份额(逗号分隔)" : "SuperNode Shares (comma-separated)"}
-                <input value={settlementInputs.settleSuperShares} onChange={e => setSettlementInputs(p => ({ ...p, settleSuperShares: e.target.value }))} />
-              </label>
-              <div className="actions admin-actions-tight">
-                <button className="primary-btn" type="button"
-                  onClick={() => void executeAction("settle-super", async () => {
-                    const addrs = settlementInputs.settleSuperAddrs.split(",").map(s => s.trim()).filter(Boolean);
-                    addrs.forEach(validateAddress);
-                    const shares = settlementInputs.settleSuperShares.split(",").map(s => Number(s.trim()));
-                    await settlePoolRewards(provider!, 2, addrs, shares);
-                  }, lang === "zh" ? "超级节点结算完成。" : "Super-node rewards settled.")} disabled={actionKey !== ""}>
-                  {actionKey === "settle-super" ? t.loading : lang === "zh" ? "超级节点结算" : "Settle Super-Nodes"}
-                </button>
-              </div>
-
-              <label className="field" style={{ marginTop: "12px" }}>{lang === "zh" ? "平台池配置-接收地址(逗号分隔)" : "Platform Config - Recipients (comma-separated)"}
-                <input value={settlementInputs.settlePlatformAddrs} onChange={e => setSettlementInputs(p => ({ ...p, settlePlatformAddrs: e.target.value }))} />
-              </label>
-              <label className="field">{lang === "zh" ? "平台池配置-份额(逗号分隔, 总和10000)" : "Platform Config - Shares (comma-separated, sum=10000)"}
-                <input value={settlementInputs.settlePlatformShares} onChange={e => setSettlementInputs(p => ({ ...p, settlePlatformShares: e.target.value }))} />
-              </label>
-              <div className="actions admin-actions-tight">
-                <button className="primary-btn" type="button"
-                  onClick={() => void executeAction("settle-platform", async () => {
-                    const addrs = settlementInputs.settlePlatformAddrs.split(",").map(s => s.trim()).filter(Boolean);
-                    addrs.forEach(validateAddress);
-                    const shares = settlementInputs.settlePlatformShares.split(",").map(s => Number(s.trim())).filter(n => Number.isFinite(n));
-                    if (addrs.length !== shares.length || addrs.length === 0) throw new Error(lang === "zh" ? "地址和份额数量不一致" : "Recipients and shares length mismatch");
-                    const total = shares.reduce((a, b) => a + b, 0);
-                    if (total !== 10000) throw new Error(lang === "zh" ? "份额总和必须为10000" : "Shares sum must be 10000");
-                    await settlePoolRewards(provider!, 4, addrs, shares);
-                  }, lang === "zh" ? "平台池结算完成。" : "Platform pool settled.")}
-                  disabled={actionKey !== ""}>
-                  {actionKey === "settle-platform" ? t.loading : (lang === "zh" ? "平台池结算" : "Settle Platform Pool")}
-                </button>
+              <div style={{ marginTop: "12px", padding: "12px", border: "1px solid rgba(45,119,119,0.28)", borderRadius: "10px" }}>
+                <div style={{ fontWeight: 600, marginBottom: "6px" }}>
+                  {lang === "zh" ? "超级节点购买剩余资金接收地址" : "Super-Node Purchase Residual Recipients"}
+                </div>
+                <div style={{ fontSize: "12px", color: "#8aa0c8", marginBottom: "8px" }}>
+                  {lang === "zh"
+                    ? "购买超级节点扣除推荐奖励后的剩余资金，会等额分发到以下地址；未配置时回退到平台池地址。"
+                    : "After super-node referral rewards are paid, the remaining amount is split evenly across the addresses below; if unset, it falls back to the platform recipient."}
+                </div>
+                {superResidualRows.map((row, index) => (
+                  <div key={row.id} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: index + 1 === superResidualRows.length ? "0" : "8px" }}>
+                    <input
+                      style={{ flex: 1 }}
+                      value={row.value}
+                      onChange={(e) => updateRecipientRows(setSuperResidualRows, row.id, e.target.value)}
+                      placeholder="0x..."
+                    />
+                    <button className="ghost-btn" type="button" onClick={() => removeRecipientRow(setSuperResidualRows, row.id)} disabled={actionKey !== ""}>
+                      {lang === "zh" ? "删除" : "Remove"}
+                    </button>
+                  </div>
+                ))}
+                <div className="actions admin-actions-tight" style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button className="ghost-btn" type="button" onClick={() => addRecipientRow(setSuperResidualRows)} disabled={actionKey !== ""}>
+                    {lang === "zh" ? "➕ 添加地址" : "➕ Add Address"}
+                  </button>
+                  <button className="primary-btn" type="button"
+                    onClick={() => void executeAction("save-super-residual", async () => {
+                      const recipients = collectRecipientRows(superResidualRows, lang === "zh" ? "请至少配置一个超级节点地址" : "Add at least one super-node recipient");
+                      await setSuperNodePurchaseResidualRecipients(provider!, recipients);
+                    }, lang === "zh" ? "超级节点购买剩余资金地址已保存。" : "Super-node residual recipients saved.")}
+                    disabled={actionKey !== ""}>
+                    {actionKey === "save-super-residual" ? t.loading : lang === "zh" ? "保存超级节点地址配置" : "Save Super Recipients"}
+                  </button>
+                </div>
               </div>
             </Card>
 
@@ -1735,7 +1894,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <button className="ghost-btn" type="button"
                   onClick={() => void executeAction("set-weight", async () => {
                     validateAddress(settlementInputs.rewardWeightAddr);
-                    await setRewardWeight(provider!, settlementInputs.rewardWeightAddr.trim(), BigInt(settlementInputs.rewardWeight || "0"));
+                    await setRewardWeight(provider!, settlementInputs.rewardWeightAddr.trim(), parseNonNegativeBigInt(settlementInputs.rewardWeight));
                   }, lang === "zh" ? "权重已更新。" : "Weight updated.")} disabled={actionKey !== ""}>
                   {actionKey === "set-weight" ? t.loading : lang === "zh" ? "设置权重" : "Set Weight"}
                 </button>
@@ -1751,7 +1910,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <button className="primary-btn" type="button" style={{ background: "var(--color-warning, #f59e0b)" }}
                   onClick={() => void executeAction("withdraw-usdt", async () => {
                     validateAddress(settlementInputs.withdrawTo);
-                    await withdrawCoreUSDT(provider!, settlementInputs.withdrawTo.trim(), parseUsdt(settlementInputs.withdrawAmount));
+                    await withdrawCoreUSDT(provider!, settlementInputs.withdrawTo.trim(), parsePositiveUsdt(settlementInputs.withdrawAmount));
                   }, lang === "zh" ? "USDT 已提取。" : "USDT withdrawn.")} disabled={actionKey !== ""}>
                   {actionKey === "withdraw-usdt" ? t.loading : lang === "zh" ? "提取 USDT" : "Withdraw"}
                 </button>
@@ -1819,7 +1978,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   <button className="ghost-btn" type="button"
                     onClick={() => void executeAction("withdraw-pool", async () => {
                       validateAddress(settlementInputs.treasuryPoolTo);
-                      await withdrawCoreAccumulatedPool(provider!, Number(settlementInputs.treasuryPoolType), settlementInputs.treasuryPoolTo.trim(), parseUsdt(settlementInputs.treasuryPoolAmt));
+                      const pt = Number(settlementInputs.treasuryPoolType);
+                      if (!Number.isInteger(pt) || pt < 0 || pt > 6) throw new Error(lang === "zh" ? "池类型须为 0-6" : "Pool type must be 0-6");
+                      await withdrawCoreAccumulatedPool(provider!, pt, settlementInputs.treasuryPoolTo.trim(), parsePositiveUsdt(settlementInputs.treasuryPoolAmt));
                     }, lang === "zh" ? "池账本发放完成。" : "Pool ledger disbursed.")} disabled={actionKey !== ""}>
                     {actionKey === "withdraw-pool" ? t.loading : (lang === "zh" ? "从池账本发放" : "Disburse from pool")}
                   </button>
@@ -1842,7 +2003,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   <button className="ghost-btn" type="button"
                     onClick={() => void executeAction("withdraw-light", async () => {
                       validateAddress(settlementInputs.treasuryLightTo);
-                      await withdrawCoreLight(provider!, settlementInputs.treasuryLightTo.trim(), parseUnits(settlementInputs.treasuryLightAmt || "0", 18));
+                      await withdrawCoreLight(provider!, settlementInputs.treasuryLightTo.trim(), parsePositiveAmount(settlementInputs.treasuryLightAmt));
                     }, lang === "zh" ? "LIGHT 已提取。" : "LIGHT withdrawn.")} disabled={actionKey !== ""}>
                     {actionKey === "withdraw-light" ? t.loading : (lang === "zh" ? "提取 LIGHT" : "Withdraw LIGHT")}
                   </button>
@@ -1857,14 +2018,16 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   <button className="ghost-btn" type="button" style={{ borderColor: "#ef4444", color: "#b91c1c" }}
                     onClick={() => void executeAction("emerg-usdt", async () => {
                       validateAddress(settlementInputs.withdrawTo);
-                      await emergencyWithdrawCoreUSDT(provider!, settlementInputs.withdrawTo.trim(), parseUsdt(settlementInputs.withdrawAmount));
+                      if (!window.confirm(t.confirmDangerous)) throw new Error(lang === "zh" ? "用户已取消" : "Cancelled by user");
+                      await emergencyWithdrawCoreUSDT(provider!, settlementInputs.withdrawTo.trim(), parsePositiveUsdt(settlementInputs.withdrawAmount));
                     }, lang === "zh" ? "紧急 USDT 已提取。" : "Emergency USDT withdrawn.")} disabled={actionKey !== ""}>
                     {actionKey === "emerg-usdt" ? t.loading : (lang === "zh" ? "紧急提取 USDT（使用上方提取框参数）" : "Emergency USDT (uses form above)")}
                   </button>
                   <button className="ghost-btn" type="button" style={{ borderColor: "#ef4444", color: "#b91c1c" }}
                     onClick={() => void executeAction("emerg-light", async () => {
                       validateAddress(settlementInputs.treasuryLightTo);
-                      await emergencyWithdrawCoreLight(provider!, settlementInputs.treasuryLightTo.trim(), parseUnits(settlementInputs.treasuryLightAmt || "0", 18));
+                      if (!window.confirm(t.confirmDangerous)) throw new Error(lang === "zh" ? "用户已取消" : "Cancelled by user");
+                      await emergencyWithdrawCoreLight(provider!, settlementInputs.treasuryLightTo.trim(), parsePositiveAmount(settlementInputs.treasuryLightAmt));
                     }, lang === "zh" ? "紧急 LIGHT 已提取。" : "Emergency LIGHT withdrawn.")} disabled={actionKey !== ""}>
                     {actionKey === "emerg-light" ? t.loading : (lang === "zh" ? "紧急提取 LIGHT" : "Emergency LIGHT")}
                   </button>
@@ -1885,7 +2048,11 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions">
                 <button className="ghost-btn" type="button"
                   onClick={() => void executeAction("cleanup-otc", async () => {
-                    await cleanupLowerOrders(provider!, Number(settlementInputs.cleanupRole), Number(settlementInputs.cleanupMax));
+                    const role = Number(settlementInputs.cleanupRole);
+                    if (role !== 1 && role !== 2) throw new Error(t.invalidCleanupRole);
+                    const maxN = Number(settlementInputs.cleanupMax);
+                    if (!Number.isInteger(maxN) || maxN < 1) throw new Error(t.invalidCleanupMax);
+                    await cleanupLowerOrders(provider!, role, maxN);
                   }, lang === "zh" ? "低价清理完成。" : "Cleanup done.")} disabled={actionKey !== ""}>
                   {actionKey === "cleanup-otc" ? t.loading : lang === "zh" ? "执行清理" : "Run Cleanup"}
                 </button>
@@ -1987,7 +2154,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions admin-actions-tight">
                 <button className="ghost-btn" type="button"
                   onClick={() => void executeAction("pri-thresholds", async () => {
-                    await updatePrimaryThresholds(provider!, parseUnits(primaryInputs.minReserve || "0", 18), BigInt(primaryInputs.minHolders || "0"));
+                    await updatePrimaryThresholds(provider!, parseUnits(((primaryInputs.minReserve ?? "").trim() || "0"), 18), parseNonNegativeBigInt(primaryInputs.minHolders));
                   }, lang === "zh" ? "阈值已更新。" : "Thresholds updated.")} disabled={actionKey !== ""}>
                   {actionKey === "pri-thresholds" ? t.loading : t.saveParam}
                 </button>
@@ -1999,7 +2166,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions admin-actions-tight">
                 <button className="ghost-btn" type="button"
                   onClick={() => void executeAction("pri-holder-count", async () => {
-                    await reportIcoHolderCount(provider!, BigInt(primaryInputs.holderCount || "0"));
+                    await reportIcoHolderCount(provider!, parseNonNegativeBigInt(primaryInputs.holderCount));
                   }, lang === "zh" ? "已上报持有人数。" : "Holder count reported.")} disabled={actionKey !== ""}>
                   {actionKey === "pri-holder-count" ? t.loading : lang === "zh" ? "上报" : "Report"}
                 </button>
@@ -2038,7 +2205,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <button className="primary-btn" type="button" style={{ background: "var(--color-warning, #f59e0b)" }}
                   onClick={() => void executeAction("pri-withdraw", async () => {
                     validateAddress(primaryInputs.treasuryToken); validateAddress(primaryInputs.treasuryTo);
-                    await withdrawPrimaryTreasury(provider!, primaryInputs.treasuryToken.trim(), primaryInputs.treasuryTo.trim(), BigInt(primaryInputs.treasuryAmount || "0"));
+                    await withdrawPrimaryTreasury(provider!, primaryInputs.treasuryToken.trim(), primaryInputs.treasuryTo.trim(), parsePositiveWei(primaryInputs.treasuryAmount));
                   }, lang === "zh" ? "资金已提取。" : "Treasury withdrawn.")} disabled={actionKey !== ""}>
                   {actionKey === "pri-withdraw" ? t.loading : lang === "zh" ? "提取" : "Withdraw"}
                 </button>
@@ -2191,7 +2358,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("mint-ico", async () => {
                     validateAddress(tokenInputs.mintTo);
-                    await mintIcoToken(provider!, tokenInputs.mintTo.trim(), parseUnits(tokenInputs.mintAmount || "0", 18));
+                    await mintIcoToken(provider!, tokenInputs.mintTo.trim(), parsePositiveAmount(tokenInputs.mintAmount));
                   }, lang === "zh" ? "铸造完成。" : "Mint done.")} disabled={actionKey !== ""}>
                   {actionKey === "mint-ico" ? t.loading : lang === "zh" ? "铸造" : "Mint"}
                 </button>
@@ -2204,7 +2371,8 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions">
                 <button className="primary-btn" type="button" style={{ background: "var(--color-error, #dc2626)" }}
                   onClick={() => void executeAction("burn-unsold", async () => {
-                    await burnUnsold(provider!, parseUnits(tokenInputs.burnAmount || "0", 18));
+                    if (!window.confirm(t.confirmDangerous)) throw new Error(lang === "zh" ? "用户已取消" : "Cancelled by user");
+                    await burnUnsold(provider!, parsePositiveAmount(tokenInputs.burnAmount));
                   }, lang === "zh" ? "销毁完成。" : "Burn done.")} disabled={actionKey !== ""}>
                   {actionKey === "burn-unsold" ? t.loading : lang === "zh" ? "销毁" : "Burn"}
                 </button>
@@ -2253,7 +2421,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                   <div className="actions">
                     <button className="primary-btn" type="button"
                       onClick={() => void executeAction("add-liq", async () => {
-                        await addSwapLiquidity(provider!, Number(tokenInputs.liqPairId), BigInt(tokenInputs.liqAmount0 || "0"), BigInt(tokenInputs.liqAmount1 || "0"));
+                        const pid = Number(tokenInputs.liqPairId);
+                        if (!Number.isInteger(pid) || pid < 0) throw new Error(lang === "zh" ? "Pair ID 非法" : "Invalid Pair ID");
+                        await addSwapLiquidity(provider!, pid, parsePositiveWei(tokenInputs.liqAmount0), parsePositiveWei(tokenInputs.liqAmount1));
                       }, lang === "zh" ? "流动性已添加。" : "Liquidity added.")} disabled={actionKey !== ""}>
                       {actionKey === "add-liq" ? t.loading : lang === "zh" ? "添加" : "Add"}
                     </button>
@@ -2269,7 +2439,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                     <button className="primary-btn" type="button" style={{ background: "var(--color-warning, #f59e0b)" }}
                       onClick={() => void executeAction("rm-liq", async () => {
                         validateAddress(tokenInputs.rmTo);
-                        await removeSwapLiquidity(provider!, Number(tokenInputs.rmPairId), BigInt(tokenInputs.rmAmount0 || "0"), BigInt(tokenInputs.rmAmount1 || "0"), tokenInputs.rmTo.trim());
+                        const pid = Number(tokenInputs.rmPairId);
+                        if (!Number.isInteger(pid) || pid < 0) throw new Error(lang === "zh" ? "Pair ID 非法" : "Invalid Pair ID");
+                        await removeSwapLiquidity(provider!, pid, parsePositiveWei(tokenInputs.rmAmount0), parsePositiveWei(tokenInputs.rmAmount1), tokenInputs.rmTo.trim());
                       }, lang === "zh" ? "流动性已移除。" : "Liquidity removed.")} disabled={actionKey !== ""}>
                       {actionKey === "rm-liq" ? t.loading : lang === "zh" ? "移除" : "Remove"}
                     </button>
@@ -2289,10 +2461,14 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <button className="ghost-btn" type="button"
                   onClick={() => void executeAction("dist-fees", async () => {
                     validateAddress(tokenInputs.distToken);
-                    const recipients = tokenInputs.distRecipients.split(",").map(s => s.trim());
+                    const pid = Number(tokenInputs.distPairId);
+                    if (!Number.isInteger(pid) || pid < 0) throw new Error(lang === "zh" ? "Pair ID 非法" : "Invalid Pair ID");
+                    const recipients = tokenInputs.distRecipients.split(",").map(s => s.trim()).filter(Boolean);
+                    if (recipients.length === 0) throw new Error(t.invalidDistributionEmpty);
                     recipients.forEach(validateAddress);
-                    const bps = tokenInputs.distBps.split(",").map(s => Number(s.trim()));
-                    await distributeSwapFees(provider!, Number(tokenInputs.distPairId), tokenInputs.distToken.trim(), recipients, bps);
+                    const bps = tokenInputs.distBps.split(",").map(s => s.trim()).filter(Boolean).map(parseBpsInput);
+                    if (bps.length !== recipients.length) throw new Error(t.invalidDistribution);
+                    await distributeSwapFees(provider!, pid, tokenInputs.distToken.trim(), recipients, bps);
                   }, lang === "zh" ? "手续费已分发。" : "Fees distributed.")} disabled={actionKey !== ""}>
                   {actionKey === "dist-fees" ? t.loading : lang === "zh" ? "分发" : "Distribute"}
                 </button>
@@ -2307,7 +2483,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
               <div className="actions">
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("create-pools", async () => {
-                    await createDefaultPools(provider!, Number(tokenInputs.defFeeBpsUsdtIco), Number(tokenInputs.defFeeBpsLightIco), Number(tokenInputs.defMaxImpact));
+                    await createDefaultPools(provider!, parseBpsInput(tokenInputs.defFeeBpsUsdtIco), parseBpsInput(tokenInputs.defFeeBpsLightIco), parseBpsInput(tokenInputs.defMaxImpact));
                   }, lang === "zh" ? "默认池已创建。" : "Default pools created.")} disabled={actionKey !== ""}>
                   {actionKey === "create-pools" ? t.loading : lang === "zh" ? "创建" : "Create"}
                 </button>
@@ -2394,6 +2570,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                     style={{ background: "var(--color-error, #dc2626)" }}
                     onClick={() => void executeAction("transfer-owner", async () => {
                       validateAddress(newOwnerInput);
+                      if (!window.confirm(t.ownerTransferWarning)) throw new Error(lang === "zh" ? "用户已取消" : "Cancelled by user");
                       await transferCoreOwnership(provider!, newOwnerInput.trim());
                     }, t.ownerTransferred)}
                     disabled={!newOwnerInput.trim() || actionKey !== ""}>
@@ -2414,8 +2591,13 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                 <button className="ghost-btn" type="button" onClick={async () => {
                   setAnnLoading(true);
                   try {
-                    const rows = await fetchPublishedAnnouncements();
+                    const [rows, toggles] = await Promise.all([
+                      fetchPublishedAnnouncements(),
+                      fetchFrontendFeatureToggles(),
+                    ]);
                     setAnnList(rows);
+                    setEditingFeatureToggles(toggles);
+                    onFeatureTogglesChange(toggles);
                     { const m = lang === "zh" ? `已加载 ${rows.length} 条公告` : `Loaded ${rows.length} announcements`; setLocalStatus(m); onStatusChange(m); }
                   } catch (e: any) { const m = `❌ ${e.message ?? e}`; setLocalStatus(m); onStatusChange(m); }
                   finally { setAnnLoading(false); }
@@ -2428,13 +2610,78 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
                     if (!JSONBIN_MASTER_KEY) { const m = lang === "zh" ? "未配置 VITE_JSONBIN_MASTER_KEY" : "VITE_JSONBIN_MASTER_KEY not configured"; setLocalStatus(m); onStatusChange(m); return; }
                     setAnnPublishing(true);
                     try {
-                      await publishAnnouncementsToJsonBin(annList, JSONBIN_MASTER_KEY);
+                      await publishAnnouncementsToJsonBin(annList, JSONBIN_MASTER_KEY, editingFeatureToggles);
+                      onFeatureTogglesChange(editingFeatureToggles);
                       { const m = lang === "zh" ? `✅ 已发布 ${annList.length} 条公告` : `✅ Published ${annList.length} announcements`; setLocalStatus(m); onStatusChange(m); }
                     } catch (e: any) { const m = `❌ ${e.message ?? e}`; setLocalStatus(m); onStatusChange(m); }
                     finally { setAnnPublishing(false); }
                   }}>
                   {annPublishing ? "…" : lang === "zh" ? "🚀 发布" : "🚀 Publish"}
                 </button>
+              </div>
+              <div style={{
+                border: "1px solid var(--border, #333)",
+                borderRadius: "10px",
+                padding: "12px",
+                marginBottom: "12px",
+                background: "var(--card-bg, #1a1a2e)",
+              }}>
+                <div style={{ fontWeight: 700, marginBottom: "6px" }}>{t.featureToggleTitle}</div>
+                <p style={{ margin: "0 0 10px", fontSize: "12px", color: "var(--text-secondary)" }}>{t.featureToggleHint}</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "8px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                    <input
+                      type="checkbox"
+                      checked={editingFeatureToggles.showHomeMachine}
+                      onChange={(event) => {
+                        const next = { ...editingFeatureToggles, showHomeMachine: event.target.checked };
+                        setEditingFeatureToggles(next);
+                        setLocalStatus(t.featureToggleSaved);
+                        onStatusChange(t.featureToggleSaved);
+                      }}
+                    />
+                    {t.toggleHomeMachine}
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                    <input
+                      type="checkbox"
+                      checked={editingFeatureToggles.showMarket}
+                      onChange={(event) => {
+                        const next = { ...editingFeatureToggles, showMarket: event.target.checked };
+                        setEditingFeatureToggles(next);
+                        setLocalStatus(t.featureToggleSaved);
+                        onStatusChange(t.featureToggleSaved);
+                      }}
+                    />
+                    {t.toggleMarket}
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                    <input
+                      type="checkbox"
+                      checked={editingFeatureToggles.showSwap}
+                      onChange={(event) => {
+                        const next = { ...editingFeatureToggles, showSwap: event.target.checked };
+                        setEditingFeatureToggles(next);
+                        setLocalStatus(t.featureToggleSaved);
+                        onStatusChange(t.featureToggleSaved);
+                      }}
+                    />
+                    {t.toggleSwap}
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                    <input
+                      type="checkbox"
+                      checked={editingFeatureToggles.showAdmin}
+                      onChange={(event) => {
+                        const next = { ...editingFeatureToggles, showAdmin: event.target.checked };
+                        setEditingFeatureToggles(next);
+                        setLocalStatus(t.featureToggleSaved);
+                        onStatusChange(t.featureToggleSaved);
+                      }}
+                    />
+                    {t.toggleAdmin}
+                  </label>
+                </div>
               </div>
               {annList.length === 0 && <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{lang === "zh" ? "暂无公告，点击「新增」添加。" : "No announcements yet."}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>

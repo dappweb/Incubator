@@ -35,6 +35,10 @@ const coreAbi = [
   "function updatePrice(uint8 kind, uint256 newPrice) external",
   "function updatePoolRecipient(uint8 poolType, address newRecipient) external",
   "function updatePoolShare(uint8 poolType, uint16 newBps) external",
+  "function getNodePurchaseResidualRecipients() view returns (address[])",
+  "function getSuperNodePurchaseResidualRecipients() view returns (address[])",
+  "function setNodePurchaseResidualRecipients(address[] recipients) external",
+  "function setSuperNodePurchaseResidualRecipients(address[] recipients) external",
   "function leaderboardWhitelist(uint256 index) view returns (address)",
   "function leaderboardWhitelistLength() view returns (uint256)",
   "function leaderboardWhitelistAdjustPct() view returns (uint8)",
@@ -133,7 +137,7 @@ const erc20BalanceAbi = [
 ];
 
 /**
- * 读取 SuperNode池(2)、Node池(3)、Leaderboard池(5)、Contract池(6) 的展示余额。
+ * 读取 SuperNode池(2)、Node池(3)、Leaderboard池(5)、Platform池(4) 的展示余额。
  *
  * 展示口径：优先读取每个池子 recipient 的 USDT 余额。
  * 若 recipient 为 Core 合约自身，则退回读取 `poolAccumulated(poolType)`，避免多个池子共享同一地址时无法区分池子额度。
@@ -146,7 +150,8 @@ export async function getPoolAccumulatedBalances(provider: BrowserProvider): Pro
 }> {
   const contract = getCoreContract(provider);
 
-  const poolTypes = [2, 3, 5, 6] as const;
+  // Core PoolType enum only defines 0..5; there is no type 6 in IncubatorCore.
+  const poolTypes = [2, 3, 5, 4] as const;
   const usdtAddress = await contract.usdt() as string;
   const usdtContract = new Contract(usdtAddress, erc20BalanceAbi, provider);
 
@@ -192,7 +197,7 @@ export async function getPoolAccumulatedBalances(provider: BrowserProvider): Pro
   const superNodePool = displayByPoolType.get(2) ?? 0n;
   const nodePool = displayByPoolType.get(3) ?? 0n;
   const leaderboardPool = displayByPoolType.get(5) ?? 0n;
-  const contractPool = displayByPoolType.get(6) ?? 0n;
+  const contractPool = displayByPoolType.get(4) ?? 0n;
 
   return { superNodePool, nodePool, leaderboardPool, contractPool };
 }
@@ -542,6 +547,32 @@ export async function updateCorePoolShare(provider: BrowserProvider, poolType: n
   const signer = await provider.getSigner();
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.updatePoolShare(poolType, bps);
+  return tx.wait();
+}
+
+export async function getNodePurchaseResidualRecipients(provider: BrowserProvider): Promise<string[]> {
+  const contract = getCoreContract(provider) as any;
+  const recipients = await contract.getNodePurchaseResidualRecipients();
+  return Array.from(recipients as string[]);
+}
+
+export async function getSuperNodePurchaseResidualRecipients(provider: BrowserProvider): Promise<string[]> {
+  const contract = getCoreContract(provider) as any;
+  const recipients = await contract.getSuperNodePurchaseResidualRecipients();
+  return Array.from(recipients as string[]);
+}
+
+export async function setNodePurchaseResidualRecipients(provider: BrowserProvider, recipients: string[]) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setNodePurchaseResidualRecipients(recipients);
+  return tx.wait();
+}
+
+export async function setSuperNodePurchaseResidualRecipients(provider: BrowserProvider, recipients: string[]) {
+  const signer = await provider.getSigner();
+  const contract = getCoreContract(provider).connect(signer) as any;
+  const tx = await contract.setSuperNodePurchaseResidualRecipients(recipients);
   return tx.wait();
 }
 

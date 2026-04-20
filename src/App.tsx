@@ -5,78 +5,85 @@ import "./App.css";
 import { Card, KVRow } from "./components/Common";
 import type { TokenType } from "./components/TokenHistory";
 import {
-  CNC_MAINNET_CHAIN_ID,
-  CNC_MAINNET_CHAIN_NAME,
-  CNC_MAINNET_RPC_URLS,
-  CORE_CONTRACT_ADDRESS,
-  ICO_TOKEN_ADDRESS,
-  LIGHT_TOKEN_ADDRESS,
-  OTC_CONTRACT_ADDRESS,
-  PANCAKE_V3_PRIMARY_FEE_PPM,
-  PRIMARY_SWAP_CONTROLLER_ADDRESS,
-  SWAP_POOL_ADDRESS,
-  USDT_CONTRACT_ADDRESS,
+    CNC_MAINNET_CHAIN_ID,
+    CNC_MAINNET_CHAIN_NAME,
+    CNC_MAINNET_RPC_URLS,
+    CORE_CONTRACT_ADDRESS,
+    ICO_TOKEN_ADDRESS,
+    LIGHT_TOKEN_ADDRESS,
+    OTC_CONTRACT_ADDRESS,
+    PANCAKE_V3_PRIMARY_FEE_PPM,
+    PRIMARY_SWAP_CONTROLLER_ADDRESS,
+    SWAP_POOL_ADDRESS,
+    USDT_CONTRACT_ADDRESS,
 } from "./config";
-import { fetchPublishedAnnouncements, type Announcement } from "./lib/announcements";
 import {
-  bindReferrer,
-  buyNode,
-  buySuperNode,
-  getContractOwner,
-  getDirectReferralsByReferrer,
-  getMachineOrder,
-  getMachineUnitPrice,
-  getNodePrice,
-  getOrderRewardLedger,
-  getPoolAccumulatedBalances,
-  getReferrer,
-  getRewardRecordsByBeneficiary,
-  getSuperNodePrice,
-  getTeamStats,
-  getUserMachineOrderIds,
-  getUserRole,
-  isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
-  purchaseMachine,
-  type MachineOrder,
-  type OrderRewardLedger,
-  type RewardRecord,
-  type TeamStats
+    DEFAULT_FRONTEND_FEATURE_TOGGLES,
+    fetchFrontendFeatureToggles,
+    fetchPublishedAnnouncements,
+    type Announcement,
+    type FrontendFeatureToggles,
+} from "./lib/announcements";
+import {
+    bindReferrer,
+    buyNode,
+    buySuperNode,
+    getContractOwner,
+    getDirectReferralsByReferrer,
+    getMachineOrder,
+    getMachineUnitPrice,
+    getNodePrice,
+    getOrderRewardLedger,
+    getPoolAccumulatedBalances,
+    getReferrer,
+    getRewardRecordsByBeneficiary,
+    getSuperNodePrice,
+    getTeamStats,
+    getUserMachineOrderIds,
+    getUserRole,
+    isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
+    purchaseMachine,
+    type MachineOrder,
+    type OrderRewardLedger,
+    type RewardRecord,
+    type TeamStats
 } from "./lib/coreContract";
 import { parseContractError } from "./lib/errorParser";
 import { getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
 import {
-  claimLightReward,
-  getLightClaimable,
-  hasLightRewardVault,
+    claimLightReward,
+    getLightClaimable,
+    hasLightRewardVault,
 } from "./lib/lightRewardVault";
 import {
-  getActiveOrderIds,
-  getLastTradePriceByRole,
-  getOrder,
-  getOtcFeeBps,
-  type OtcOrder,
+    getActiveOrderIds,
+    getLastTradePriceByRole,
+    getOrder,
+    getOtcFeeBps,
+    type OtcOrder,
 } from "./lib/otcContract";
 import {
-  getPrimarySwapFeeBps,
-  getPrimarySwapSpender,
-  getSwapPool,
-  getSwapPoolsInfo,
-  isLightUsdPriceReady,
-  quoteLightForIcoUsdBased,
-  quotePrimarySwapExactIn,
-  quoteSwapExactIn,
-  resolvePrimarySwapTokens,
-  swapLightForIcoUsdBased,
-  swapPrimaryExactIn,
+    getContractPoolStats,
+    getPrimarySwapFeeBps,
+    getPrimarySwapSpender,
+    getSwapPool,
+    getSwapPoolsInfo,
+    isLightUsdPriceReady,
+    quoteLightForIcoUsdBased,
+    quotePrimarySwapExactIn,
+    quoteSwapExactIn,
+    resolvePrimarySwapTokens,
+    swapLightForIcoUsdBased,
+    swapPrimaryExactIn,
 } from "./lib/swapContract";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { fetchTokenHistory, type TxRecord } from "./lib/tokenHistory";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, resolveUsdtAddress } from "./lib/usdtContract";
 import {
-  checkConnection,
-  connectWallet,
-  ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
-  setupWalletAfterConnect
+    checkConnection,
+    connectWallet,
+    ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
+    setupWalletAfterConnect
 } from "./lib/wallet";
 
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
@@ -534,6 +541,10 @@ const App = () => {
     identity: lang === "zh" ? "我的身份资产" : "My Identity Assets",
     otcListings: lang === "zh" ? "OTC挂单" : "OTC Listings",
     quickActions: lang === "zh" ? "快速操作" : "Quick Actions",
+    featureClosedMachine: lang === "zh" ? "购买算力入口已关闭" : "Machine purchase is disabled",
+    featureClosedMarket: lang === "zh" ? "市场入口已关闭" : "Market is disabled",
+    featureClosedSwap: lang === "zh" ? "兑换入口已关闭" : "Swap is disabled",
+    featureClosedAdmin: lang === "zh" ? "管理面板入口已关闭" : "Admin panel is disabled",
   };
 
 
@@ -546,6 +557,7 @@ const App = () => {
   const [chainId, setChainId] = useState(0);
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [featureToggles, setFeatureToggles] = useState<FrontendFeatureToggles>(DEFAULT_FRONTEND_FEATURE_TOGGLES);
   const [_status, setStatus] = useState("");
   const [rpcReachable, setRpcReachable] = useState(true);
   const [contractOwner, setContractOwner] = useState("");
@@ -759,9 +771,10 @@ const App = () => {
     }
 
     try {
-      const [poolsInfo, accBalances] = await Promise.all([
+      const [poolsInfo, accBalances, primaryContractStats] = await Promise.all([
         SWAP_POOL_ADDRESS ? getSwapPoolsInfo(readProvider) : null,
         getPoolAccumulatedBalances(readProvider),
+        getContractPoolStats(readProvider),
       ]);
       if (poolsInfo) {
         setPrimaryPoolReserve({ usdt: poolsInfo.primaryPool.reserve0, ico: poolsInfo.primaryPool.reserve1 });
@@ -770,7 +783,8 @@ const App = () => {
       setSuperNodePoolBalance(accBalances.superNodePool);
       setNodePoolBalance(accBalances.nodePool);
       setLeaderboardPoolBalance(accBalances.leaderboardPool);
-      setContractPoolBalance(accBalances.contractPool);
+      // 契约池 = Primary 累计 + Core Platform 外部钱包余额（无合约改动最简合并）
+      setContractPoolBalance(primaryContractStats.usdtTotal + accBalances.contractPool);
     } catch (e) {
       console.error("Failed to fetch public pool data", e);
     }
@@ -922,26 +936,58 @@ const App = () => {
     () => isOwner || hasChainSubAdminRole,
     [hasChainSubAdminRole, isOwner],
   );
+  const canUseMachineEntry = featureToggles.showHomeMachine;
+  const canUseMarket = featureToggles.showMarket;
+  const canUseSwap = featureToggles.showSwap;
+  const canUseAdmin = hasAdminAccess && featureToggles.showAdmin;
+
+  const navigateToTab = useCallback((tab: TabKey) => {
+    if (tab === "otc" && !canUseMarket) {
+      setStatus(t.featureClosedMarket);
+      return;
+    }
+    if (tab === "swap" && !canUseSwap) {
+      setStatus(t.featureClosedSwap);
+      return;
+    }
+    if (tab === "admin" && !canUseAdmin) {
+      setStatus(t.featureClosedAdmin);
+      return;
+    }
+    setActiveTab(tab);
+  }, [canUseAdmin, canUseMarket, canUseSwap, t.featureClosedAdmin, t.featureClosedMarket, t.featureClosedSwap]);
+
   const visibleDesktopTabs = useMemo(() => {
-    const tabs = [...DESKTOP_TABS];
-    if (hasAdminAccess) {
+    const tabs = DESKTOP_TABS.filter((item) => {
+      if (item.key === "otc") return canUseMarket;
+      if (item.key === "swap") return canUseSwap;
+      return true;
+    });
+    if (canUseAdmin) {
       tabs.push({ key: "admin" as TabKey, label: t.tab_admin });
     }
     return tabs;
-  }, [hasAdminAccess, t.tab_admin]);
+  }, [canUseAdmin, canUseMarket, canUseSwap, t.tab_admin]);
   const visibleMobileTabs = useMemo(() => {
-    const tabs = [...MOBILE_TABS];
-    if (hasAdminAccess) {
+    const tabs = MOBILE_TABS.filter((item) => {
+      if (item.key === "otc") return canUseMarket;
+      if (item.key === "swap") return canUseSwap;
+      return true;
+    });
+    if (canUseAdmin) {
       tabs.push({ key: "admin" as TabKey, label: t.tab_admin });
     }
     return tabs;
-  }, [hasAdminAccess, t.tab_admin]);
+  }, [canUseAdmin, canUseMarket, canUseSwap, t.tab_admin]);
 
   useEffect(() => {
-    if (!hasAdminAccess) {
-      setActiveTab((current) => (current === "admin" ? "overview" : current));
-    }
-  }, [hasAdminAccess]);
+    setActiveTab((current) => {
+      if (current === "admin" && !canUseAdmin) return "overview";
+      if (current === "otc" && !canUseMarket) return "overview";
+      if (current === "swap" && !canUseSwap) return "overview";
+      return current;
+    });
+  }, [canUseAdmin, canUseMarket, canUseSwap]);
 
   const effectiveSwapDirection = useMemo<SwapDirection>(
     () => activeSwapDirection,
@@ -1093,12 +1139,17 @@ const App = () => {
     const cancel = scheduleIdleTask(() => {
       void (async () => {
       try {
-        const rows = await fetchPublishedAnnouncements();
+        const [rows, nextFeatureToggles] = await Promise.all([
+          fetchPublishedAnnouncements(),
+          fetchFrontendFeatureToggles(),
+        ]);
         console.info(`[App] Loaded ${rows.length} announcements`);
         setAnnouncements(rows);
+        setFeatureToggles(nextFeatureToggles);
       } catch (err) {
         console.error("[App] Failed to load announcements:", err);
         setAnnouncements([]);
+        setFeatureToggles({ ...DEFAULT_FRONTEND_FEATURE_TOGGLES });
       }
       })();
     }, 800);
@@ -1254,9 +1305,10 @@ const App = () => {
 
     // 首页池面板数据（不依赖登录钱包，任意 provider 即可）
     try {
-      const [poolsInfo, accBalances] = await Promise.all([
+      const [poolsInfo, accBalances, primaryContractStats] = await Promise.all([
         SWAP_POOL_ADDRESS ? getSwapPoolsInfo(connectedProvider) : null,
         getPoolAccumulatedBalances(connectedProvider),
+        getContractPoolStats(connectedProvider),
       ]);
       if (poolsInfo) {
         // pairId 0: token0=USDT token1=ICO
@@ -1267,7 +1319,8 @@ const App = () => {
       setSuperNodePoolBalance(accBalances.superNodePool);
       setNodePoolBalance(accBalances.nodePool);
       setLeaderboardPoolBalance(accBalances.leaderboardPool);
-      setContractPoolBalance(accBalances.contractPool);
+      // 契约池 = Primary 累计 + Core Platform 外部钱包余额（无合约改动最简合并）
+      setContractPoolBalance(primaryContractStats.usdtTotal + accBalances.contractPool);
     } catch (e) {
       console.error("Failed to fetch pool panel data", e);
     }
@@ -1847,6 +1900,7 @@ const App = () => {
   };
 
   const onApproveUsdt = async () => guardedAction(async () => {
+    if (!canUseMachineEntry) throw new Error(t.featureClosedMachine);
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
     if (usdtBalance < machineTotal) throw new Error(t.insufficientUsdtBalance);
 
@@ -1864,6 +1918,7 @@ const App = () => {
   }, "approve-machine");
 
   const onPurchaseMachineOnly = async () => guardedAction(async () => {
+    if (!canUseMachineEntry) throw new Error(t.featureClosedMachine);
     if (machineQty < 1 || machineQty > 10) throw new Error(t.invalidMachineQty);
     await ensureReferrerReady();
     if (!CORE_CONTRACT_ADDRESS) throw new Error(t.missingCoreConfig);
@@ -2041,8 +2096,8 @@ const App = () => {
       </div>
 
       <div className="topbar-actions">
-        {hasAdminAccess ? (
-          <button className="ghost-btn" type="button" onClick={() => setActiveTab("admin")}>
+        {canUseAdmin ? (
+          <button className="ghost-btn" type="button" onClick={() => navigateToTab("admin")}>
             {t.tab_admin}
           </button>
         ) : null}
@@ -2091,7 +2146,7 @@ const App = () => {
         </div>
       )}
       <section className="tabs desktop-tabs">
-        {visibleDesktopTabs.map((tab) => <button key={tab.key} className={tab.key === activeTab ? "tab-btn tab-active" : "tab-btn"} onClick={() => setActiveTab(tab.key)}>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</button>)}
+        {visibleDesktopTabs.map((tab) => <button key={tab.key} className={tab.key === activeTab ? "tab-btn tab-active" : "tab-btn"} onClick={() => navigateToTab(tab.key)}>{t[("tab_" + tab.key) as keyof typeof t] || tab.label}</button>)}
       </section>
 
       {activeTab === "overview" ? (
@@ -2102,11 +2157,11 @@ const App = () => {
             <KVRow label={t.role} value={roleLabel} />
             <KVRow label={t.balance} value={formatUsdt(usdtBalance) + " USDT"} />
             <KVRow label={t.coreApproval} value={fmtAllowance(coreAllowance, lang)} />
-            {hasAdminAccess ? (
+            {canUseAdmin ? (
               <KVRow
                 label={t.ownerPanel}
                 value={(
-                  <button type="button" className="link-btn" onClick={() => setActiveTab("admin")}>
+                  <button type="button" className="link-btn" onClick={() => navigateToTab("admin")}>
                     {t.openAdminPanel}
                   </button>
                 )}
@@ -2156,14 +2211,15 @@ const App = () => {
               <button
                 className="primary-btn"
                 type="button"
-                onClick={() => setActiveTab("mine")}
+                onClick={() => navigateToTab("mine")}
               >
                 {t.myWallet}
               </button>
               <button
                 className="primary-btn primary-btn--ghost"
                 type="button"
-                onClick={() => setActiveTab("otc")}
+                onClick={() => navigateToTab("otc")}
+                disabled={!canUseMarket}
               >
                 {t.buyNodeNow}
               </button>
@@ -2252,6 +2308,7 @@ const App = () => {
           </Card>
 
           {/* 算力购买卡 */}
+          {canUseMachineEntry ? (
           <Card title={t.machineTitle} className="machine-card">
             <div className="machine-orb machine-orb--one"></div>
             <div className="machine-orb machine-orb--two"></div>
@@ -2305,6 +2362,7 @@ const App = () => {
             <p className="hint">{t.machineAutoApproveHint}</p>
             <p className="hint">{t.machineBusinessHint}</p>
           </Card>
+          ) : null}
 
           {/* 节点购买卡 */}
           {role !== 2 && (
@@ -2484,7 +2542,7 @@ const App = () => {
         </section>
       ) : null}
 
-      {activeTab === "otc" ? (
+      {activeTab === "otc" && canUseMarket ? (
         <Suspense fallback={<DeferredSectionFallback title={t.tab_otc} hint={t.portfolioHint} />}>
           <OtcMarket
             t={t}
@@ -2499,7 +2557,7 @@ const App = () => {
         </Suspense>
       ) : null}
 
-      {activeTab === "swap" ? (
+      {activeTab === "swap" && canUseSwap ? (
         <section className="grid-full">
           <Card title={t.swapTitle} className="swap-card">
             <div className="swap-sub-tabs">
@@ -2901,16 +2959,25 @@ const App = () => {
         )
       ) : null}
 
-      {activeTab === "admin" && hasAdminAccess ? (
+      {activeTab === "admin" && canUseAdmin ? (
         <Suspense fallback={<DeferredSectionFallback title={t.tab_admin} hint={t.ownerPanel} />}>
-          <Admin lang={lang} address={address} contractOwner={contractOwner} provider={provider} onRefresh={onRefreshWallet} onStatusChange={setStatus} />
+          <Admin
+            lang={lang}
+            address={address}
+            contractOwner={contractOwner}
+            provider={provider}
+            onRefresh={onRefreshWallet}
+            onStatusChange={setStatus}
+            featureToggles={featureToggles}
+            onFeatureTogglesChange={setFeatureToggles}
+          />
         </Suspense>
       ) : null}
 
       {/* 底部导航栏 */}
       <nav className="bottom-nav">
         {visibleMobileTabs.map((tab) => (
-          <button key={"bot-" + tab.key} className={`nav-item ${tab.key === activeTab ? "active" : ""}`} onClick={() => setActiveTab(tab.key)}>
+          <button key={"bot-" + tab.key} className={`nav-item ${tab.key === activeTab ? "active" : ""}`} onClick={() => navigateToTab(tab.key)}>
             <div className="nav-icon">
               {tab.key === "overview" && "🏠"}
               {tab.key === "team" && "👥"}

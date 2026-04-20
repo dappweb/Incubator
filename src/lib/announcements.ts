@@ -15,6 +15,20 @@ export type Announcement = {
   createdAt: string;
 };
 
+export type FrontendFeatureToggles = {
+  showHomeMachine: boolean;
+  showMarket: boolean;
+  showSwap: boolean;
+  showAdmin: boolean;
+};
+
+export const DEFAULT_FRONTEND_FEATURE_TOGGLES: FrontendFeatureToggles = {
+  showHomeMachine: true,
+  showMarket: true,
+  showSwap: true,
+  showAdmin: true,
+};
+
 type JsonBinPayload = {
   record?: unknown;
 };
@@ -66,7 +80,29 @@ function normalizeAnnouncements(raw: unknown): Announcement[] {
   });
 }
 
-async function fetchFromJsonBin(): Promise<Announcement[] | null> {
+function normalizeFrontendFeatureToggles(raw: unknown): FrontendFeatureToggles {
+  const source = (typeof raw === "object" && raw && typeof (raw as any).featureToggles === "object")
+    ? (raw as any).featureToggles
+    : raw;
+
+  if (!source || typeof source !== "object") {
+    return { ...DEFAULT_FRONTEND_FEATURE_TOGGLES };
+  }
+
+  const next = {
+    ...DEFAULT_FRONTEND_FEATURE_TOGGLES,
+    ...source,
+  } as Record<string, unknown>;
+
+  return {
+    showHomeMachine: Boolean(next.showHomeMachine),
+    showMarket: Boolean(next.showMarket),
+    showSwap: Boolean(next.showSwap),
+    showAdmin: Boolean(next.showAdmin),
+  };
+}
+
+async function fetchJsonBinPayload(): Promise<unknown | null> {
   if (!JSONBIN_ANNOUNCEMENTS_BIN_ID) {
     return null;
   }
@@ -90,11 +126,23 @@ async function fetchFromJsonBin(): Promise<Announcement[] | null> {
 
     const data = (await response.json()) as JsonBinPayload | unknown;
     const payload = (data as JsonBinPayload)?.record ?? data;
-    const rows = normalizeAnnouncements(payload);
-    console.info(`[announcements] JSONBin returned ${rows.length} announcements`);
-    return rows;
+    return payload;
   } catch (err) {
     console.warn("[announcements] JSONBin fetch error:", err);
+    return null;
+  }
+}
+
+async function fetchStaticPayload(): Promise<unknown | null> {
+  try {
+    const response = await fetch("/announcements.json");
+    if (!response.ok) {
+      console.warn(`[announcements] static file fetch failed: ${response.status}`);
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn("[announcements] static file fetch error:", err);
     return null;
   }
 }
@@ -104,25 +152,31 @@ async function fetchFromJsonBin(): Promise<Announcement[] | null> {
  * the static file /announcements.json served from public/.
  */
 export async function fetchPublishedAnnouncements(): Promise<Announcement[]> {
-  const jsonBinRows = await fetchFromJsonBin();
+  const jsonBinPayload = await fetchJsonBinPayload();
+  const jsonBinRows = normalizeAnnouncements(jsonBinPayload);
   if (jsonBinRows && jsonBinRows.length > 0) {
+    console.info(`[announcements] JSONBin returned ${jsonBinRows.length} announcements`);
     return jsonBinRows;
   }
 
-  try {
-    const response = await fetch("/announcements.json");
-    if (!response.ok) {
-      console.warn(`[announcements] static file fetch failed: ${response.status}`);
-      return jsonBinRows ?? [];
-    }
-    const data: unknown = await response.json();
-    const staticRows = normalizeAnnouncements(data);
-    console.info(`[announcements] static fallback returned ${staticRows.length} announcements`);
-    return staticRows.length > 0 ? staticRows : (jsonBinRows ?? []);
-  } catch (err) {
-    console.warn("[announcements] static file fetch error:", err);
-    return jsonBinRows ?? [];
+  const staticPayload = await fetchStaticPayload();
+  const staticRows = normalizeAnnouncements(staticPayload);
+  console.info(`[announcements] static fallback returned ${staticRows.length} announcements`);
+  return staticRows.length > 0 ? staticRows : [];
+}
+
+export async function fetchFrontendFeatureToggles(): Promise<FrontendFeatureToggles> {
+  const jsonBinPayload = await fetchJsonBinPayload();
+  if (jsonBinPayload) {
+    return normalizeFrontendFeatureToggles(jsonBinPayload);
   }
+
+  const staticPayload = await fetchStaticPayload();
+  if (staticPayload) {
+    return normalizeFrontendFeatureToggles(staticPayload);
+  }
+
+  return { ...DEFAULT_FRONTEND_FEATURE_TOGGLES };
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -146,6 +200,7 @@ export function setStoredMasterKey(key: string): void {
 export async function publishAnnouncementsToJsonBin(
   announcements: Announcement[],
   masterKey: string,
+  featureToggles: FrontendFeatureToggles = DEFAULT_FRONTEND_FEATURE_TOGGLES,
 ): Promise<void> {
   if (!JSONBIN_ANNOUNCEMENTS_BIN_ID) throw new Error("JSONBIN bin ID 未配置");
   if (!masterKey) throw new Error("请输入 JSONBin Master Key");
@@ -158,7 +213,7 @@ export async function publishAnnouncementsToJsonBin(
       "Content-Type": "application/json",
       "X-Master-Key": masterKey,
     },
-    body: JSON.stringify({ announcements }),
+    body: JSON.stringify({ announcements, featureToggles }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
