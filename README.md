@@ -91,7 +91,7 @@ node scripts/push-announcements-jsonbin.js public/announcements.json
 
 - 项目已包含 `vercel.json`，用于 SPA 刷新回退到 `index.html`。
 
-## 部署到本机 Caddy（域名保持 t2.test2dapp.xyz）
+## 部署到本机 Caddy（同时支持 t1/t2/t3）
 
 ### 完整简洁部署步骤（生产）
 
@@ -153,6 +153,8 @@ npm run deploy:prod -- --skip-web
 #### 6) 上线验收
 
 ```bash
+curl -I https://t1.test2dapp.xyz
+curl -I https://t2.test2dapp.xyz
 curl -I https://t3.test2dapp.xyz
 ```
 
@@ -198,7 +200,7 @@ npm run deploy:prod -- --skip-web
 
 ### 1) 服务器准备
 
-- 确保 DNS `t2.test2dapp.xyz` 已解析到当前服务器公网 IP
+- 确保 DNS `t1.test2dapp.xyz`、`t2.test2dapp.xyz`、`t3.test2dapp.xyz` 均已解析到当前服务器公网 IP
 - 放行 80/443 端口
 - 安装 Caddy（systemd 服务名为 `caddy`）
 
@@ -215,12 +217,15 @@ npm run deploy:caddy
 - 构建前端 `dist/`
 - 同步到 `/var/www/incubator/dist`
 - 安装仓库内 `deploy/caddy/Caddyfile` 到 `/etc/caddy/Caddyfile`
+- 以多域名站点块发布（默认：t1/t2/t3）
 - 校验并重启 Caddy
 - 若检测到 Nginx 正在占用 80/443，会自动停止并禁用 Nginx
 
 ### 3) 验证
 
 ```bash
+curl -I https://t1.test2dapp.xyz
+curl -I https://t2.test2dapp.xyz
 curl -I https://t3.test2dapp.xyz
 ```
 
@@ -239,6 +244,26 @@ npm run diagnose:caddy
 
 ```bash
 bash scripts/diagnose-caddy-525.sh t2.test2dapp.xyz <服务器公网IP>
+```
+
+### 5) 保持 t1/t2/t3 持续可访问（巡检 + 自恢复）
+
+手动健康检查：
+
+```bash
+npm run check:caddy
+```
+
+安装每 5 分钟自动巡检（失败会重启 Caddy 再复检）：
+
+```bash
+npm run cron:install:caddy-watchdog
+```
+
+可通过环境变量自定义域名列表：
+
+```bash
+SITE_DOMAINS="t1.test2dapp.xyz,t2.test2dapp.xyz,t3.test2dapp.xyz" npm run check:caddy
 ```
 
 ## 代码结构

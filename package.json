@@ -46,6 +46,8 @@
     "deploy:prod": "bash scripts/deploy-production.sh",
     "deploy:caddy": "bash deploy/caddy/deploy.sh",
     "diagnose:caddy": "bash scripts/diagnose-caddy-525.sh",
+    "check:caddy": "bash scripts/check-caddy-sites.sh",
+    "cron:install:caddy-watchdog": "bash scripts/install-caddy-watchdog-cron.sh",
     "compile": "hardhat compile",
     "deploy:cncMainnet": "hardhat run scripts/deploy.ts --network cncMainnet",
     "precheck:upgrade:cncMainnet": "hardhat run scripts/precheck-upgrade.ts --network cncMainnet",

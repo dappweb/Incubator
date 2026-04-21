@@ -133,6 +133,7 @@ interface AdminProps {
   lang: "zh" | "en";
   address: string;
   contractOwner: string;
+  hasAdminAccess: boolean;
   provider: BrowserProvider | null;
   onRefresh: () => Promise<void>;
   onStatusChange: (message: string) => void;
@@ -177,7 +178,7 @@ const ParamGuide: React.FC<{ title: string; items: ParamGuideItem[] }> = ({ titl
   );
 };
 
-const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, onRefresh, onStatusChange, featureToggles, onFeatureTogglesChange }) => {
+const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAccess, provider, onRefresh, onStatusChange, featureToggles, onFeatureTogglesChange }) => {
   const t = {
     adminTitle: lang === "zh" ? "管理后台" : "Admin Panel",
     adminHint: lang === "zh" ? "仅合约 Owner、链上授权子管理员或经理可访问此页面。" : "Only contract owner, on-chain authorized sub-admins, or managers can access this page.",
@@ -563,7 +564,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
   const isOwner = Boolean(address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase());
   const isSubAdmin = subAdmins.some((a) => a.toLowerCase() === address?.toLowerCase());
   const isManager = currentHasAdminRole && !isOwner && !isSubAdmin;
-  const isAdmin = isOwner || isSubAdmin || isManager;
+  const isAdmin = hasAdminAccess || isOwner || isSubAdmin || isManager;
   const canManageSystem = isOwner || isSubAdmin;
   const canManagePrices = isAdmin;
   const canManageAnnouncements = isAdmin;
@@ -576,6 +577,14 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
     if (!provider) {
       setIsLoadingState(false);
       return;
+    }
+
+    if (address) {
+      try {
+        setCurrentHasAdminRole(await isCoreOwnerOrSubAdmin(provider, address));
+      } catch {
+        // Keep the previous role state when role probe fails.
+      }
     }
 
     setIsLoadingState(true);
@@ -666,7 +675,6 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, provider, o
       setPairTokensState(nextSwapPools.map(pool => ({ token0: pool.token0, token1: pool.token1 })));
       setPairTokensInputs(nextSwapPools.map(pool => ({ token0Input: pool.token0, token1Input: pool.token1 })));
       setSubAdmins(nextSubAdmins);
-      setCurrentHasAdminRole(address ? await isCoreOwnerOrSubAdmin(provider, address) : false);
 
       // Load settlement / primary / token data (best-effort)
       try {

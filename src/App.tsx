@@ -2965,6 +2965,7 @@ const App = () => {
             lang={lang}
             address={address}
             contractOwner={contractOwner}
+            hasAdminAccess={hasAdminAccess}
             provider={provider}
             onRefresh={onRefreshWallet}
             onStatusChange={setStatus}

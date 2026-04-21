@@ -1,4 +1,4 @@
-__SITE_DOMAIN__ {
+__SITE_DOMAINS__ {
     encode gzip zstd
 
     root * /var/www/incubator/dist
