@@ -308,7 +308,12 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         leaderboardWhitelistAdjustPct = 0;
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    modifier onlyOwnerOrSubAdmin() {
+        require(_isOwnerOrSubAdmin(msg.sender), "not authorized");
+        _;
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwnerOrSubAdmin {}
 
     // ============ Main Functions ============
 
@@ -435,7 +440,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit SuperNodePurchased(msg.sender, superNodePrice, identityId);
     }
 
-    function setIdentityMarket(address market) external onlyOwner {
+    function setIdentityMarket(address market) external onlyOwnerOrSubAdmin {
         require(market != address(0), "invalid market");
         identityMarket = market;
         emit IdentityMarketUpdated(market);
@@ -496,7 +501,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return (identity.id, identity.owner, identity.role, identity.updatedAt);
     }
 
-    function setRewardWeights(address[] calldata accounts, uint256[] calldata weights) external onlyOwner {
+    function setRewardWeights(address[] calldata accounts, uint256[] calldata weights) external onlyOwnerOrSubAdmin {
         require(accounts.length == weights.length, "invalid length");
 
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -529,8 +534,16 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return userOrderIds[user].length;
     }
 
+    function _isOwnerOrSubAdmin(address account) private view returns (bool) {
+        return account == owner() || subAdmins[account];
+    }
+
     function isOwnerOrSubAdmin(address account) public view returns (bool) {
-        return account == owner() || subAdmins[account] || managers[account];
+        return _isOwnerOrSubAdmin(account);
+    }
+
+    function isOwnerSubAdminOrManager(address account) public view returns (bool) {
+        return _isOwnerOrSubAdmin(account) || managers[account];
     }
 
     function getLeaderboard(uint256 dayId)
@@ -547,20 +560,20 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return block.timestamp / dur;
     }
 
-    function setCycleDuration(uint256 newDuration) external onlyOwner {
+    function setCycleDuration(uint256 newDuration) external onlyOwnerOrSubAdmin {
         require(newDuration >= 60 || newDuration == 0, "cycle too short");
         cycleDuration = newDuration;
     }
 
-    function pause() external onlyOwner {
+    function pause() external onlyOwnerOrSubAdmin {
         _pause();
     }
 
     function setAdminRole(address account, uint8 kind, bool enabled) external {
         require(account != address(0));
-        // kind: 1 = subAdmin (owner only), 2 = manager (owner or sub-admin)
+        // kind: 1 = subAdmin, 2 = manager
         if (kind == 1) {
-            require(msg.sender == owner(), "only owner");
+            require(_isOwnerOrSubAdmin(msg.sender), "not authorized");
             bool exists = subAdmins[account];
             if (enabled) {
                 require(!exists, "already sub admin");
@@ -582,18 +595,18 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
             }
             emit SubAdminUpdated(account, enabled);
         } else if (kind == 2) {
-            require(isOwnerOrSubAdmin(msg.sender));
+            require(_isOwnerOrSubAdmin(msg.sender), "not authorized");
             managers[account] = enabled;
         } else {
             revert();
         }
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external onlyOwnerOrSubAdmin {
         _unpause();
     }
 
-    function setUsdtAddress(address newUsdtAddress) external onlyOwner {
+    function setUsdtAddress(address newUsdtAddress) external onlyOwnerOrSubAdmin {
         usdt = IERC20(newUsdtAddress);
     }
 
@@ -610,7 +623,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
             emit PriceUpdated("NODE", nodePrice, newPrice);
             nodePrice = newPrice;
         } else if (kind == 2) {
-            require(msg.sender == owner(), "only owner");
+            require(_isOwnerOrSubAdmin(msg.sender), "not authorized");
             require(newPrice <= _maxSuperNodePrice());
             emit PriceUpdated("SUPER_NODE", superNodePrice, newPrice);
             superNodePrice = newPrice;
@@ -643,10 +656,10 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function _requirePriceAdmin() internal view {
-        require(isOwnerOrSubAdmin(msg.sender));
+        require(isOwnerSubAdminOrManager(msg.sender), "not authorized");
     }
 
-    function updatePoolRecipient(uint8 poolType, address newRecipient) external onlyOwner {
+    function updatePoolRecipient(uint8 poolType, address newRecipient) external onlyOwnerOrSubAdmin {
         require(poolType < poolConfigs.length, "invalid pool");
         require(newRecipient != address(0), "invalid recipient");
 
@@ -654,7 +667,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit PoolConfigUpdated(poolType, newRecipient, poolConfigs[poolType].bps);
     }
 
-    function updatePoolShare(uint8 poolType, uint16 newBps) external onlyOwner {
+    function updatePoolShare(uint8 poolType, uint16 newBps) external onlyOwnerOrSubAdmin {
         require(poolType < poolConfigs.length, "invalid pool");
         require(newBps > 0, "invalid bps");
         require(newBps <= BPS_DENOMINATOR, "bps exceeds denominator");
@@ -678,15 +691,15 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return superNodePurchaseResidualRecipients;
     }
 
-    function setNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwner {
+    function setNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwnerOrSubAdmin {
         _setPurchaseResidualRecipients(true, recipients);
     }
 
-    function setSuperNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwner {
+    function setSuperNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwnerOrSubAdmin {
         _setPurchaseResidualRecipients(false, recipients);
     }
 
-    function setLeaderboardWhitelist(address[] calldata accounts) external onlyOwner {
+    function setLeaderboardWhitelist(address[] calldata accounts) external onlyOwnerOrSubAdmin {
         for (uint256 i = 0; i < leaderboardWhitelist.length; i++) {
             address oldAccount = leaderboardWhitelist[i];
             delete leaderboardWhitelistIndexPlusOne[oldAccount];
@@ -708,13 +721,13 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return leaderboardWhitelist.length;
     }
 
-    function setLeaderboardWhitelistAdjustPct(uint8 adjustPct) external onlyOwner {
+    function setLeaderboardWhitelistAdjustPct(uint8 adjustPct) external onlyOwnerOrSubAdmin {
         require(adjustPct <= 10, "adjust out of range");
         leaderboardWhitelistAdjustPct = adjustPct;
         emit LeaderboardWhitelistAdjustUpdated(adjustPct);
     }
 
-    function fundRewardPool(uint256 amount) external onlyOwner {
+    function fundRewardPool(uint256 amount) external onlyOwnerOrSubAdmin {
         require(amount > 0, "invalid amount");
         require(address(lightToken) != address(0), "light not set");
 
@@ -724,7 +737,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit RewardPoolFunded(msg.sender, amount, rewardPoolBalance);
     }
 
-    function initLightRewardConfig(address _lightToken, address _swapPoolManager) external onlyOwner {
+    function initLightRewardConfig(address _lightToken, address _swapPoolManager) external onlyOwnerOrSubAdmin {
         require(_lightToken != address(0) && _swapPoolManager != address(0), "invalid addr");
         lightToken = IERC20(_lightToken);
         swapPoolManager = _swapPoolManager;
@@ -737,7 +750,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         uint16 newStaticBps,
         uint16 newDynamicBps,
         uint16 newRewardCapBps
-    ) external onlyOwner {
+    ) external onlyOwnerOrSubAdmin {
         require(newReleaseDailyBps > 0 && newReleaseDailyBps <= BPS_DENOMINATOR, "invalid daily bps");
         require(newImmediateBurnBps <= BPS_DENOMINATOR, "invalid immediate burn bps");
         require(newSecondaryBurnBps <= BPS_DENOMINATOR, "invalid secondary burn bps");
@@ -762,7 +775,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         );
     }
 
-    function settleDailyRewardsManual(address[] calldata participants, uint256 lightPriceInUsdt) external onlyOwner whenNotPaused {
+    function settleDailyRewardsManual(address[] calldata participants, uint256 lightPriceInUsdt) external onlyOwnerOrSubAdmin whenNotPaused {
         _settleDailyRewards(participants, true, lightPriceInUsdt);
     }
 
@@ -779,7 +792,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return true;
     }
 
-    function withdrawUSDT(address to, uint256 amount) external onlyOwner {
+    function withdrawUSDT(address to, uint256 amount) external onlyOwnerOrSubAdmin {
         require(to != address(0), "invalid to");
         usdt.safeTransfer(to, amount);
     }
@@ -1059,7 +1072,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         );
     }
 
-    function settlePoolRewards(uint8 poolType, address[] calldata recipients, uint16[] calldata shares) external onlyOwner {
+    function settlePoolRewards(uint8 poolType, address[] calldata recipients, uint16[] calldata shares) external onlyOwnerOrSubAdmin {
         require(poolType == uint8(PoolType.Node) || poolType == uint8(PoolType.SuperNode), "invalid pool");
         _settleAccumulatedPool(PoolType(poolType), recipients, shares);
     }
@@ -1305,7 +1318,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
     function _requireSettlementAuth() private view {
         if (publicSettleEnabled) return;
-        require(isOwnerOrSubAdmin(msg.sender), "not authorized");
+        require(_isOwnerOrSubAdmin(msg.sender), "not authorized");
     }
 
     function _addToNodeList(address account) private {
@@ -1362,19 +1375,19 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         }
     }
 
-    function setMinPoolSettleAmount(uint256 amount) external onlyOwner {
+    function setMinPoolSettleAmount(uint256 amount) external onlyOwnerOrSubAdmin {
         minPoolSettleAmount = amount;
         emit SettlementConfigUpdated(amount, publicSettleEnabled);
     }
 
-    function setPublicSettleEnabled(bool enabled) external onlyOwner {
+    function setPublicSettleEnabled(bool enabled) external onlyOwnerOrSubAdmin {
         publicSettleEnabled = enabled;
         emit SettlementConfigUpdated(minPoolSettleAmount, enabled);
     }
 
     /// @notice One-time bootstrap to populate role lists from existing identities.
     /// @dev Iterates rewardParticipants and classifies by current role.
-    function bootstrapRoleLists() external onlyOwner {
+    function bootstrapRoleLists() external onlyOwnerOrSubAdmin {
         require(!roleListsBootstrapped, "already bootstrapped");
         roleListsBootstrapped = true;
         uint256 n = rewardParticipants.length;
