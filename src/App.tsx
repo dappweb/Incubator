@@ -544,7 +544,6 @@ const App = () => {
     featureClosedMachine: lang === "zh" ? "购买算力入口已关闭" : "Machine purchase is disabled",
     featureClosedMarket: lang === "zh" ? "市场入口已关闭" : "Market is disabled",
     featureClosedSwap: lang === "zh" ? "兑换入口已关闭" : "Swap is disabled",
-    featureClosedAdmin: lang === "zh" ? "管理面板入口已关闭" : "Admin panel is disabled",
   };
 
 
@@ -939,7 +938,7 @@ const App = () => {
   const canUseMachineEntry = featureToggles.showHomeMachine;
   const canUseMarket = featureToggles.showMarket;
   const canUseSwap = featureToggles.showSwap;
-  const canUseAdmin = hasAdminAccess && featureToggles.showAdmin;
+  const canUseAdmin = hasAdminAccess;
 
   const navigateToTab = useCallback((tab: TabKey) => {
     if (tab === "otc" && !canUseMarket) {
@@ -950,12 +949,9 @@ const App = () => {
       setStatus(t.featureClosedSwap);
       return;
     }
-    if (tab === "admin" && !canUseAdmin) {
-      setStatus(t.featureClosedAdmin);
-      return;
-    }
+    if (tab === "admin" && !canUseAdmin) return;
     setActiveTab(tab);
-  }, [canUseAdmin, canUseMarket, canUseSwap, t.featureClosedAdmin, t.featureClosedMarket, t.featureClosedSwap]);
+  }, [canUseAdmin, canUseMarket, canUseSwap, t.featureClosedMarket, t.featureClosedSwap]);
 
   const visibleDesktopTabs = useMemo(() => {
     const tabs = DESKTOP_TABS.filter((item) => {

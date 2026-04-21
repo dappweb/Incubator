@@ -13,6 +13,9 @@ const RANK_SHARES = [4000, 2000, 500, 500, 500, 500, 500, 500, 500, 500] as cons
 const TOPIC_LEADERBOARD_SETTLED = keccak256id(
   "LeaderboardSettled(uint256,address,uint8,uint256)",
 );
+const TOPIC_LEADERBOARD_LUCKY_SETTLED = keccak256id(
+  "LeaderboardLuckySettled(uint256,address,uint8,uint256)",
+);
 const TOPIC_MACHINE_PURCHASED = keccak256id(
   "MachinePurchased(address,uint256,uint256,uint256,address)",
 );
@@ -204,11 +207,18 @@ export async function fetchLeaderboardDay(
   const settledFromBlock = Math.max(0, toBlock);
   const settledToBlock = Math.min(latestBlock, toBlock + BLOCKS_PER_DAY * 2);
   
-  const [settledLogs, purchaseLogs, updatedLogs] = await Promise.all([
+  const [settledLogs, luckySettledLogs, purchaseLogs, updatedLogs] = await Promise.all([
     getLogs(
       provider,
       CORE_CONTRACT_ADDRESS,
       [TOPIC_LEADERBOARD_SETTLED, padUint(dayId), null],
+      settledFromBlock,
+      settledToBlock,
+    ),
+    getLogs(
+      provider,
+      CORE_CONTRACT_ADDRESS,
+      [TOPIC_LEADERBOARD_LUCKY_SETTLED, padUint(dayId), null],
       settledFromBlock,
       settledToBlock,
     ),
@@ -231,6 +241,7 @@ export async function fetchLeaderboardDay(
   // Block timestamps
   const allBlockNums = [
     ...settledLogs.map((l) => l.blockNumber),
+    ...luckySettledLogs.map((l) => l.blockNumber),
     ...purchaseLogs.map((l) => l.blockNumber),
     ...updatedLogs.map((l) => l.blockNumber),
   ];
@@ -246,6 +257,18 @@ export async function fetchLeaderboardDay(
     const decoded = coder.decode(["uint8", "uint256"], log.data) as unknown as [bigint, bigint];
     const amount = decoded[1];
     settledMap.set(user.toLowerCase(), {
+      amount,
+      ts: tsMap.get(log.blockNumber) ?? 0,
+    });
+  }
+
+  // Build lucky (FOMO) settled rewards map: address → { amount, timestamp }
+  const luckySettledMap = new Map<string, { amount: bigint; ts: number }>();
+  for (const log of luckySettledLogs) {
+    const user = getAddress("0x" + log.topics[2].slice(26));
+    const decoded = coder.decode(["uint8", "uint256"], log.data) as unknown as [bigint, bigint];
+    const amount = decoded[1];
+    luckySettledMap.set(user.toLowerCase(), {
       amount,
       ts: tsMap.get(log.blockNumber) ?? 0,
     });
@@ -295,13 +318,29 @@ export async function fetchLeaderboardDay(
     .reduce((sum, share, index) => sum + (index === 0 ? adjustedFirstShare : share), 0);
 
   const top10: TopEntry[] = [];
+  let topDistributed = 0n;
   for (let i = 0; i < topCount; i++) {
     const addr = topUsers[i];
     if (!addr || addr === "0x0000000000000000000000000000000000000000") continue;
     const addrLow = addr.toLowerCase();
     const settled = settledMap.get(addrLow);
     const rankShare = i === 0 ? adjustedFirstShare : RANK_SHARES[i];
-    const estimatedReward = topShareDenom > 0 ? (topRankTotal * BigInt(rankShare)) / BigInt(topShareDenom) : 0n;
+    
+    // Mirror contract logic: last rank gets remainder to avoid rounding loss
+    let estimatedReward = 0n;
+    if (topShareDenom > 0) {
+      if (i === topCount - 1) {
+        // Last entry: gets all remaining
+        estimatedReward = topRankTotal - topDistributed;
+      } else {
+        // Other entries: calculated by proportion
+        estimatedReward = (topRankTotal * BigInt(rankShare)) / BigInt(topShareDenom);
+      }
+    }
+    if (estimatedReward > 0n) {
+      topDistributed += estimatedReward;
+    }
+    
     top10.push({
       rank: i + 1,
       address: addr,
@@ -312,19 +351,24 @@ export async function fetchLeaderboardDay(
   }
 
   // ── FOMO last10 entries ──
+  // Contract settles lastUsers[0..lastCount-1] in order: i=0 gets rankShares[0] (highest).
+  // lastUsers array is a sliding window where lastUsers[lastCount-1] = most recently added.
+  // So lastUsers[0] = oldest surviving buyer = rank 1 in contract payout order.
   const luckyWhitelistAmount = whitelistEnabled ? (luckySegment * BigInt(adjustPct)) / 100n : 0n;
   const luckyRankTotal = luckySegment - luckyWhitelistAmount;
   const luckyShareDenom = RANK_SHARES
     .slice(0, lastCount)
     .reduce((sum, share, index) => sum + (index === 0 ? adjustedFirstShare : share), 0);
 
-  // lastUsers[lastCount-1] = most recent → rank 1
   const last10: FomoEntry[] = [];
-  for (let i = lastCount - 1; i >= 0; i--) {
+  // Iterate in contract order: i=0 → rank 1 (highest share), i=lastCount-1 → rank lastCount (lowest share)
+  // Accumulate distributed amounts to avoid rounding errors; last entry gets remainder
+  let luckyDistributed = 0n;
+  for (let i = 0; i < lastCount; i++) {
     const addr = lastUsers[i];
     if (!addr || addr === "0x0000000000000000000000000000000000000000") continue;
     const addrLow = addr.toLowerCase();
-    const rank = lastCount - i;
+    const rank = i + 1;
 
     // Most recent purchase by this user in the day range
     const purchases = purchaseMap.get(addrLow) ?? [];
@@ -332,15 +376,30 @@ export async function fetchLeaderboardDay(
     const purchaseAmount = mostRecent?.amount ?? 0n;
     const ts = mostRecent?.ts ?? updatedTsMap.get(addrLow) ?? 0;
 
-    const rankShare = rank === 1 ? adjustedFirstShare : RANK_SHARES[rank - 1];
-    const fomoShare = luckyShareDenom > 0 ? (luckyRankTotal * BigInt(rankShare)) / BigInt(luckyShareDenom) : 0n;
+    const luckySettled = luckySettledMap.get(addrLow);
+    
+    // Mirror contract logic: last rank gets remainder to avoid rounding loss
+    let fomoShare = 0n;
+    if (luckyShareDenom > 0) {
+      if (i === lastCount - 1) {
+        // Last entry: gets all remaining
+        fomoShare = luckyRankTotal - luckyDistributed;
+      } else {
+        // Other entries: calculated by proportion
+        const rankShare = i === 0 ? adjustedFirstShare : RANK_SHARES[i];
+        fomoShare = (luckyRankTotal * BigInt(rankShare)) / BigInt(luckyShareDenom);
+      }
+    }
+    if (fomoShare > 0n) {
+      luckyDistributed += fomoShare;
+    }
 
     last10.push({
       rank,
       address: addr,
       purchaseAmount,
-      rewardAmount: fomoShare > 0n ? fomoShare : null,
-      timestamp: ts,
+      rewardAmount: luckySettled ? luckySettled.amount : fomoShare > 0n ? fomoShare : null,
+      timestamp: luckySettled?.ts ?? ts,
     });
   }
 

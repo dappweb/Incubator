@@ -303,12 +303,14 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
     noSubAdmins: lang === "zh" ? "暂无子管理员" : "No sub-admins",
     addSubAdmin: lang === "zh" ? "添加子管理员" : "Add Sub-Admin",
     removeSubAdmin: lang === "zh" ? "移除" : "Remove",
+    removing: lang === "zh" ? "移除中..." : "Removing...",
+    confirmRemoveSubAdmin: lang === "zh" ? "确认移除此子管理员？" : "Confirm removing this sub-admin?",
     newAdminAddress: lang === "zh" ? "新管理员地址" : "New Admin Address",
     adminAdded: lang === "zh" ? "子管理员已添加。" : "Sub-admin added.",
     adminRemoved: lang === "zh" ? "子管理员已移除。" : "Sub-admin removed.",
     adminAlreadyExists: lang === "zh" ? "该地址已是管理员。" : "Address is already an admin.",
     managerTitle: lang === "zh" ? "经理管理" : "Manager Management",
-    managerHint: lang === "zh" ? "Owner 与 SubAdmin 可增删经理。经理仅可管理矿机/节点价格与公告。" : "Owner and sub-admins can add/remove managers. Managers can only manage machine/node prices and announcements.",
+    managerHint: lang === "zh" ? "Owner 与 SubAdmin 可增删经理。经理仅可调整配置参数并执行 OTC 下架（低价清理）。" : "Owner and sub-admins can add/remove managers. Managers can only adjust configuration parameters and run OTC delist cleanup.",
     managerList: lang === "zh" ? "当前经理列表" : "Current Managers",
     noManagers: lang === "zh" ? "暂无经理" : "No managers",
     addManager: lang === "zh" ? "添加经理" : "Add Manager",
@@ -330,7 +332,6 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
     toggleHomeMachine: lang === "zh" ? "首页购买算力" : "Home Machine Purchase",
     toggleMarket: lang === "zh" ? "市场" : "Market",
     toggleSwap: lang === "zh" ? "兑换" : "Swap",
-    toggleAdmin: lang === "zh" ? "Admin 面板" : "Admin Panel",
     featureToggleSaved: lang === "zh" ? "功能开关已更新，点击发布后生效。" : "Feature toggles updated. Click Publish to apply.",
   };
 
@@ -568,6 +569,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
   const canManageSystem = isOwner || isSubAdmin;
   const canManagePrices = isAdmin;
   const canManageAnnouncements = isAdmin;
+  const canManageCleanup = canManageSystem || isManager;
 
   useEffect(() => {
     setEditingFeatureToggles(featureToggles);
@@ -1010,6 +1012,9 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
   };
 
   const removeSubAdmin = (target: string) => {
+    if (!window.confirm(t.confirmRemoveSubAdmin)) {
+      return;
+    }
     void executeAction(`remove-sub-admin-${target.toLowerCase()}`, async () => {
       await setCoreSubAdmin(provider!, target, false);
     }, t.adminRemoved);
@@ -1065,6 +1070,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
     if (tab.key === "overview" || tab.key === "guide") return true;
     if (tab.key === "prices") return canManagePrices;
     if (tab.key === "announcements") return canManageAnnouncements;
+    if (tab.key === "settlement") return canManageCleanup;
     return canManageSystem;
   });
 
@@ -2069,6 +2075,34 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
           </section>
         )}
 
+        {adminTab === "settlement" && !canManageSystem && canManageCleanup && (
+          <section className="grid">
+            <Card title={lang === "zh" ? "OTC 低价清理" : "OTC Cleanup"} hint={lang === "zh" ? "批量撤销 OTC 上的低价挂单" : "Batch cancel low-price OTC orders"}>
+              <ParamGuide title={guideLabel} items={paramGuides.cleanup} />
+              <div className="admin-form-grid">
+                <label className="field">{lang === "zh" ? "身份类型" : "Role"} (1=Node, 2=SuperNode)
+                  <input value={settlementInputs.cleanupRole} onChange={e => setSettlementInputs(p => ({ ...p, cleanupRole: e.target.value }))} />
+                </label>
+                <label className="field">{lang === "zh" ? "最大撤销数" : "Max Cancels"}
+                  <input value={settlementInputs.cleanupMax} onChange={e => setSettlementInputs(p => ({ ...p, cleanupMax: e.target.value }))} />
+                </label>
+              </div>
+              <div className="actions">
+                <button className="ghost-btn" type="button"
+                  onClick={() => void executeAction("cleanup-otc", async () => {
+                    const role = Number(settlementInputs.cleanupRole);
+                    if (role !== 1 && role !== 2) throw new Error(t.invalidCleanupRole);
+                    const maxN = Number(settlementInputs.cleanupMax);
+                    if (!Number.isInteger(maxN) || maxN < 1) throw new Error(t.invalidCleanupMax);
+                    await cleanupLowerOrders(provider!, role, maxN);
+                  }, lang === "zh" ? "低价清理完成。" : "Cleanup done.")} disabled={actionKey !== ""}>
+                  {actionKey === "cleanup-otc" ? t.loading : lang === "zh" ? "执行清理" : "Run Cleanup"}
+                </button>
+              </div>
+            </Card>
+          </section>
+        )}
+
         {/* ════ 一级市场 (PrimarySwapController) ════ */}
         {adminTab === "primary" && canManageSystem && (
           <section className="grid">
@@ -2515,8 +2549,14 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
                     <li key={addr} className="list-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
                       <span style={{ fontFamily: "monospace", fontSize: "0.8rem", wordBreak: "break-all" }}>{addr}</span>
                       {isOwner && (
-                        <button className="ghost-btn" type="button" style={{ flexShrink: 0 }} onClick={() => removeSubAdmin(addr)}>
-                          {t.removeSubAdmin}
+                        <button
+                          className="ghost-btn"
+                          type="button"
+                          style={{ flexShrink: 0 }}
+                          onClick={() => removeSubAdmin(addr)}
+                          disabled={actionKey === `remove-sub-admin-${addr.toLowerCase()}` || actionKey !== ""}
+                        >
+                          {actionKey === `remove-sub-admin-${addr.toLowerCase()}` ? t.removing : t.removeSubAdmin}
                         </button>
                       )}
                     </li>
@@ -2675,19 +2715,6 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
                       }}
                     />
                     {t.toggleSwap}
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
-                    <input
-                      type="checkbox"
-                      checked={editingFeatureToggles.showAdmin}
-                      onChange={(event) => {
-                        const next = { ...editingFeatureToggles, showAdmin: event.target.checked };
-                        setEditingFeatureToggles(next);
-                        setLocalStatus(t.featureToggleSaved);
-                        onStatusChange(t.featureToggleSaved);
-                      }}
-                    />
-                    {t.toggleAdmin}
                   </label>
                 </div>
               </div>
