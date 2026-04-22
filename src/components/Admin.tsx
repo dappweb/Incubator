@@ -113,10 +113,11 @@ import {
     setSaleAllocationWallet,
 } from "../lib/tokenContract";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
+import AdminDataDashboard from "./AdminDataDashboard";
 import AdminSettlementPanel from "./AdminSettlementPanel";
 import { Card, KVRow } from "./Common";
 
-type AdminTabKey = "overview" | "prices" | "pools" | "market" | "settlement" | "primary" | "token" | "system" | "announcements" | "guide";
+type AdminTabKey = "overview" | "prices" | "pools" | "market" | "settlement" | "primary" | "token" | "system" | "announcements" | "data" | "guide";
 
 type RecipientInputRow = {
   id: number;
@@ -298,7 +299,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
 
     // 多管理员
     multiAdminTitle: lang === "zh" ? "多管理员管理" : "Admin Management",
-    multiAdminHint: lang === "zh" ? "子管理员列表保存在链上。仅 Owner 可增删子管理员。" : "Sub-admin list is stored on-chain. Only the owner can add or remove sub-admins.",
+    multiAdminHint: lang === "zh" ? "子管理员列表保存在链上。Owner 可添加，Owner 与 SubAdmin 可移除子管理员。" : "Sub-admin list is stored on-chain. Owner can add, and owner/sub-admin can remove sub-admins.",
     subAdminList: lang === "zh" ? "当前子管理员列表" : "Current Sub-Admins",
     noSubAdmins: lang === "zh" ? "暂无子管理员" : "No sub-admins",
     addSubAdmin: lang === "zh" ? "添加子管理员" : "Add Sub-Admin",
@@ -510,7 +511,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
     dailyBps: "", immBurnBps: "", secBurnBps: "", staticBps: "", dynamicBps: "", capBps: "", burnAddr: "",
     rewardWeight: "", rewardWeightAddr: "", withdrawTo: "", withdrawAmount: "",
     cleanupRole: "1", cleanupMax: "50",
-    settleDailyAddrs: "", settleLeaderDayId: "",
+    settleDailyAddrs: "", settleDailyLightPrice: "", settleLeaderDayId: "",
     settleNodeAddrs: "", settleNodeShares: "",
     settleSuperAddrs: "", settleSuperShares: "",
     settleNodeCandidates: "", settleSuperCandidates: "",
@@ -1063,6 +1064,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
     { key: "token",       label: lang === "zh" ? "代币" : "Token",         icon: "🪙" },
     { key: "system",      label: lang === "zh" ? "权限" : "System",        icon: "⚙️" },
     { key: "announcements", label: lang === "zh" ? "公告" : "Announcements", icon: "📢" },
+    { key: "data",        label: lang === "zh" ? "数据监控" : "Data Dashboard", icon: "📈" },
     { key: "guide",       label: lang === "zh" ? "说明" : "Guide",         icon: "📖" },
   ];
 
@@ -1071,6 +1073,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
     if (tab.key === "prices") return canManagePrices;
     if (tab.key === "announcements") return canManageAnnouncements;
     if (tab.key === "settlement") return canManageCleanup;
+    if (tab.key === "data") return canManageSystem;
     return canManageSystem;
   });
 
@@ -1769,13 +1772,18 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
               <label className="field">{lang === "zh" ? "每日结算-参与者地址(逗号分隔)" : "Daily - Participants (comma-separated)"}
                 <input value={settlementInputs.settleDailyAddrs} onChange={e => setSettlementInputs(p => ({ ...p, settleDailyAddrs: e.target.value }))} placeholder="0x...,0x..." />
               </label>
+              <label className="field" style={{ marginTop: "8px" }}>{lang === "zh" ? "LIGHT 价格 (USDT，精度 1e18)" : "LIGHT Price in USDT (1e18 precision)"}
+                <input value={settlementInputs.settleDailyLightPrice} onChange={e => setSettlementInputs(p => ({ ...p, settleDailyLightPrice: e.target.value }))} placeholder={lang === "zh" ? "例: 0.01 → 填 0.01" : "e.g. 0.01"} />
+              </label>
               <div className="actions admin-actions-tight">
                 <button className="primary-btn" type="button"
                   onClick={() => void executeAction("settle-daily", async () => {
                     const addrs = settlementInputs.settleDailyAddrs.split(",").map(s => s.trim()).filter(Boolean);
                     if (addrs.length === 0) throw new Error(lang === "zh" ? "请输入至少一个参与者地址" : "Enter at least one participant address");
                     addrs.forEach(validateAddress);
-                    await settleDailyRewardsManual(provider!, addrs, parseUnits("1", 18));
+                    const priceStr = settlementInputs.settleDailyLightPrice.trim();
+                    if (!priceStr || isNaN(Number(priceStr)) || Number(priceStr) <= 0) throw new Error(lang === "zh" ? "请输入有效的 LIGHT 价格（USDT）" : "Enter a valid LIGHT price in USDT");
+                    await settleDailyRewardsManual(provider!, addrs, parseUnits(priceStr, 18));
                   }, lang === "zh" ? "每日结算完成。" : "Daily settlement done.")} disabled={actionKey !== ""}>
                   {actionKey === "settle-daily" ? t.loading : lang === "zh" ? "每日结算" : "Settle Daily"}
                 </button>
@@ -2548,7 +2556,7 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
                   {subAdmins.map((addr) => (
                     <li key={addr} className="list-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
                       <span style={{ fontFamily: "monospace", fontSize: "0.8rem", wordBreak: "break-all" }}>{addr}</span>
-                      {isOwner && (
+                      {canManageSystem && (
                         <button
                           className="ghost-btn"
                           type="button"
@@ -2799,6 +2807,11 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
               </Card>
             )}
           </section>
+        )}
+
+        {/* ════ 数据监控 ════ */}
+        {adminTab === "data" && canManageSystem && (
+          <AdminDataDashboard lang={lang} provider={provider} />
         )}
 
         {/* ════ 配置说明 ════ */}

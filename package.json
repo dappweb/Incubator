@@ -30,6 +30,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "hardhat": "^2.26.5",
+    "mochawesome": "^7.1.4",
     "postcss": "^8.5.8",
     "react-router-dom": "^7.13.2",
     "tailwindcss": "^4.2.2",
@@ -63,10 +64,18 @@
     "primary:enable-sell:cncMainnet": "hardhat run scripts/primary-swap-enable-sell.ts --network cncMainnet",
     "settle:light:cncMainnet": "hardhat run scripts/settle-light.ts --network cncMainnet",
     "settle:core:cncMainnet": "hardhat run scripts/settle-core-pools.ts --network cncMainnet",
+    "reward:fund-and-test:cncMainnet": "hardhat run scripts/fund-and-test-rewards.ts --network cncMainnet",
+    "reward:backfill-cap:cncMainnet": "hardhat run scripts/backfill-order-cap.ts --network cncMainnet",
+    "reward:verify-distribution:cncMainnet": "hardhat run scripts/verify-reward-distribution.ts --network cncMainnet",
+    "reward:report:cncMainnet": "hardhat run scripts/report-static-dynamic-rewards.ts --network cncMainnet",
+    "report:hashpower:cncMainnet": "hardhat run scripts/report-network-hashpower.ts --network cncMainnet",
     "config:leaderboard:self:cncMainnet": "hardhat run scripts/set-leaderboard-self.ts --network cncMainnet",
     "settle:all:cncMainnet": "bash scripts/run-settlement.sh",
     "cron:install:settle": "bash scripts/install-cron.sh",
     "test:contracts": "hardhat run scripts/validate-contracts.ts",
-    "test:token-system": "hardhat run scripts/test-token-system.ts"
+    "test:token-system": "hardhat run scripts/test-token-system.ts",
+    "test:all": "hardhat test",
+    "test:report": "MOCHA_REPORTER=mochawesome hardhat test",
+    "test:report:rewards": "MOCHA_REPORTER=mochawesome hardhat test test/IncubatorCore.test.ts test/full-business.test.ts"
   }
 }

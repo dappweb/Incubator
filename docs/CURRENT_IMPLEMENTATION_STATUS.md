@@ -110,7 +110,7 @@
 4. **日结奖励**
 
 - 代码现状：节点池、超级节点池、排行榜池已改为先入指定池地址，避免在购买矿机时按错误公式即时发放。
-- 新增能力：`scripts/settle-core-pools.ts` 已支持自动拉取链上矿机购买事件、推荐关系和当前角色，按“小区业绩 = 直属各支线业绩之和 - 最大支线业绩”计算节点 / 超级节点结算 shares，并发起每日一次的池子结算。
+- 新增能力：`scripts/settle-core-pools.ts` 已支持自动拉取链上矿机购买事件、推荐关系和当前角色，按"小区业绩 = 团队总业绩 - 最大区业绩"计算节点 / 超级节点结算 shares，并发起每日一次的池子结算。
 - 兼容方式：若运维显式提供 `NODE_REWARD_RECIPIENTS/NODE_REWARD_SHARES` 或 `SUPER_NODE_REWARD_RECIPIENTS/SUPER_NODE_REWARD_SHARES`，脚本仍按手工口径执行，便于应急覆盖。
 - 可观测性：结算脚本默认会输出结构化审计文件到 `artifacts/settlement-runs/`（可用 `SETTLEMENT_WRITE_AUDIT=false` 关闭，`SETTLEMENT_AUDIT_DIR` 指定目录），记录执行参数、步骤结果、错误信息和关键预览数据。
 

@@ -1,5 +1,6 @@
-import { AbstractSigner, BrowserProvider, Contract } from "ethers";
+import { AbstractSigner, BrowserProvider, Contract, MaxUint256 } from "ethers";
 import { CORE_CONTRACT_ADDRESS, TEAM_STATS_INCLUDE_DIRECT_IN_TOTAL } from "../config";
+import { approveToken, getTokenAllowance } from "./tokenContract";
 
 const coreAbi = [
   "function purchaseMachine(uint256 quantity) external",
@@ -21,6 +22,7 @@ const coreAbi = [
   "function teamTotalMemberCount(address user) view returns (uint256)",
   "function directReferralVolume(address user) view returns (uint256)",
   "function teamTotalVolume(address user) view returns (uint256)",
+  "function personalPower(address user) view returns (uint256)",
   "function referralOf(address user) view returns (address)",
   "function owner() view returns (address)",
   "function usdt() view returns (address)",
@@ -256,6 +258,11 @@ export async function getUserMachineOrderIds(
     ids.push(await contract.userOrderIds(user, i) as bigint);
   }
   return ids;
+}
+
+export async function getUserMachineUnits(provider: BrowserProvider, user: string): Promise<bigint> {
+  const contract = getCoreContract(provider) as any;
+  return contract.personalPower(user) as Promise<bigint>;
 }
 
 export async function getUserIdentityId(provider: BrowserProvider, user: string): Promise<bigint> {
@@ -701,7 +708,14 @@ export async function getParticipants(provider: BrowserProvider, max = 500): Pro
 
 export async function fundRewardPool(provider: BrowserProvider, amount: bigint) {
   const signer = await provider.getSigner();
+  const signerAddress = await signer.getAddress();
   const contract = getCoreContract(provider).connect(signer) as any;
+  // Ensure Core contract is approved to spend caller's LIGHT tokens
+  const lightTokenAddr: string = await contract.lightToken();
+  const allowance = await getTokenAllowance(provider, lightTokenAddr, signerAddress, CORE_CONTRACT_ADDRESS);
+  if (allowance < amount) {
+    await approveToken(provider, lightTokenAddr, CORE_CONTRACT_ADDRESS, MaxUint256);
+  }
   const tx = await contract.fundRewardPool(amount, { gasLimit: 300_000n });
   return tx.wait();
 }
@@ -1034,4 +1048,209 @@ export async function setCycleDuration(provider: BrowserProvider, durationSecond
   const contract = getCoreContract(provider).connect(signer) as any;
   const tx = await contract.setCycleDuration(durationSeconds);
   return tx.wait();
+}
+
+// ════ 数据监控面板函数 ════
+
+export interface DashboardSummary {
+  nodeCount: number;
+  superNodeCount: number;
+  currentDay: number;
+  leaderboardParticipants: number;
+  maxVolume: bigint;
+  totalVolume: bigint;
+}
+
+export async function getDashboardSummary(provider: BrowserProvider): Promise<DashboardSummary> {
+  const contract = getCoreContract(provider) as any;
+  const [nodeCount, superNodeCount, currentDay, leaderboard] = await Promise.all([
+    contract.nodeListLength() as Promise<bigint>,
+    contract.superNodeListLength() as Promise<bigint>,
+    contract.currentDay() as Promise<bigint>,
+    contract.getLeaderboard(await contract.currentDay()) as Promise<any>,
+  ]);
+  
+  const topCount = Number(leaderboard.topCount);
+  const lastCount = Number(leaderboard.lastCount);
+  const maxVolume = leaderboard.topVolumes?.[0] || 0n;
+  const totalVolume = (leaderboard.topVolumes || []).reduce((a: bigint, b: bigint) => a + b, 0n);
+  
+  return {
+    nodeCount: Number(nodeCount),
+    superNodeCount: Number(superNodeCount),
+    currentDay: Number(currentDay),
+    leaderboardParticipants: Math.max(topCount, lastCount),
+    maxVolume,
+    totalVolume,
+  };
+}
+
+export interface PoolInfo {
+  type: number;
+  name: string;
+  bps: number;
+  recipient: string;
+  accumulated: bigint;
+}
+
+export interface PoolSummary {
+  pools: PoolInfo[];
+  totalAccumulated: bigint;
+}
+
+export async function getPoolSummary(provider: BrowserProvider): Promise<PoolSummary> {
+  const contract = getCoreContract(provider) as any;
+  const poolNames = ["LP", "Referral", "SuperNode", "Node", "Platform", "Leaderboard"];
+  
+  const pools: PoolInfo[] = [];
+  for (let i = 0; i < 6; i++) {
+    try {
+      const [config, accumulated] = await Promise.all([
+        contract.getPoolConfig(i) as Promise<[string, bigint]>,
+        contract.poolAccumulated(i) as Promise<bigint>,
+      ]);
+      
+      pools.push({
+        type: i,
+        name: poolNames[i],
+        bps: Number(config[1]),
+        recipient: config[0],
+        accumulated,
+      });
+    } catch (e) {
+      console.warn(`Failed to fetch pool ${i}:`, e);
+    }
+  }
+  
+  const totalAccumulated = pools.reduce((sum: bigint, p) => sum + p.accumulated, 0n);
+  return { pools, totalAccumulated };
+}
+
+export interface TokenSupplySummary {
+  usdtSupply: bigint;
+  icoSupply: bigint;
+  lightSupply: bigint;
+  usdtCoreBalance: bigint;
+  icoCoreBalance: bigint;
+  lightCoreBalance: bigint;
+  rewardPoolBalance: bigint;
+}
+
+export async function getTokenSupplySummary(provider: BrowserProvider): Promise<TokenSupplySummary> {
+  const contract = getCoreContract(provider) as any;
+  const usdtAddress = await contract.usdt() as string;
+  const icoAddress = await contract.icoToken?.() as string | undefined;
+  const lightAddress = await contract.lightToken?.() as string | undefined;
+  
+  const erc20Abi = [
+    "function totalSupply() view returns (uint256)",
+    "function balanceOf(address account) view returns (uint256)",
+  ];
+  
+  const usdtContract = new Contract(usdtAddress, erc20Abi, provider);
+  
+  try {
+    const [usdtSupply, usdtBal, rewardPool] = await Promise.all([
+      usdtContract.totalSupply() as Promise<bigint>,
+      usdtContract.balanceOf(CORE_CONTRACT_ADDRESS || "") as Promise<bigint>,
+      contract.rewardPoolBalance?.() as Promise<bigint> | undefined,
+    ]);
+    
+    let icoSupply = 0n;
+    let icoBal = 0n;
+    let lightSupply = 0n;
+    let lightBal = 0n;
+    
+    if (icoAddress) {
+      const icoContract = new Contract(icoAddress, erc20Abi, provider);
+      [icoSupply, icoBal] = await Promise.all([
+        icoContract.totalSupply() as Promise<bigint>,
+        icoContract.balanceOf(CORE_CONTRACT_ADDRESS || "") as Promise<bigint>,
+      ]);
+    }
+    
+    if (lightAddress) {
+      const lightContract = new Contract(lightAddress, erc20Abi, provider);
+      [lightSupply, lightBal] = await Promise.all([
+        lightContract.totalSupply() as Promise<bigint>,
+        lightContract.balanceOf(CORE_CONTRACT_ADDRESS || "") as Promise<bigint>,
+      ]);
+    }
+    
+    return {
+      usdtSupply,
+      icoSupply,
+      lightSupply,
+      usdtCoreBalance: usdtBal,
+      icoCoreBalance: icoBal,
+      lightCoreBalance: lightBal,
+      rewardPoolBalance: rewardPool || 0n,
+    };
+  } catch (e) {
+    console.error("Failed to get token supply summary:", e);
+    throw e;
+  }
+}
+
+export interface LeaderboardData {
+  topUsers: string[];
+  topVolumes: bigint[];
+  topCount: number;
+  lastUsers: string[];
+  lastCount: number;
+}
+
+export async function getLeaderboardData(provider: BrowserProvider, dayId?: bigint): Promise<LeaderboardData> {
+  const contract = getCoreContract(provider) as any;
+  
+  try {
+    const currentDay = dayId ?? (await contract.currentDay() as Promise<bigint>);
+    const leaderboard = await contract.getLeaderboard(currentDay) as any;
+    
+    return {
+      topUsers: leaderboard.topUsers.slice(0, Number(leaderboard.topCount)),
+      topVolumes: leaderboard.topVolumes.slice(0, Number(leaderboard.topCount)),
+      topCount: Number(leaderboard.topCount),
+      lastUsers: leaderboard.lastUsers.slice(0, Number(leaderboard.lastCount)),
+      lastCount: Number(leaderboard.lastCount),
+    };
+  } catch (e) {
+    console.error("Failed to get leaderboard data:", e);
+    throw e;
+  }
+}
+
+export interface SystemHealthStatus {
+  corePaused: boolean;
+  swapPaused: boolean;
+  cycleDuration: bigint;
+  currentDay: number;
+  rewardPoolBalance: bigint;
+}
+
+export async function getSystemHealthStatus(provider: BrowserProvider): Promise<SystemHealthStatus> {
+  const contract = getCoreContract(provider) as any;
+  
+  try {
+    const [corePaused, cycleDuration, currentDay, rewardPool] = await Promise.all([
+      contract.paused() as Promise<boolean>,
+      contract.cycleDuration?.() as Promise<bigint> | undefined,
+      contract.currentDay() as Promise<bigint>,
+      contract.rewardPoolBalance?.() as Promise<bigint> | undefined,
+    ]);
+    
+    // TODO: 获取 Swap 暂停状态（需要 SwapPoolManager 合约）
+    const swapPaused = false;
+    
+    return {
+      corePaused,
+      swapPaused,
+      cycleDuration: cycleDuration || 86400n,
+      currentDay: Number(currentDay),
+      rewardPoolBalance: rewardPool || 0n,
+    };
+  } catch (e) {
+    console.error("Failed to get system health status:", e);
+    throw e;
+  }
 }

@@ -247,30 +247,35 @@ export async function fetchLeaderboardDay(
   ];
   const tsMap = await blockTimestamps(provider, allBlockNums);
 
-  // Build settled rewards map: address → { amount, timestamp }
-  const settledMap = new Map<string, { amount: bigint; ts: number }>();
+  // Build settled rewards map by rank (safer than address when repeated users exist)
+  const settledByRank = new Map<number, { amount: bigint; ts: number; user: string }>();
   for (const log of settledLogs) {
     const user = getAddress("0x" + log.topics[2].slice(26));
     // LeaderboardSettled(dayId, user, rank, amountUSDT) - rank and amount are non-indexed
     // Actually: event LeaderboardSettled(uint256 indexed dayId, address indexed user, uint8 rank, uint256 amountUSDT)
     // data = abi.encode(rank, amountUSDT) — but rank is uint8 = padded to 32 bytes
     const decoded = coder.decode(["uint8", "uint256"], log.data) as unknown as [bigint, bigint];
+    const rank = Number(decoded[0]) + 1;
     const amount = decoded[1];
-    settledMap.set(user.toLowerCase(), {
+    settledByRank.set(rank, {
       amount,
       ts: tsMap.get(log.blockNumber) ?? 0,
+      user: user.toLowerCase(),
     });
   }
 
-  // Build lucky (FOMO) settled rewards map: address → { amount, timestamp }
-  const luckySettledMap = new Map<string, { amount: bigint; ts: number }>();
+  // Build lucky (FOMO) settled rewards map by rank.
+  // FOMO list can contain duplicate addresses, so address-keyed map is incorrect.
+  const luckySettledByRank = new Map<number, { amount: bigint; ts: number; user: string }>();
   for (const log of luckySettledLogs) {
     const user = getAddress("0x" + log.topics[2].slice(26));
     const decoded = coder.decode(["uint8", "uint256"], log.data) as unknown as [bigint, bigint];
+    const rank = Number(decoded[0]) + 1;
     const amount = decoded[1];
-    luckySettledMap.set(user.toLowerCase(), {
+    luckySettledByRank.set(rank, {
       amount,
       ts: tsMap.get(log.blockNumber) ?? 0,
+      user: user.toLowerCase(),
     });
   }
 
@@ -323,7 +328,7 @@ export async function fetchLeaderboardDay(
     const addr = topUsers[i];
     if (!addr || addr === "0x0000000000000000000000000000000000000000") continue;
     const addrLow = addr.toLowerCase();
-    const settled = settledMap.get(addrLow);
+    const settled = settledByRank.get(i + 1);
     const rankShare = i === 0 ? adjustedFirstShare : RANK_SHARES[i];
     
     // Mirror contract logic: last rank gets remainder to avoid rounding loss
@@ -345,7 +350,7 @@ export async function fetchLeaderboardDay(
       rank: i + 1,
       address: addr,
       totalVolume: topVolumes[i],
-      rewardAmount: settled ? settled.amount : estimatedReward > 0n ? estimatedReward : null,
+      rewardAmount: settled && settled.user === addrLow ? settled.amount : estimatedReward > 0n ? estimatedReward : null,
       timestamp: settled?.ts ?? updatedTsMap.get(addrLow) ?? 0,
     });
   }
@@ -376,7 +381,7 @@ export async function fetchLeaderboardDay(
     const purchaseAmount = mostRecent?.amount ?? 0n;
     const ts = mostRecent?.ts ?? updatedTsMap.get(addrLow) ?? 0;
 
-    const luckySettled = luckySettledMap.get(addrLow);
+    const luckySettled = luckySettledByRank.get(rank);
     
     // Mirror contract logic: last rank gets remainder to avoid rounding loss
     let fomoShare = 0n;
@@ -398,7 +403,7 @@ export async function fetchLeaderboardDay(
       rank,
       address: addr,
       purchaseAmount,
-      rewardAmount: luckySettled ? luckySettled.amount : fomoShare > 0n ? fomoShare : null,
+      rewardAmount: luckySettled && luckySettled.user === addrLow ? luckySettled.amount : fomoShare > 0n ? fomoShare : null,
       timestamp: luckySettled?.ts ?? ts,
     });
   }

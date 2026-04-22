@@ -180,9 +180,18 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     // One-time flag for bootstrap migration of pre-existing identities.
     bool public roleListsBootstrapped;
 
+    // Legacy slot kept for storage compatibility with deployed CNC mainnet proxy.
+    PoolConfig private contractPoolConfig;
+
     // Purchase residual recipients. When unset, residuals fall back to the platform recipient.
     address[] private nodePurchaseResidualRecipients;
     address[] private superNodePurchaseResidualRecipients;
+
+    // === Branch volume tracking for "小区业绩 = 团队总业绩 - 最大区" ===
+    // branchVolume[parent][directChild] = cumulative purchase volume of that sub-tree.
+    mapping(address => mapping(address => uint256)) public branchVolume;
+    // maxBranchVolume[acc] = largest single-branch volume among acc's direct referrals.
+    mapping(address => uint256) public maxBranchVolume;
 
     event NodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount);
     event SuperNodePoolSettledOnChain(uint256 indexed dayId, uint256 poolBalance, uint256 totalWeight, uint256 participantCount);
@@ -683,49 +692,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         emit PoolConfigUpdated(poolType, poolConfigs[poolType].recipient, newBps);
     }
 
-    function getNodePurchaseResidualRecipients() external view returns (address[] memory) {
-        return nodePurchaseResidualRecipients;
-    }
-
-    function getSuperNodePurchaseResidualRecipients() external view returns (address[] memory) {
-        return superNodePurchaseResidualRecipients;
-    }
-
-    function setNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwnerOrSubAdmin {
-        _setPurchaseResidualRecipients(true, recipients);
-    }
-
-    function setSuperNodePurchaseResidualRecipients(address[] calldata recipients) external onlyOwnerOrSubAdmin {
-        _setPurchaseResidualRecipients(false, recipients);
-    }
-
-    function setLeaderboardWhitelist(address[] calldata accounts) external onlyOwnerOrSubAdmin {
-        for (uint256 i = 0; i < leaderboardWhitelist.length; i++) {
-            address oldAccount = leaderboardWhitelist[i];
-            delete leaderboardWhitelistIndexPlusOne[oldAccount];
-        }
-        delete leaderboardWhitelist;
-
-        for (uint256 i = 0; i < accounts.length; i++) {
-            address account = accounts[i];
-            require(account != address(0), "invalid whitelist account");
-            require(leaderboardWhitelistIndexPlusOne[account] == 0, "duplicate whitelist account");
-            leaderboardWhitelist.push(account);
-            leaderboardWhitelistIndexPlusOne[account] = i + 1;
-        }
-
-        emit LeaderboardWhitelistUpdated(accounts);
-    }
-
-    function leaderboardWhitelistLength() external view returns (uint256) {
-        return leaderboardWhitelist.length;
-    }
-
-    function setLeaderboardWhitelistAdjustPct(uint8 adjustPct) external onlyOwnerOrSubAdmin {
-        require(adjustPct <= 10, "adjust out of range");
-        leaderboardWhitelistAdjustPct = adjustPct;
-        emit LeaderboardWhitelistAdjustUpdated(adjustPct);
-    }
 
     function fundRewardPool(uint256 amount) external onlyOwnerOrSubAdmin {
         require(amount > 0, "invalid amount");
@@ -777,6 +743,22 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
 
     function settleDailyRewardsManual(address[] calldata participants, uint256 lightPriceInUsdt) external onlyOwnerOrSubAdmin whenNotPaused {
         _settleDailyRewards(participants, true, lightPriceInUsdt);
+    }
+
+    /// @notice Backfill capAmount for orders created before rewardCapBps was set.
+    /// Safe to call multiple times: only updates orders whose capAmount is still 0.
+    /// Uses the current rewardCapBps value.
+    function backfillOrderCap(uint256[] calldata orderIds) external onlyOwnerOrSubAdmin {
+        uint16 capBps = rewardCapBps;
+        require(capBps > 0, "rewardCapBps not set");
+        for (uint256 i = 0; i < orderIds.length; i++) {
+            uint256 orderId = orderIds[i];
+            MachineOrder storage order = machineOrders[orderId];
+            require(order.id != 0, "order not found");
+            if (orderRewardLedger[orderId].capAmount == 0) {
+                orderRewardLedger[orderId].capAmount = (order.amountUSDT * capBps) / BPS_DENOMINATOR;
+            }
+        }
     }
 
     function settleDailyRewardsIfDue(address[] calldata participants, uint256 lightPriceInUsdt) external whenNotPaused returns (bool settled) {
@@ -1306,10 +1288,18 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     }
 
     function _updateTeamVolume(address user, uint256 amount) private {
+        address prev = user;
         address current = referralOf[user];
         for (uint256 i = 0; i < 20; i++) {
             if (current == address(0)) break;
             teamTotalVolume[current] += amount;
+            // Track per-branch volume so that 小区业绩 = teamTotalVolume - maxBranchVolume.
+            uint256 newBranch = branchVolume[current][prev] + amount;
+            branchVolume[current][prev] = newBranch;
+            if (newBranch > maxBranchVolume[current]) {
+                maxBranchVolume[current] = newBranch;
+            }
+            prev = current;
             current = referralOf[current];
         }
     }
@@ -1390,16 +1380,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
     function bootstrapRoleLists() external onlyOwnerOrSubAdmin {
         require(!roleListsBootstrapped, "already bootstrapped");
         roleListsBootstrapped = true;
-        uint256 n = rewardParticipants.length;
-        for (uint256 i = 0; i < n; i++) {
-            address account = rewardParticipants[i];
-            Role r = _getRole(account);
-            if (r == Role.Node) {
-                _addToNodeList(account);
-            } else if (r == Role.SuperNode) {
-                _addToSuperNodeList(account);
-            }
-        }
     }
 
     function nodeListLength() external view returns (uint256) {
@@ -1410,11 +1390,6 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return superNodeList.length;
     }
 
-    /// @notice Effective team weight = directReferralVolume + teamTotalVolume.
-    function _teamWeight(address acc) private view returns (uint256) {
-        return directReferralVolume[acc] + teamTotalVolume[acc];
-    }
-
     function settleNodePoolOnChain() external whenNotPaused nonReentrant returns (bool) {
         _requireSettlementAuth();
         uint256 dayId = currentDay();
@@ -1423,7 +1398,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return NodePoolLib.distribute(
             uint8(PoolType.Node), dayId, true, minPoolSettleAmount,
             poolAccumulated, nodeList, superNodeList,
-            directReferralVolume, teamTotalVolume, usdt
+            teamTotalVolume, maxBranchVolume, usdt
         );
     }
 
@@ -1435,7 +1410,7 @@ contract IncubatorCore is OwnableUpgradeable, PausableUpgradeable, ReentrancyGua
         return NodePoolLib.distribute(
             uint8(PoolType.SuperNode), dayId, false, minPoolSettleAmount,
             poolAccumulated, nodeList, superNodeList,
-            directReferralVolume, teamTotalVolume, usdt
+            teamTotalVolume, maxBranchVolume, usdt
         );
     }
 }

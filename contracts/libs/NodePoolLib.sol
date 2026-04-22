@@ -18,15 +18,18 @@ library NodePoolLib {
 
     function _weight(
         address acc,
-        mapping(address => uint256) storage directReferralVolume,
-        mapping(address => uint256) storage teamTotalVolume
+        mapping(address => uint256) storage teamTotalVolume,
+        mapping(address => uint256) storage maxBranchVolume
     ) private view returns (uint256) {
-        return directReferralVolume[acc] + teamTotalVolume[acc];
+        uint256 total = teamTotalVolume[acc];
+        uint256 maxBranch = maxBranchVolume[acc];
+        // 小区业绩 = 团队总业绩 - 最大区
+        return total > maxBranch ? total - maxBranch : 0;
     }
 
     /// @notice Distribute `poolAccumulated[poolType]` across nodeList ∪ superNodeList
-    /// weighted by team volume. For Node pool `includeNodeList` is true; for SuperNode
-    /// pool only superNodeList participates.
+    /// weighted by 小区业绩 (= teamTotalVolume - maxBranchVolume). For Node pool
+    /// `includeNodeList` is true; for SuperNode pool only superNodeList participates.
     function distribute(
         uint8 poolType,
         uint256 dayId,
@@ -35,8 +38,8 @@ library NodePoolLib {
         mapping(uint8 => uint256) storage poolAccumulated,
         address[] storage nodeList,
         address[] storage superNodeList,
-        mapping(address => uint256) storage directReferralVolume,
         mapping(address => uint256) storage teamTotalVolume,
+        mapping(address => uint256) storage maxBranchVolume,
         IERC20 usdt
     ) external returns (bool) {
         uint256 pool = poolAccumulated[poolType];
@@ -49,10 +52,10 @@ library NodePoolLib {
 
         uint256 totalWeight;
         for (uint256 i = 0; i < lenA; i++) {
-            totalWeight += _weight(nodeList[i], directReferralVolume, teamTotalVolume);
+            totalWeight += _weight(nodeList[i], teamTotalVolume, maxBranchVolume);
         }
         for (uint256 j = 0; j < lenB; j++) {
-            totalWeight += _weight(superNodeList[j], directReferralVolume, teamTotalVolume);
+            totalWeight += _weight(superNodeList[j], teamTotalVolume, maxBranchVolume);
         }
         if (totalWeight == 0) return false;
 
@@ -65,7 +68,7 @@ library NodePoolLib {
             address acc = nodeList[i];
             uint256 amount = (k == lastK)
                 ? pool - distributed
-                : (pool * _weight(acc, directReferralVolume, teamTotalVolume)) / totalWeight;
+                : (pool * _weight(acc, teamTotalVolume, maxBranchVolume)) / totalWeight;
             if (amount > 0) {
                 usdt.safeTransfer(acc, amount);
                 distributed += amount;
@@ -77,7 +80,7 @@ library NodePoolLib {
             address acc = superNodeList[j];
             uint256 amount = (k == lastK)
                 ? pool - distributed
-                : (pool * _weight(acc, directReferralVolume, teamTotalVolume)) / totalWeight;
+                : (pool * _weight(acc, teamTotalVolume, maxBranchVolume)) / totalWeight;
             if (amount > 0) {
                 usdt.safeTransfer(acc, amount);
                 distributed += amount;

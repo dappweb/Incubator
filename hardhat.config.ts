@@ -37,6 +37,20 @@ const config: HardhatUserConfig = {
     cache: "./cache",
     artifacts: "./artifacts",
   },
+  mocha: {
+    reporter: process.env.MOCHA_REPORTER || "spec",
+    reporterOptions: {
+      reportDir: "reports",
+      reportFilename: "test-report",
+      reportTitle: "Incubator 合约测试报告",
+      reportPageTitle: "Test Results",
+      charts: true,
+      embeddedScreenshots: true,
+      inlineAssets: true,
+      quiet: false,
+    },
+    timeout: 120000,
+  },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,

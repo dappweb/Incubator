@@ -106,13 +106,13 @@ describe("IncubatorCore — Admin & Settlement", function () {
     await core.connect(owner).setAdminRole(alice.address, 1, true);
 
     await core.connect(alice).setAdminRole(bob.address, 2, true);
-    assert.equal(await core.isOwnerOrSubAdmin(bob.address), true);
+    assert.equal(await core.isOwnerSubAdminOrManager(bob.address), true);
 
     await core.connect(owner).setAdminRole(carol.address, 2, true);
-    assert.equal(await core.isOwnerOrSubAdmin(carol.address), true);
+    assert.equal(await core.isOwnerSubAdminOrManager(carol.address), true);
 
     await core.connect(alice).setAdminRole(bob.address, 2, false);
-    assert.equal(await core.isOwnerOrSubAdmin(bob.address), false);
+    assert.equal(await core.isOwnerSubAdminOrManager(bob.address), false);
 
     await assert.rejects(core.connect(bob).setAdminRole(carol.address, 2, false));
   });
