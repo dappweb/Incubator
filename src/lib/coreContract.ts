@@ -585,19 +585,29 @@ export async function setSuperNodePurchaseResidualRecipients(provider: BrowserPr
 
 export async function getLeaderboardWhitelist(provider: BrowserProvider): Promise<string[]> {
   const contract = getCoreContract(provider) as any;
-  const count: bigint = await contract.leaderboardWhitelistLength();
-  const n = Number(count);
-  const out: string[] = [];
-  for (let i = 0; i < n; i++) {
-    out.push(await contract.leaderboardWhitelist(i) as string);
+  try {
+    const count: bigint = await contract.leaderboardWhitelistLength();
+    const n = Number(count);
+    const out: string[] = [];
+    for (let i = 0; i < n; i++) {
+      out.push(await contract.leaderboardWhitelist(i) as string);
+    }
+    return out;
+  } catch {
+    // Backward compatibility: older Core deployments may not include whitelist methods.
+    return [];
   }
-  return out;
 }
 
 export async function getLeaderboardWhitelistAdjustPct(provider: BrowserProvider): Promise<number> {
   const contract = getCoreContract(provider) as any;
-  const value: bigint = await contract.leaderboardWhitelistAdjustPct();
-  return Number(value);
+  try {
+    const value: bigint = await contract.leaderboardWhitelistAdjustPct();
+    return Number(value);
+  } catch {
+    // Backward compatibility with deployments that do not include this field.
+    return 0;
+  }
 }
 
 export async function setLeaderboardWhitelist(provider: BrowserProvider, accounts: string[]) {

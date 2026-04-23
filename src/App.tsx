@@ -5,86 +5,86 @@ import "./App.css";
 import { Card, KVRow } from "./components/Common";
 import type { TokenType } from "./components/TokenHistory";
 import {
-  CNC_MAINNET_CHAIN_ID,
-  CNC_MAINNET_CHAIN_NAME,
-  CNC_MAINNET_RPC_URLS,
-  CORE_CONTRACT_ADDRESS,
-  ICO_TOKEN_ADDRESS,
-  LIGHT_TOKEN_ADDRESS,
-  OTC_CONTRACT_ADDRESS,
-  PANCAKE_V3_PRIMARY_FEE_PPM,
-  PRIMARY_SWAP_CONTROLLER_ADDRESS,
-  SWAP_POOL_ADDRESS,
-  USDT_CONTRACT_ADDRESS,
+    CNC_MAINNET_CHAIN_ID,
+    CNC_MAINNET_CHAIN_NAME,
+    CNC_MAINNET_RPC_URLS,
+    CORE_CONTRACT_ADDRESS,
+    ICO_TOKEN_ADDRESS,
+    LIGHT_TOKEN_ADDRESS,
+    OTC_CONTRACT_ADDRESS,
+    PANCAKE_V3_PRIMARY_FEE_PPM,
+    PRIMARY_SWAP_CONTROLLER_ADDRESS,
+    SWAP_POOL_ADDRESS,
+    USDT_CONTRACT_ADDRESS,
 } from "./config";
 import {
-  DEFAULT_FRONTEND_FEATURE_TOGGLES,
-  fetchFrontendFeatureToggles,
-  fetchPublishedAnnouncements,
-  type Announcement,
-  type FrontendFeatureToggles,
+    DEFAULT_FRONTEND_FEATURE_TOGGLES,
+    fetchFrontendFeatureToggles,
+    fetchPublishedAnnouncements,
+    type Announcement,
+    type FrontendFeatureToggles,
 } from "./lib/announcements";
 import {
-  bindReferrer,
-  buyNode,
-  buySuperNode,
-  getContractOwner,
-  getDirectReferralsByReferrer,
-  getMachineOrder,
-  getMachineUnitPrice,
-  getNodePrice,
-  getOrderRewardLedger,
-  getPoolAccumulatedBalances,
-  getReferrer,
-  getRewardRecordsByBeneficiary,
-  getSuperNodePrice,
-  getTeamStats,
-  getUserMachineOrderIds,
-  getUserMachineUnits,
-  getUserRole,
-  isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
-  purchaseMachine,
-  type MachineOrder,
-  type OrderRewardLedger,
-  type RewardRecord,
-  type TeamStats
+    bindReferrer,
+    buyNode,
+    buySuperNode,
+    getContractOwner,
+    getDirectReferralsByReferrer,
+    getMachineOrder,
+    getMachineUnitPrice,
+    getNodePrice,
+    getOrderRewardLedger,
+    getPoolAccumulatedBalances,
+    getReferrer,
+    getRewardRecordsByBeneficiary,
+    getSuperNodePrice,
+    getTeamStats,
+    getUserMachineOrderIds,
+    getUserMachineUnits,
+    getUserRole,
+    isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
+    purchaseMachine,
+    type MachineOrder,
+    type OrderRewardLedger,
+    type RewardRecord,
+    type TeamStats
 } from "./lib/coreContract";
 import { parseContractError } from "./lib/errorParser";
 import { getTokenOfOwner, isIdentityApproved } from "./lib/identityContract";
 import {
-  claimLightReward,
-  getLightClaimable,
-  hasLightRewardVault,
+    claimLightReward,
+    getLightClaimable,
+    hasLightRewardVault,
 } from "./lib/lightRewardVault";
 import {
-  getActiveOrderIds,
-  getLastTradePriceByRole,
-  getOrder,
-  getOtcFeeBps,
-  type OtcOrder,
+    getActiveOrderIds,
+    getLastTradePriceByRole,
+    getOrder,
+    getOtcFeeBps,
+    type OtcOrder,
 } from "./lib/otcContract";
 import {
-  getContractPoolStats,
-  getPrimarySwapFeeBps,
-  getPrimarySwapSpender,
-  getSwapPool,
-  getSwapPoolsInfo,
-  isLightUsdPriceReady,
-  quoteLightForIcoUsdBased,
-  quotePrimarySwapExactIn,
-  quoteSwapExactIn,
-  resolvePrimarySwapTokens,
-  swapLightForIcoUsdBased,
-  swapPrimaryExactIn,
+    getContractPoolStats,
+    getPrimarySwapFeeBps,
+    getPrimarySwapSpender,
+    getSwapPool,
+    getSwapPoolsInfo,
+    isLightUsdPriceReady,
+    quoteLightForIcoUsdBased,
+    quotePrimarySwapExactIn,
+    quoteSwapExactIn,
+    resolvePrimarySwapTokens,
+    swapLightForIcoUsdBased,
+    swapPrimaryExactIn,
 } from "./lib/swapContract";
 import { approveToken, formatTokenAmount, getTokenAllowance, getTokenBalance, getTokenMeta, parseTokenAmount } from "./lib/tokenContract";
 import { fetchTokenHistory, type TxRecord } from "./lib/tokenHistory";
 import { approveUsdt, formatUsdt, getUsdtAllowance, getUsdtBalance, resolveUsdtAddress } from "./lib/usdtContract";
 import {
-  checkConnection,
-  connectWallet,
-  ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
-  setupWalletAfterConnect
+    checkConnection,
+    connectWallet,
+    ensureCncMainnetNetwork, isOnCncMainnet, listenToWalletEvents,
+    setupWalletAfterConnect
 } from "./lib/wallet";
 
 type TabKey = "overview" | "team" | "otc" | "swap" | "mine" | "admin";
@@ -355,6 +355,7 @@ const App = () => {
     teamHint: lang === "zh" ? "查看你的直推成员与团队贡献，数据随链上更新。" : "View your direct referrals and team contributions. Updates follow on-chain state.",
     teamTotal: lang === "zh" ? "团队总人数" : "Total Members",
     teamDirects: lang === "zh" ? "直推人数" : "Direct Referrals",
+    teamMyPerformance: lang === "zh" ? "我的业绩（自己购买算力）" : "My Performance (Self Purchased Units)",
     teamDirectVolume: lang === "zh" ? "直推业绩" : "Direct Volume",
     teamTotalVolume: lang === "zh" ? "团队业绩" : "Team Volume",
     myReferrerTab: lang === "zh" ? "我的推荐人" : "My Referrer",
@@ -1079,14 +1080,6 @@ const App = () => {
     setLastAddressTapAt(now);
     setStatus(lang === "zh" ? "再次点击地址可显示断开钱包按钮。" : "Tap address again to reveal disconnect button.");
   };
-  const recentMachineAmount = useMemo(
-    () => orders.reduce((sum, order) => sum + toSafeBigInt(order.amountUSDT), 0n),
-    [orders],
-  );
-  const recentRewardAmount = useMemo(
-    () => rewardRecords.reduce((sum, row) => sum + toSafeBigInt(row.amountUSDT), 0n),
-    [rewardRecords],
-  );
   const selectedTokenOrders = useMemo(
     () => (tokenInOutRecords[ordersTokenTab] ?? []).slice(0, INOUT_PREVIEW_LIMIT),
     [ordersTokenTab, tokenInOutRecords],
@@ -1653,13 +1646,15 @@ const App = () => {
     let disposed = false;
     const refreshTeamPanel = async () => {
       try {
-        const [stats, referrals] = await Promise.all([
+        const [stats, referrals, ownUnits] = await Promise.all([
           getTeamStats(provider, address),
           getDirectReferralsByReferrer(provider, address, 100),
+          getUserMachineUnits(provider, address),
         ]);
         if (disposed) return;
         setTeamStats(stats);
         setDirectReferrals(referrals);
+        setTotalMachineUnits(toSafeBigInt(ownUnits));
       } catch (error) {
         if (!disposed) {
           console.error("Failed to refresh team panel", error);
@@ -2155,7 +2150,6 @@ const App = () => {
             <KVRow label={t.network} value={networkLabel} />
             <KVRow label={t.role} value={roleLabel} />
             <KVRow label={t.balance} value={formatUsdt(usdtBalance) + " USDT"} />
-            <KVRow label={t.coreApproval} value={fmtAllowance(coreAllowance, lang)} />
             {canUseAdmin ? (
               <KVRow
                 label={t.ownerPanel}
@@ -2464,6 +2458,10 @@ const App = () => {
           <Card title={t.teamTitle} hint={t.teamHint}>
             <div className="stats-grid">
               <div className="stat-pill">
+                <span>{t.teamMyPerformance}</span>
+                <strong>{`${String(totalMachineUnits)} ${t.quantityUnit}`}</strong>
+              </div>
+              <div className="stat-pill">
                 <span>{t.teamDirects}</span>
                 <strong>{teamStats.directCount.toString()}</strong>
               </div>
@@ -2755,13 +2753,7 @@ const App = () => {
 
             <div className="kv-list">
               <KVRow label={t.balance} value={`${formatUsdt(usdtBalance)} USDT`} />
-              <KVRow label={t.coreApproval} value={fmtAllowance(coreAllowance, lang)} />
-              <KVRow label={t.otcApproval} value={fmtAllowance(otcAllowance, lang)} />
               <KVRow label={t.recentMachineUnits} value={`${String(totalMachineUnits)} ${t.quantityUnit}`} />
-              <KVRow label={t.recentMachineAmount} value={`${formatUsdt(recentMachineAmount)} USDT`} />
-              <KVRow label={t.recentRewardAmount} value={`${formatUsdt(recentRewardAmount)} USDT`} />
-              <KVRow label={t.loadedRecentOrders} value={orders.length} />
-              <KVRow label={t.loadedRecentRewards} value={rewardRecords.length} />
             </div>
           </Card>
 

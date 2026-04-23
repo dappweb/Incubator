@@ -77,7 +77,7 @@ cp .env.example .env
 
 | 变量                  | 说明               | 当前值                                       |
 | --------------------- | ------------------ | -------------------------------------------- |
-| `USDT_TOKEN_ADDRESS`  | CNC 链 USDT (18位) | `0xC4eA24dFC165Fedb881783a84F44C2806CF7FBbD` |
+| `USDT_TOKEN_ADDRESS`  | CNC 链 USDT (18位) | `0x7EA6474c89DE99d186F6559C06A15681197ca48F` |
 | `ICO_TOKEN_ADDRESS`   | ICO 代币           | `0x306d55A808E8AF520BAC5bC755af38033AeDBd40` |
 | `LIGHT_TOKEN_ADDRESS` | LIGHT 代币         | `0xe426aA3fe3F7eDA4D89b79c8011a1259eB2cCf92` |
 

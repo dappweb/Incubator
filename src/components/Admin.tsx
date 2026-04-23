@@ -2,115 +2,115 @@ import { BrowserProvider, formatUnits, getAddress, isAddress, parseUnits } from 
 import React, { useEffect, useMemo, useState } from "react";
 import { CORE_CONTRACT_ADDRESS, ICO_TOKEN_ADDRESS, JSONBIN_MASTER_KEY, LIGHT_TOKEN_ADDRESS, OTC_CONTRACT_ADDRESS, PRIMARY_SWAP_CONTROLLER_ADDRESS, SWAP_POOL_ADDRESS, USDT_CONTRACT_ADDRESS } from "../config";
 import {
-    createEmptyAnnouncement,
-    fetchFrontendFeatureToggles,
-    fetchPublishedAnnouncements,
-    publishAnnouncementsToJsonBin,
-    type Announcement,
-    type FrontendFeatureToggles,
+  createEmptyAnnouncement,
+  fetchFrontendFeatureToggles,
+  fetchPublishedAnnouncements,
+  publishAnnouncementsToJsonBin,
+  type Announcement,
+  type FrontendFeatureToggles,
 } from "../lib/announcements";
 import type { CorePoolConfig, CoreTreasuryStatus } from "../lib/coreContract";
 import {
-    emergencyWithdrawCoreLight,
-    emergencyWithdrawCoreUSDT,
-    fundRewardPool,
-    getContractOwner,
-    getCorePoolConfig,
-    getCoreTreasuryStatus,
-    getCoreUsdtAddress,
-    getCurrentDay,
-    getCycleDuration,
-    getIdentityMarket,
-    getLeaderboardWhitelist,
-    getLeaderboardWhitelistAdjustPct,
-    getMachineUnitPrice,
-    getNodePrice,
-    getNodePurchaseResidualRecipients,
-    getRewardConfig,
-    getRewardPoolBalance,
-    getSubAdmins,
-    getSuperNodePrice,
-    getSuperNodePurchaseResidualRecipients,
-    isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
-    isCorePaused,
-    pauseCore,
-    setCoreManager,
-    setCoreSubAdmin,
-    setCoreUsdtAddress,
-    setCycleDuration,
-    setIdentityMarket,
-    setLeaderboardWhitelist,
-    setLeaderboardWhitelistAdjustPct,
-    setNodePurchaseResidualRecipients,
-    setRewardWeight,
-    setSuperNodePurchaseResidualRecipients,
-    settleDailyRewardsManual,
-    settleLeaderboard,
-    transferCoreOwnership,
-    unpauseCore,
-    updateCoreNodePrice,
-    updateCorePoolRecipient,
-    updateCorePoolShare,
-    updateCoreSuperNodePrice,
-    updateMachinePrice,
-    updateRewardConfig,
-    withdrawCoreAccumulatedPool,
-    withdrawCoreLight,
-    withdrawCoreUSDT
+  emergencyWithdrawCoreLight,
+  emergencyWithdrawCoreUSDT,
+  fundRewardPool,
+  getContractOwner,
+  getCorePoolConfig,
+  getCoreTreasuryStatus,
+  getCoreUsdtAddress,
+  getCurrentDay,
+  getCycleDuration,
+  getIdentityMarket,
+  getLeaderboardWhitelist,
+  getLeaderboardWhitelistAdjustPct,
+  getMachineUnitPrice,
+  getNodePrice,
+  getNodePurchaseResidualRecipients,
+  getRewardConfig,
+  getRewardPoolBalance,
+  getSubAdmins,
+  getSuperNodePrice,
+  getSuperNodePurchaseResidualRecipients,
+  isOwnerOrSubAdmin as isCoreOwnerOrSubAdmin,
+  isCorePaused,
+  pauseCore,
+  setCoreManager,
+  setCoreSubAdmin,
+  setCoreUsdtAddress,
+  setCycleDuration,
+  setIdentityMarket,
+  setLeaderboardWhitelist,
+  setLeaderboardWhitelistAdjustPct,
+  setNodePurchaseResidualRecipients,
+  setRewardWeight,
+  setSuperNodePurchaseResidualRecipients,
+  settleDailyRewardsManual,
+  settleLeaderboard,
+  transferCoreOwnership,
+  unpauseCore,
+  updateCoreNodePrice,
+  updateCorePoolRecipient,
+  updateCorePoolShare,
+  updateCoreSuperNodePrice,
+  updateMachinePrice,
+  updateRewardConfig,
+  withdrawCoreAccumulatedPool,
+  withdrawCoreLight,
+  withdrawCoreUSDT
 } from "../lib/coreContract";
 import { parseContractError } from "../lib/errorParser";
 import { cleanupLowerOrders, getOtcFeeConfig, getOtcUsdtAddress, setOtcUsdtAddress, updateOtcFeeConfig } from "../lib/otcContract";
 import {
-    addSwapLiquidity,
-    createDefaultPools,
-    distributeSwapFees,
-    forceSetSellEnabled,
-    getBottomPoolConfig,
-    getContractPoolStats,
-    getLightFeeConfig,
-    getLightRealtimeDistribute,
-    getPancakeV2PrimaryReserves,
-    getPrimarySwapConfig,
-    getPrimaryUsdtAddress,
-    getSwapCycleDuration,
-    getSwapFeeVault,
-    getSwapPool,
-    getUsdtAddress,
-    getUsdtIcoPoolEnabled,
-    injectBottomPool,
-    isSwapPaused,
-    migrateUsdtIcoLiquidity,
-    pauseSwap,
-    removeSwapLiquidity,
-    reportIcoHolderCount,
-    setLightRealtimeDistribute,
-    setPairTokens as setPairTokensOnChain,
-    setPrimaryUsdtAddress,
-    setSwapCycleDuration as setSwapCycleDurationOnChain,
-    setUsdtAddress as setUsdtAddressOnChain,
-    setUsdtIcoPoolEnabled,
-    settleLightFees,
-    tryAutoEnableSellUsdt,
-    unpauseSwap,
-    updateBottomPoolConfig,
-    updatePrimaryBuyFeeConfig,
-    updatePrimaryPair,
-    updatePrimaryRecipients,
-    updatePrimarySellConfig,
-    updatePrimaryThresholds,
-    updateSwapLightFeeConfig,
-    updateSwapPoolConfig,
-    withdrawPrimaryTreasury,
-    type LightFeeConfig,
-    type PrimarySwapConfig,
-    type SwapPool
+  addSwapLiquidity,
+  createDefaultPools,
+  distributeSwapFees,
+  forceSetSellEnabled,
+  getBottomPoolConfig,
+  getContractPoolStats,
+  getLightFeeConfig,
+  getLightRealtimeDistribute,
+  getPancakeV2PrimaryReserves,
+  getPrimarySwapConfig,
+  getPrimaryUsdtAddress,
+  getSwapCycleDuration,
+  getSwapFeeVault,
+  getSwapPool,
+  getUsdtAddress,
+  getUsdtIcoPoolEnabled,
+  injectBottomPool,
+  isSwapPaused,
+  migrateUsdtIcoLiquidity,
+  pauseSwap,
+  removeSwapLiquidity,
+  reportIcoHolderCount,
+  setLightRealtimeDistribute,
+  setPairTokens as setPairTokensOnChain,
+  setPrimaryUsdtAddress,
+  setSwapCycleDuration as setSwapCycleDurationOnChain,
+  setUsdtAddress as setUsdtAddressOnChain,
+  setUsdtIcoPoolEnabled,
+  settleLightFees,
+  tryAutoEnableSellUsdt,
+  unpauseSwap,
+  updateBottomPoolConfig,
+  updatePrimaryBuyFeeConfig,
+  updatePrimaryPair,
+  updatePrimaryRecipients,
+  updatePrimarySellConfig,
+  updatePrimaryThresholds,
+  updateSwapLightFeeConfig,
+  updateSwapPoolConfig,
+  withdrawPrimaryTreasury,
+  type LightFeeConfig,
+  type PrimarySwapConfig,
+  type SwapPool
 } from "../lib/swapContract";
 import {
-    burnUnsold,
-    getIcoTokenInfo,
-    mintIcoToken,
-    setBurnExecutor,
-    setSaleAllocationWallet,
+  burnUnsold,
+  getIcoTokenInfo,
+  mintIcoToken,
+  setBurnExecutor,
+  setSaleAllocationWallet,
 } from "../lib/tokenContract";
 import { formatUsdt, parseUsdt } from "../lib/usdtContract";
 import AdminDataDashboard from "./AdminDataDashboard";
@@ -936,10 +936,23 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
     });
   };
 
+  const validateAddressFormat = (value: string): boolean => {
+    if (!value) return false;
+    const raw = value.trim();
+    if (!raw) return false;
+    return isAddress(raw) || /^0x[0-9a-fA-F]{40}$/.test(raw.toLowerCase());
+  };
+
   const collectRecipientRows = (rows: RecipientInputRow[], emptyError: string) => {
     const recipients = rows.map((row) => row.value.trim()).filter(Boolean);
     if (recipients.length === 0) {
       throw new Error(emptyError);
+    }
+    // Validate all addresses before processing
+    for (let i = 0; i < recipients.length; i++) {
+      if (!validateAddressFormat(recipients[i])) {
+        throw new Error(lang === "zh" ? `第 ${i + 1} 个地址格式无效: ${recipients[i].slice(0, 20)}...` : `Address ${i + 1} is invalid: ${recipients[i].slice(0, 20)}...`);
+      }
     }
     return recipients.map(normalizeAddress);
   };
@@ -1387,40 +1400,47 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
                       <KVRow label={t.recipient} value={pool.recipient || "-"} />
                       <KVRow label={t.shareBps} value={`${pool.bps} BPS`} />
                     </div>
-                    {/* 修改接收地址 */}
-                    <label className="field" style={{ marginTop: "8px" }}>
-                      {lang === "zh" ? "新接收地址" : "New Recipient"}
-                      <input
-                        value={pool.recipientInput}
-                        placeholder={pool.recipient}
-                        disabled={index === 0}
-                        onChange={(event) => updatePoolConfigInput(index, { recipientInput: event.target.value })}
-                      />
-                    </label>
-                    {index === 0 ? (
+                    {/* 修改接收地址：托管到合约 或 Referral兜底地址 不显示 */}
+                    {pool.recipient.toLowerCase() === CORE_CONTRACT_ADDRESS.toLowerCase() || index === 1 ? (
                       <p className="hint-text" style={{ marginTop: 6 }}>
-                        {lang === "zh"
-                          ? "Liquidity 地址由系统管理并直接注入 Swap，不在 Admin 手动配置。"
-                          : "Liquidity recipient is system-managed and directly injected into Swap."}
+                        {index === 1
+                          ? (lang === "zh"
+                            ? "直推奖励实时转给购买者的直推人，无需配置兜底地址。"
+                            : "Referral reward is sent directly to the buyer's referrer in real-time; no fallback address configuration needed.")
+                          : (lang === "zh"
+                            ? "此池托管到合约内部，金额按链内累积口径处理，无需配置外部接收地址。"
+                            : "This pool is hosted in the contract. Funds accumulate on-chain and do not require an external recipient.")}
                       </p>
-                    ) : null}
-                    {index === 6 ? (
-                      <p className="hint-text" style={{ marginTop: 6 }}>
-                        {lang === "zh"
-                          ? "Contract 池需配置外部结算地址，池内金额按链内累积口径处理。"
-                          : "Contract pool requires an external settlement address while balances accrue in-contract."}
-                      </p>
-                    ) : null}
-                    <div className="actions admin-actions-tight">
-                      <button className="ghost-btn" type="button"
-                        onClick={() => void executeAction(`pool-recipient-${index}`, async () => {
-                          validateAddress(pool.recipientInput);
-                          await updateCorePoolRecipient(provider!, index, pool.recipientInput.trim());
-                        }, lang === "zh" ? `${pool.label} 接收地址已更新。` : `${pool.label} recipient updated.`)}
-                        disabled={actionKey !== "" || index === 0}>
-                        {actionKey === `pool-recipient-${index}` ? t.loading : t.saveRecipient}
-                      </button>
-                    </div>
+                    ) : (
+                      <>
+                        <label className="field" style={{ marginTop: "8px" }}>
+                          {lang === "zh" ? "新接收地址" : "New Recipient"}
+                          <input
+                            value={pool.recipientInput}
+                            placeholder={pool.recipient}
+                            disabled={index === 0}
+                            onChange={(event) => updatePoolConfigInput(index, { recipientInput: event.target.value })}
+                          />
+                        </label>
+                        {index === 0 ? (
+                          <p className="hint-text" style={{ marginTop: 6 }}>
+                            {lang === "zh"
+                              ? "Liquidity 地址由系统管理并直接注入 Swap，不在 Admin 手动配置。"
+                              : "Liquidity recipient is system-managed and directly injected into Swap."}
+                          </p>
+                        ) : null}
+                        <div className="actions admin-actions-tight">
+                          <button className="ghost-btn" type="button"
+                            onClick={() => void executeAction(`pool-recipient-${index}`, async () => {
+                              validateAddress(pool.recipientInput);
+                              await updateCorePoolRecipient(provider!, index, pool.recipientInput.trim());
+                            }, lang === "zh" ? `${pool.label} 接收地址已更新。` : `${pool.label} recipient updated.`)}
+                            disabled={actionKey !== "" || index === 0}>
+                            {actionKey === `pool-recipient-${index}` ? t.loading : t.saveRecipient}
+                          </button>
+                        </div>
+                      </>
+                    )}
                     {/* 修改比例 */}
                     <label className="field" style={{ marginTop: "8px" }}>
                       {lang === "zh" ? "新比例(BPS)" : "New Share(BPS)"}
@@ -1825,19 +1845,44 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
                     ? "购买节点扣除推荐奖励后的剩余资金，会等额分发到以下地址；未配置时回退到平台池地址。"
                     : "After node referral rewards are paid, the remaining amount is split evenly across the addresses below; if unset, it falls back to the platform recipient."}
                 </div>
-                {nodeResidualRows.map((row, index) => (
-                  <div key={row.id} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: index + 1 === nodeResidualRows.length ? "0" : "8px" }}>
-                    <input
-                      style={{ flex: 1 }}
-                      value={row.value}
-                      onChange={(e) => updateRecipientRows(setNodeResidualRows, row.id, e.target.value)}
-                      placeholder="0x..."
-                    />
-                    <button className="ghost-btn" type="button" onClick={() => removeRecipientRow(setNodeResidualRows, row.id)} disabled={actionKey !== ""}>
-                      {lang === "zh" ? "删除" : "Remove"}
-                    </button>
-                  </div>
-                ))}
+                <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "8px", padding: "8px", background: "rgba(45,119,119,0.1)", borderRadius: "6px" }}>
+                  {lang === "zh" 
+                    ? "📝 操作步骤：1) 输入有效的以太坊地址 (0x开头，40个16进制字符)；2) 点击保存按钮；3) 在钱包中确认交易。"
+                    : "📝 Steps: 1) Enter valid Ethereum addresses (0x... format); 2) Click Save; 3) Confirm in wallet."}
+                </div>
+                {nodeResidualRows.map((row, index) => {
+                  const isValid = row.value ? validateAddressFormat(row.value) : true;
+                  const hasValue = Boolean(row.value.trim());
+                  return (
+                    <div key={row.id} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: index + 1 === nodeResidualRows.length ? "0" : "8px", flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <input
+                          style={{
+                            flex: 1,
+                            borderColor: hasValue && !isValid ? "#f87171" : undefined,
+                            background: hasValue && !isValid ? "rgba(248, 113, 113, 0.1)" : undefined,
+                          }}
+                          value={row.value}
+                          onChange={(e) => updateRecipientRows(setNodeResidualRows, row.id, e.target.value)}
+                          placeholder="0x..."
+                        />
+                        {hasValue && !isValid && (
+                          <div style={{ fontSize: "11px", color: "#f87171" }}>
+                            {lang === "zh" ? "❌ 地址格式无效" : "❌ Invalid address format"}
+                          </div>
+                        )}
+                        {hasValue && isValid && (
+                          <div style={{ fontSize: "11px", color: "#86efac" }}>
+                            {lang === "zh" ? "✅ 地址有效" : "✅ Valid address"}
+                          </div>
+                        )}
+                      </div>
+                      <button className="ghost-btn" type="button" onClick={() => removeRecipientRow(setNodeResidualRows, row.id)} disabled={actionKey !== ""}>
+                        {lang === "zh" ? "删除" : "Remove"}
+                      </button>
+                    </div>
+                  );
+                })}
                 <div className="actions admin-actions-tight" style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   <button className="ghost-btn" type="button" onClick={() => addRecipientRow(setNodeResidualRows)} disabled={actionKey !== ""}>
                     {lang === "zh" ? "➕ 添加地址" : "➕ Add Address"}
@@ -1862,19 +1907,44 @@ const Admin: React.FC<AdminProps> = ({ lang, address, contractOwner, hasAdminAcc
                     ? "购买超级节点扣除推荐奖励后的剩余资金，会等额分发到以下地址；未配置时回退到平台池地址。"
                     : "After super-node referral rewards are paid, the remaining amount is split evenly across the addresses below; if unset, it falls back to the platform recipient."}
                 </div>
-                {superResidualRows.map((row, index) => (
-                  <div key={row.id} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: index + 1 === superResidualRows.length ? "0" : "8px" }}>
-                    <input
-                      style={{ flex: 1 }}
-                      value={row.value}
-                      onChange={(e) => updateRecipientRows(setSuperResidualRows, row.id, e.target.value)}
-                      placeholder="0x..."
-                    />
-                    <button className="ghost-btn" type="button" onClick={() => removeRecipientRow(setSuperResidualRows, row.id)} disabled={actionKey !== ""}>
-                      {lang === "zh" ? "删除" : "Remove"}
-                    </button>
-                  </div>
-                ))}
+                <div style={{ fontSize: "11px", color: "#aaa", marginBottom: "8px", padding: "8px", background: "rgba(45,119,119,0.1)", borderRadius: "6px" }}>
+                  {lang === "zh" 
+                    ? "📝 操作步骤：1) 输入有效的以太坊地址 (0x开头，40个16进制字符)；2) 点击保存按钮；3) 在钱包中确认交易。"
+                    : "📝 Steps: 1) Enter valid Ethereum addresses (0x... format); 2) Click Save; 3) Confirm in wallet."}
+                </div>
+                {superResidualRows.map((row, index) => {
+                  const isValid = row.value ? validateAddressFormat(row.value) : true;
+                  const hasValue = Boolean(row.value.trim());
+                  return (
+                    <div key={row.id} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: index + 1 === superResidualRows.length ? "0" : "8px", flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <input
+                          style={{
+                            flex: 1,
+                            borderColor: hasValue && !isValid ? "#f87171" : undefined,
+                            background: hasValue && !isValid ? "rgba(248, 113, 113, 0.1)" : undefined,
+                          }}
+                          value={row.value}
+                          onChange={(e) => updateRecipientRows(setSuperResidualRows, row.id, e.target.value)}
+                          placeholder="0x..."
+                        />
+                        {hasValue && !isValid && (
+                          <div style={{ fontSize: "11px", color: "#f87171" }}>
+                            {lang === "zh" ? "❌ 地址格式无效" : "❌ Invalid address format"}
+                          </div>
+                        )}
+                        {hasValue && isValid && (
+                          <div style={{ fontSize: "11px", color: "#86efac" }}>
+                            {lang === "zh" ? "✅ 地址有效" : "✅ Valid address"}
+                          </div>
+                        )}
+                      </div>
+                      <button className="ghost-btn" type="button" onClick={() => removeRecipientRow(setSuperResidualRows, row.id)} disabled={actionKey !== ""}>
+                        {lang === "zh" ? "删除" : "Remove"}
+                      </button>
+                    </div>
+                  );
+                })}
                 <div className="actions admin-actions-tight" style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   <button className="ghost-btn" type="button" onClick={() => addRecipientRow(setSuperResidualRows)} disabled={actionKey !== ""}>
                     {lang === "zh" ? "➕ 添加地址" : "➕ Add Address"}

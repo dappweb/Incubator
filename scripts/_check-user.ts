@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 const RPC = "https://rpc.cncchainpro.com";
 const provider = new ethers.JsonRpcProvider(RPC);
 const CORE = "0xECD96148D33A8ca8F86cd701d445FB3bbe7592E2";
-const USDT = "0xC4eA24dFC165Fedb881783a84F44C2806CF7FBbD";
+const USDT = "0x7EA6474c89DE99d186F6559C06A15681197ca48F";
 const USER = "0x2f0549714E63B91d07c84100f1E753d4516bb9F0";
 
 const coreAbi = [

@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 
 async function main() {
   const coreAddress = "0xECD96148D33A8ca8F86cd701d445FB3bbe7592E2";
-  const usdtAddress = "0xC4eA24dFC165Fedb881783a84F44C2806CF7FBbD";
+  const usdtAddress = "0x7EA6474c89DE99d186F6559C06A15681197ca48F";
   const icoAddress = "0x306d55A808E8AF520BAC5bC755af38033AeDBd40";
   const lightAddress = "0xe426aA3fe3F7eDA4D89b79c8011a1259eB2cCf92";
 
